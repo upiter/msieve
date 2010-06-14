@@ -354,14 +354,6 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 
 		/* fill stage 1 data */
 
-		if (obj->nfs_lower && obj->nfs_upper) {
-			stage1_data.deadline = 0;
-		}
-		else {
-			logprintf(obj, "time limit set to %.2f hours\n",
-				stage1_data.deadline / 3600.0);
-		}
-
 		mp2gmp(n, stage1_data.gmp_N);
 		stage1_data.degree = degree;
 		stage1_data.norm_max = params.stage1_norm;
@@ -385,6 +377,9 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 
 		if (obj->nfs_lower && obj->nfs_upper)
 			stage1_data.deadline = 0;
+		else
+			logprintf(obj, "time limit set to %.2f hours\n",
+				stage1_data.deadline / 3600.0);
 
 		logprintf(obj, "searching leading coefficients from "
 				"%.0lf to %.0lf\n",
