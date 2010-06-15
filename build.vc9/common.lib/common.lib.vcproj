@@ -347,6 +347,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\common\lanczos\lanczos_reorder.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\common\filter\merge.c"
 				>
 			</File>
@@ -391,10 +395,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\common\strtoll.c"
-				>
-			</File>
-			<File
 				RelativePath="..\..\common\filter\singleton.c"
 				>
 			</File>
@@ -404,6 +404,10 @@
 			</File>
 			<File
 				RelativePath="..\..\common\smallfact\squfof.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\common\strtoll.c"
 				>
 			</File>
 			<File
