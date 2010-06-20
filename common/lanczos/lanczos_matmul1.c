@@ -22,7 +22,7 @@ $Id$
 static void mul_one_med_block(packed_block_t *curr_block,
 			uint64 *curr_col, uint64 *curr_b) {
 
-	uint16 *entries = curr_block->med_entries;
+	med_off_t *entries = curr_block->med_entries;
 
 	while (1) {
 		uint64 accum;
@@ -89,7 +89,8 @@ static void mul_one_med_block(packed_block_t *curr_block,
 
 	#undef _txor
 
-#elif defined(GCC_ASM64X)
+#elif defined(GCC_ASM64X) && !defined(LARGEBLOCKS)
+	/* for LARGEBLOCKS, it appears C code is optimized just fine */
 
     #define _txor(k)				\
 		"movzwq %%ax, %%rdx		\n\t"	\

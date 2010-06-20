@@ -55,9 +55,18 @@ extern "C" {
    The two fields are the row and column offsets
    from the top left corner of the block */
 
+#ifdef LARGEBLOCKS
+#ifdef GCC_ASM32A
+error "cannot use LARGEBLOCKS with 32-bit assembly code"
+#endif
+typedef uint32 med_off_t; /* experimental, --SB */
+#else
+typedef uint16 med_off_t;
+#endif
+
 typedef struct {
-	uint16 row_off;
-	uint16 col_off;
+	med_off_t row_off;
+	med_off_t col_off;
 } entry_idx_t;
 
 /* struct representing one block */
@@ -69,7 +78,7 @@ typedef struct {
 	uint32 num_entries;       /* number of nonzero matrix entries */
 	uint32 num_entries_alloc; /* nonzero matrix entries allocated */
 	entry_idx_t *entries;     /* nonzero entries */
-	uint16 *med_entries;      /* nonzero entries for medium dense rows */
+	med_off_t *med_entries;   /* nonzero entries for medium dense rows */
 } packed_block_t;
 
 enum thread_command {

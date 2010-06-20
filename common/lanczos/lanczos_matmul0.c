@@ -400,8 +400,8 @@ static void matrix_thread_init(thread_data_t *t) {
 		   software pipeline and would fetch off the end of 
 		   med_entries otherwise */
 
-		b->med_entries = (uint16 *)xmalloc((b->num_entries + 
-						2 * k + 8) * sizeof(uint16));
+		b->med_entries = (med_off_t *)xmalloc((b->num_entries + 
+						2 * k + 8) * sizeof(med_off_t));
 		j = k = 0;
 		while (j < b->num_entries) {
 			for (m = 0; j + m < b->num_entries; m++) {
@@ -589,7 +589,11 @@ void packed_matrix_init(msieve_obj *obj,
 
 	block_size = obj->cache_size2 / (3 * sizeof(uint64));
 	block_size = MIN(block_size, ncols / 2.5);
+#ifdef LARGEBLOCKS
+	block_size = MIN(block_size, 172032);	/* remains to be tested on different CPUs */
+#else
 	block_size = MIN(block_size, 65536);
+#endif
 	if (block_size == 0)
 		block_size = 32768;
 
@@ -699,13 +703,13 @@ size_t packed_matrix_sizeof(packed_matrix_t *p) {
 			for (j = 0; j < t->num_blocks; j++) {
 				packed_block_t *b = t->blocks + j;
 				if (b->entries) {
-					mem_use += b->num_entries * 
-							sizeof(uint32);
+					mem_use += b->num_entries *
+							sizeof(entry_idx_t);
 				}
 				else {
 					mem_use += (b->num_entries + 
 						    2 * NUM_MEDIUM_ROWS) * 
-							sizeof(uint16);
+							sizeof(med_off_t);
 				}
 			}
 		}

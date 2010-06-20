@@ -31,6 +31,9 @@ endif
 ifeq ($(WIN32_3GB),1)
 	LDFLAGS += -Wl,--large-address-aware
 endif
+ifeq ($(LARGEBLOCKS),1)
+	CFLAGS += -DLARGEBLOCKS
+endif
 ifeq ($(CUDA),1)
 	# these environment variables are set in windows
 	# but not in linux; attempt to sample them anyway

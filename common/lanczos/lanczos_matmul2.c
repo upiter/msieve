@@ -21,7 +21,7 @@ $Id$
 static void mul_trans_one_med_block(packed_block_t *curr_block,
 			uint64 *curr_row, uint64 *curr_b) {
 
-	uint16 *entries = curr_block->med_entries;
+	med_off_t *entries = curr_block->med_entries;
 
 	while (1) {
 		uint64 t;
@@ -89,6 +89,54 @@ static void mul_trans_one_med_block(packed_block_t *curr_block,
 		:"r"(curr_b), "r"(entries),
 		 "g"(count & (uint32)(~15)), "y"(t)
 		:"%eax", "%ecx", "%edx", "%mm0", "%mm1", "memory", "cc");
+
+	#undef _txor
+
+#elif defined(GCC_ASM64X) && defined(LARGEBLOCKS)
+
+	#define _txor(k)				\
+		"xorq %4, (%1,%%r8,8)         	\n\t"	\
+		"movl 4*(10+0+" #k ")(%2,%0,4), %%r8d	\n\t"	\
+		"xorq %4, (%1,%%r9,8)         	\n\t"	\
+		"movl 4*(10+1+" #k ")(%2,%0,4), %%r9d	\n\t"	\
+		"xorq %4, (%1,%%r10,8)         	\n\t"	\
+		"movl 4*(10+2+" #k ")(%2,%0,4), %%r10d	\n\t"	\
+		"xorq %4, (%1,%%r11,8)         	\n\t"	\
+		"movl 4*(10+3+" #k ")(%2,%0,4), %%r11d	\n\t"	\
+		"xorq %4, (%1,%%r12,8)         	\n\t"	\
+		"movl 4*(10+4+" #k ")(%2,%0,4), %%r12d	\n\t"	\
+		"xorq %4, (%1,%%r13,8)         	\n\t"	\
+		"movl 4*(10+5+" #k ")(%2,%0,4), %%r13d	\n\t"	\
+		"xorq %4, (%1,%%r14,8)         	\n\t"	\
+		"movl 4*(10+6+" #k ")(%2,%0,4), %%r14d	\n\t"	\
+		"xorq %4, (%1,%%r15,8)         	\n\t"	\
+		"movl 4*(10+7+" #k ")(%2,%0,4), %%r15d	\n\t"
+
+	ASM_G volatile(
+		"movl 4*(2+0)(%2,%0,4), %%r8d	\n\t"
+		"movl 4*(2+1)(%2,%0,4), %%r9d	\n\t"
+		"movl 4*(2+2)(%2,%0,4), %%r10d	\n\t"
+		"movl 4*(2+3)(%2,%0,4), %%r11d	\n\t"
+		"movl 4*(2+4)(%2,%0,4), %%r12d	\n\t"
+		"movl 4*(2+5)(%2,%0,4), %%r13d	\n\t"
+		"movl 4*(2+6)(%2,%0,4), %%r14d	\n\t"
+		"movl 4*(2+7)(%2,%0,4), %%r15d	\n\t"
+		"cmpq $0, %3			\n\t"
+		"je 1f				\n\t"
+		ALIGN_LOOP
+		"0:				\n\t"
+
+		_txor(0) _txor(8)
+
+		"addq $16, %0			\n\t"
+		"cmpq %3, %0			\n\t"
+		"jne 0b				\n\t"
+		"1:				\n\t"
+		:"+r"(i)
+		:"r"(curr_b), "r"(entries),
+		 "g"(count & (uint64)(~15)), "r"(t)
+		:"%r8", "%r9", "%r10", "%r11", 
+		 "%r12", "%r13", "%r14", "%r15", "memory", "cc");
 
 	#undef _txor
 
