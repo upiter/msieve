@@ -580,7 +580,7 @@ get_composite_roots(sieve_fb_t *s, curr_poly_t *c,
 }
 
 /*------------------------------------------------------------------------*/
-#define MAX_FACTORS 20
+#define MAX_FACTORS 40
 
 static uint32
 get_composite_factors(sieve_fb_t *s, uint64 p,
