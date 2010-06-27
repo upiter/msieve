@@ -589,6 +589,7 @@ get_composite_factors(sieve_fb_t *s, uint64 p,
 	uint32 i, j;
 	aprog_t *aprogs = s->aprog_data.aprogs;
 	uint32 num_primes = s->aprog_data.num_aprogs;
+	uint64 search_cutoff = p;
 
 	for (i = j = 0; i < num_primes; i++) {
 		uint32 x = aprogs[i].p;
@@ -598,13 +599,31 @@ get_composite_factors(sieve_fb_t *s, uint64 p,
 				factors[j++] = i;
 			} while (p % x == 0);
 
-			if (p < x)
-				break;
+			search_cutoff = p / x;
 		}
+
+		if (x >= search_cutoff)
+			break;
 	}
 
-	if (p > 1)
-		return 0;
+	if (p > 1) {
+		uint32 low = i + 1;
+		uint32 high = num_primes - 1;
+
+		while (low < high) {
+			uint32 mid = (low + high) / 2;
+
+			if (p <= aprogs[mid].p)
+				high = mid;
+			else
+				low = mid + 1;
+		}
+
+		if (p == aprogs[high].p)
+			factors[j++] = high;
+		else
+			return 0;
+	}
 
 	return j;
 }
