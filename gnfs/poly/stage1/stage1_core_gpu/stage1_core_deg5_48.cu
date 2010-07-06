@@ -64,6 +64,8 @@ sieve_kernel(p_soa_t *pbatch,
 			uint32 curr_num_p = MIN(SHARED_BATCH_SIZE,
 						num_p - p_done);
 
+			__syncthreads();
+
 			if (threadIdx.x < curr_num_p) {
 				j = threadIdx.x;
 
