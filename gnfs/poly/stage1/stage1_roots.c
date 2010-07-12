@@ -67,7 +67,7 @@ sieve_fb_free(sieve_fb_t *s)
 
 /*------------------------------------------------------------------------*/
 static void
-sieve_add_prime(sieve_prime_list_t *list, uint32 p)
+sieve_add_prime(sieve_prime_list_t *list, uint32 p, uint32 log_p)
 {
 	sieve_prime_t *curr;
 
@@ -79,7 +79,7 @@ sieve_add_prime(sieve_prime_list_t *list, uint32 p)
 	}
 	curr = list->primes + list->num_primes++;
 	curr->p = p;
-	curr->log_p = (uint8)(LOG_SCALE * log((double)p) / M_LN2 + 0.5);
+	curr->log_p = (uint8)log_p;
 }
 
 /*------------------------------------------------------------------------*/
@@ -156,6 +156,8 @@ sieve_add_aprog(sieve_fb_t *s, poly_search_t *poly,
 }
 
 /*------------------------------------------------------------------------*/
+#define MAX_SIEVE_PRIME_POWER 63001 /* 251^2 */
+
 void
 sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 		uint32 factor_min, uint32 factor_max,
@@ -209,22 +211,29 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 	while (1) {
 		uint32 p = get_next_prime(&prime_sieve);
 
-		if (p >= factor_max)
+		if (p >= factor_max) {
 			break;
-		else if (p <= factor_min)
-			sieve_add_prime(&p_sieve->bad_primes, p);
+		}
+		else if (p <= factor_min) {
+			sieve_add_prime(&p_sieve->bad_primes, p, 0);
+		}
 		else if (!sieve_add_aprog(s, poly, p,
-					fb_roots_min, fb_roots_max))
-			sieve_add_prime(&p_sieve->bad_primes, p);
-		else
-			sieve_add_prime(&p_sieve->good_primes, p);
+					fb_roots_min, fb_roots_max)) {
+			sieve_add_prime(&p_sieve->bad_primes, p, 0);
+		}
+		else {
+			uint32 log_p = (uint32)(LOG_SCALE * log((double)p) /
+							M_LN2 + 0.5);
+			sieve_add_prime(&p_sieve->good_primes, p, log_p);
+		}
 	}
 
 	free_prime_sieve(&prime_sieve);
 	j = p_sieve->good_primes.num_primes;
 	for (i = 0; i < j; i++) {
 		uint32 p = p_sieve->good_primes.primes[i].p;
-		uint32 power_limit = factor_max / p;
+		uint32 log_p = p_sieve->good_primes.primes[i].log_p;
+		uint32 power_limit = MAX_SIEVE_PRIME_POWER / p;
 		uint32 power = p;
 
 		if (power_limit < p)
@@ -232,7 +241,7 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 
 		while (power < power_limit) {
 			power *= p;
-			sieve_add_prime(&p_sieve->good_primes, power);
+			sieve_add_prime(&p_sieve->good_primes, power, log_p);
 		}
 	}
 }
