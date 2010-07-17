@@ -264,7 +264,7 @@ sieve_xyz_run(root_sieve_t *rs)
 			continue;
 		}
 
-		next_z = curr_z + 10;
+		next_z = curr_z + 1;
 		apoly = rs->apoly;
 		apoly.coeff[3] += rs->dbl_p * curr_z;
 		apoly.coeff[2] -= rs->dbl_d * curr_z;

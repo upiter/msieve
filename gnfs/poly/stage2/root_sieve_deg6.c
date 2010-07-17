@@ -278,7 +278,7 @@ save_mp_rotation(root_heap_t *heap, mpz_t x, mpz_t y,
 }
 
 /*-------------------------------------------------------------------------*/
-static const double size_bound[] = {1.05, 1.5, 4.0};
+static const double size_bound[] = {1.05, 1.5, 4.0, 50.0, 100.0};
 #define NUM_BOUNDS (sizeof(size_bound) / sizeof(size_bound[0]))
 
 void

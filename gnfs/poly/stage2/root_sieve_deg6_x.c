@@ -223,7 +223,7 @@ xdata_alloc(sieve_prime_t *lattice_primes,
 							sizeof(xprog_t));
 		curr_xdata->sieve = (uint16 *)xmalloc(p * sizeof(uint16));
 
-		cutoff += curr_xdata->contrib * MIN(4, num_roots - 1);
+		cutoff += curr_xdata->contrib * MIN(3, num_roots - 1);
 	}
 
 	return cutoff;
