@@ -34,6 +34,7 @@ $Id$
 	#include <pthread.h>
 	#include <sys/resource.h>
 	#include <float.h>
+	#include <zlib.h>
 
 #endif
 

@@ -235,6 +235,8 @@ static double estimate_rel_size(savefile_t *savefile) {
 	savefile_close(savefile);
 	if (num_relations == 0)
 		return 0;
+	if (savefile->isCompressed)
+		totlen *= 0.52;	 /* most gzip files with relations */
 	return (double)totlen / num_relations;
 }
 

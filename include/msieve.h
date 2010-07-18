@@ -91,7 +91,8 @@ typedef struct {
 	uint32 read_size;
 	uint32 eof;
 #else
-	FILE *fp;
+	gzFile *fp;
+	char isCompressed;
 #endif
 	char *name;
 	char *buf;

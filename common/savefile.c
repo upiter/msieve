@@ -93,6 +93,8 @@ void savefile_open(savefile_t *s, uint32 flags) {
 
 #else
 	char *open_string;
+	char name_gz[256];
+	struct stat dummy;
 
 	if (flags & SAVEFILE_APPEND)
 		open_string = "a+";
@@ -103,7 +105,15 @@ void savefile_open(savefile_t *s, uint32 flags) {
 	else
 		open_string = "w";
 
-	s->fp = fopen(s->name, open_string);
+	sprintf(name_gz, "%s.gz", s->name);
+	if (stat(name_gz, &dummy) == 0) {
+		s->isCompressed = 1;
+		s->fp = gzopen(name_gz, open_string);
+		/* fprintf(stderr, "using compressed '%s'\n", name_gz); */
+	} else {
+		s->isCompressed = 0;
+		s->fp = gzopen(s->name, open_string);
+	}
 	if (s->fp == NULL) {
 		printf("error: cannot open '%s'", s->name);
 		exit(-1);
@@ -121,7 +131,7 @@ void savefile_close(savefile_t *s) {
 	CloseHandle(s->file_handle);
 	s->file_handle = INVALID_HANDLE_VALUE;
 #else
-	fclose(s->fp);
+	gzclose(s->fp);
 	s->fp = NULL;
 #endif
 }
@@ -132,7 +142,7 @@ uint32 savefile_eof(savefile_t *s) {
 #if defined(WIN32) || defined(_WIN64)
 	return (s->buf_off == s->read_size && s->eof);
 #else
-	return feof(s->fp);
+	return gzeof(s->fp);
 #endif
 }
 
@@ -190,7 +200,7 @@ void savefile_read_line(char *buf, size_t max_len, savefile_t *s) {
 	buf[j] = 0;
 	s->buf_off = i;
 #else
-	fgets(buf, (int)max_len, s->fp);
+	gzgets(s->fp, buf, (int)max_len);
 #endif
 }
 
@@ -214,8 +224,8 @@ void savefile_flush(savefile_t *s) {
 	}
 	FlushFileBuffers(s->file_handle);
 #else
-	fprintf(s->fp, "%s", s->buf);
-	fflush(s->fp);
+	gzputs(s->fp, s->buf); /*or: gzprintf(s->fp, "%s", s->buf); */
+	gzflush(s->fp, Z_SYNC_FLUSH); /* should be used rarely */
 #endif
 
 	s->buf_off = 0;
@@ -233,7 +243,7 @@ void savefile_rewind(savefile_t *s) {
 	s->buf_off = 0;
 	s->eof = 0;
 #else
-	rewind(s->fp);
+	gzrewind(s->fp);
 #endif
 }
 
