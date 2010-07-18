@@ -235,8 +235,6 @@ static double estimate_rel_size(savefile_t *savefile) {
 	savefile_close(savefile);
 	if (num_relations == 0)
 		return 0;
-	if (savefile->isCompressed)
-		totlen *= 0.52;	 /* most gzip files with relations */
 	return (double)totlen / num_relations;
 }
 
@@ -300,9 +298,16 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 	   relation size and then the number of relations */
 
 	log2_hashtable1_size = 28;
-	if (rel_size > 0.0)
-		log2_hashtable1_size = log(get_file_size(savefile->name) *
-					10.0 / rel_size) / M_LN2 + 0.5;
+	if (rel_size > 0.0) {
+		double num_rels; /* estimated */
+		if(savefile->isCompressed) {
+			char name_gz[256];
+			sprintf(name_gz, "%.gz", savefile->name);
+			num_rels = get_file_size(name_gz) / 0.55 / rel_size;
+		} else 
+			num_rels = get_file_size(savefile->name) / rel_size;
+		log2_hashtable1_size = log(num_rels * 10.0) / M_LN2 + 0.5;
+	}
 	if (log2_hashtable1_size < 25)
 		log2_hashtable1_size = 25;
 	if (log2_hashtable1_size > 31)
