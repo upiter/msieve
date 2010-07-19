@@ -303,7 +303,7 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 #if !defined(WIN32) && !defined(_WIN64)
 		if (savefile->isCompressed) {
 			char name_gz[256];
-			sprintf(name_gz, "%.gz", savefile->name);
+			sprintf(name_gz, "%s.gz", savefile->name);
 			num_rels = get_file_size(name_gz) / 0.55 / rel_size;
 		} else 
 #endif
