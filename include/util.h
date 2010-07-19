@@ -34,7 +34,19 @@ $Id$
 	#include <pthread.h>
 	#include <sys/resource.h>
 	#include <float.h>
+#ifdef NO_ZLIB
+	#define gzFile   FILE
+	#define gzopen   fopen
+	#define gzclose  fclose
+	#define gzeof    feof
+	#define gzrewind rewind
+	#define gzprintf fprintf
+	#define gzputs(f,b)   fprintf(f, "%s", b)
+	#define gzgets(f,b,l) fgets(b,l,f)
+	#define gzflush(f,b)  fflush(f)
+#else
 	#include <zlib.h>
+#endif
 
 #endif
 

@@ -105,12 +105,15 @@ void savefile_open(savefile_t *s, uint32 flags) {
 	else
 		open_string = "w";
 
+#ifndef NO_ZLIB
 	sprintf(name_gz, "%s.gz", s->name);
 	if (stat(name_gz, &dummy) == 0) {
 		s->isCompressed = 1;
 		s->fp = gzopen(name_gz, open_string);
 		/* fprintf(stderr, "using compressed '%s'\n", name_gz); */
-	} else {
+	} else
+#endif
+	{
 		s->isCompressed = 0;
 		s->fp = gzopen(s->name, open_string);
 	}
