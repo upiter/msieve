@@ -97,7 +97,7 @@ void savefile_open(savefile_t *s, uint32 flags) {
 	struct stat dummy;
 
 	if (flags & SAVEFILE_APPEND)
-		open_string = "a+";
+		open_string = "a";
 	else if ((flags & SAVEFILE_READ) && (flags & SAVEFILE_WRITE))
 		open_string = "r+w";
 	else if (flags & SAVEFILE_READ)
