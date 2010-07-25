@@ -22,6 +22,23 @@ $Id$
 extern "C" {
 #endif
 
+#ifdef HAVE_MPI
+	#define MAX_MPI_PROCS 64
+
+	#define MPI_TRY(x) \
+	{								\
+		int status;						\
+		if ((status = (x)) != MPI_SUCCESS) {			\
+			printf("MPI error at %s:%d\n", __FILE__, __LINE__);\
+			MPI_Abort(MPI_COMM_WORLD, status);		\
+		}							\
+	}
+
+	#ifndef MPI_ERR_ASSERT  /* MPI library may not have this */
+	#define MPI_ERR_ASSERT 22
+	#endif
+#endif
+
 /*---------------- SAVEFILE RELATED DECLARATIONS ---------------------*/
 
 #define LINE_BUF_SIZE 300
@@ -265,17 +282,16 @@ uint32 merge_relations(uint32 *merge_array,
 		  uint32 *src2, uint32 n2);
 
 uint64 * block_lanczos(msieve_obj *obj,
-			uint32 nrows, 
+			uint32 nrows, uint32 max_nrows, uint32 start_row,
 			uint32 num_dense_rows,
-			uint32 ncols, 
-			la_col_t *cols,
-			uint32 *deps_found);
+			uint32 ncols, uint32 max_ncols, uint32 start_col,
+			la_col_t *cols, uint32 *deps_found);
 
-void count_matrix_nonzero(msieve_obj *obj,
+uint32 count_matrix_nonzero(msieve_obj *obj,
 			uint32 nrows, uint32 num_dense_rows,
 			uint32 ncols, la_col_t *cols);
 
-void reduce_matrix(msieve_obj *obj, uint32 *nrows, 
+uint32 reduce_matrix(msieve_obj *obj, uint32 *nrows, 
 		uint32 num_dense_rows, uint32 *ncols, 
 		la_col_t *cols, uint32 num_excess);
 
@@ -289,11 +305,14 @@ void dump_cycles(msieve_obj *obj, la_col_t *cols, uint32 ncols);
 
 void dump_matrix(msieve_obj *obj, 
 		uint32 nrows, uint32 num_dense_rows,
-		uint32 ncols, la_col_t *cols);
+		uint32 ncols, la_col_t *cols,
+		uint32 num_nonzero);
 
 void read_matrix(msieve_obj *obj, 
-		uint32 *nrows_out, uint32 *num_dense_rows_out,
-		uint32 *ncols_out, la_col_t **cols_out,
+		uint32 *nrows, uint32 *max_nrows, uint32 *start_row,
+		uint32 *num_dense_rows_out,
+		uint32 *ncols, uint32 *max_ncols, uint32 *start_col,
+		la_col_t **cols_out,
 		uint32 *rowperm, uint32 *colperm);
 
 void dump_dependencies(msieve_obj *obj, 

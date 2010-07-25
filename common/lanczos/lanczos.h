@@ -40,10 +40,10 @@ extern "C" {
 /* routines for cache-efficient multiplication of
    sparse matrices */
 
-/* the smallest number of columns that will be
-   converted to packed format */
+/* the smallest matrix size that will be converted 
+   to packed format */
 
-#define MIN_NCOLS_TO_PACK 30000
+#define MIN_NROWS_TO_PACK 30000
 
 /* the number of moderately dense rows that are
    packed less tightly */
@@ -84,8 +84,10 @@ typedef struct {
 enum thread_command {
 	COMMAND_INIT,
 	COMMAND_WAIT,
-	COMMAND_RUN,
-	COMMAND_RUN_TRANS,
+	COMMAND_MATMUL,
+	COMMAND_MATMUL_TRANS,
+	COMMAND_INNER_PRODUCT,
+	COMMAND_OUTER_PRODUCT,
 	COMMAND_END
 };
 
@@ -100,11 +102,12 @@ typedef struct {
 	uint32 col_min;
 	uint32 col_max;		/* range of column indices to handle */
 	uint32 nrows_in;	/* number of rows in the matrix */
-	uint32 ncols_in;	/* number of columns in the matrix */
 	uint32 block_size;	/* used to pack the column entries */
+	uint32 first_block_size;/* block size for the smallest row numbers */
 
 	/* items used during matrix multiplies */
 
+	uint32 nrows;		/* number of rows used by this thread */
 	uint32 ncols;		/* number of columns used by this thread */
 	uint32 num_dense_rows;  /* number of rows packed by dense_blocks */
 	uint64 **dense_blocks;  /* for holding dense matrix rows; 
@@ -114,6 +117,11 @@ typedef struct {
 	uint64 *x;
 	uint64 *b;
 	packed_block_t *blocks; /* sparse part of matrix, in block format */
+
+	/* items for vector-vector operations */
+
+	uint64 *y;
+	uint32 vsize;
 
 	/* fields for thread pool synchronization */
 
@@ -132,13 +140,17 @@ typedef struct {
 } thread_data_t;
 
 #define MAX_THREADS 32
-#define MIN_NCOLS_TO_THREAD 200000
+#define MIN_NROWS_TO_THREAD 200000
 
 /* struct representing a packed matrix */
 
 typedef struct {
 	uint32 nrows;
+	uint32 max_nrows;
+	uint32 start_row;
 	uint32 ncols;
+	uint32 max_ncols;
+	uint32 start_col;
 	uint32 num_dense_rows;
 	uint32 num_threads;
 
@@ -146,24 +158,36 @@ typedef struct {
 
 	thread_data_t thread_data[MAX_THREADS];
 
+#ifdef HAVE_MPI
+	uint32 mpi_size;
+	MPI_Comm mpi_la_row_grid;
+	MPI_Comm mpi_la_col_grid;
+
+	/* needed on root node only */
+	int32 col_counts[MAX_MPI_PROCS];
+	int32 col_offsets[MAX_MPI_PROCS]; 
+	int32 row_counts[MAX_MPI_PROCS];
+	int32 row_offsets[MAX_MPI_PROCS];
+#endif
+
 } packed_matrix_t;
 
 void packed_matrix_init(msieve_obj *obj, 
 			packed_matrix_t *packed_matrix,
-			la_col_t *A, uint32 nrows, uint32 ncols,
-			uint32 num_dense_rows);
+			la_col_t *A, 
+			uint32 nrows, uint32 max_nrows, uint32 start_row, 
+			uint32 ncols, uint32 max_ncols, uint32 start_col, 
+			uint32 num_dense_rows, uint32 first_block_size);
 
 void packed_matrix_free(packed_matrix_t *packed_matrix);
 
 size_t packed_matrix_sizeof(packed_matrix_t *packed_matrix);
 
-void mul_MxN_Nx64(packed_matrix_t *A, uint64 *x, uint64 *b);
+void mul_MxN_Nx64(packed_matrix_t *A, uint64 *x, 
+			uint64 *b, uint64 *scratch);
 
-void mul_trans_MxN_Nx64(packed_matrix_t *A, uint64 *x, uint64 *b);
-
-void mul_Nx64_64x64_acc(uint64 *v, uint64 *x, uint64 *y, uint32 n);
-
-void mul_64xN_Nx64(uint64 *x, uint64 *y, uint64 *xy, uint32 n);
+void mul_sym_NxN_Nx64(packed_matrix_t *A, uint64 *x, 
+			uint64 *b, uint64 *scratch);
 
 /* for big jobs, we use a multithreaded framework that calls
    these two routines for the heavy lifting */
@@ -171,6 +195,28 @@ void mul_64xN_Nx64(uint64 *x, uint64 *y, uint64 *xy, uint32 n);
 void mul_packed_core(thread_data_t *t);
 
 void mul_trans_packed_core(thread_data_t *t);
+
+/* top-level calls for vector-vector operations */
+
+/* multi-threaded plus MPI */
+
+void tmul_Nx64_64x64_acc(packed_matrix_t *A, uint64 *v, uint64 *x, 
+			uint64 *y, uint32 n);
+
+void tmul_64xN_Nx64(packed_matrix_t *A, uint64 *x, uint64 *y, 
+			uint64 *xy, uint32 n);
+
+/* single-threaded */
+
+void mul_Nx64_64x64_acc(uint64 *v, uint64 *x, uint64 *y, uint32 n);
+
+void mul_64xN_Nx64(uint64 *x, uint64 *y, uint64 *xy, uint32 n);
+
+/* vector-vector heavy lifting */
+
+void core_Nx64_64x64_acc(uint64 *v, uint64 *c, uint64 *y, uint32 n);
+
+void core_64xN_Nx64(uint64 *x, uint64 *c, uint64 *y, uint32 n);
 
 #ifdef __cplusplus
 }

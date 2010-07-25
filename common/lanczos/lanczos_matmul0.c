@@ -92,7 +92,7 @@ static void mul_trans_unpacked(packed_matrix_t *matrix,
 static void mul_packed(packed_matrix_t *matrix, uint64 *x, uint64 *b) {
 
 	uint32 i;
-	uint32 ncols = matrix->ncols;
+	uint32 nrows = matrix->nrows;
 
 	for (i = 0; i < matrix->num_threads; i++) {
 		thread_data_t *t = matrix->thread_data + i;
@@ -104,7 +104,7 @@ static void mul_packed(packed_matrix_t *matrix, uint64 *x, uint64 *b) {
 		t->x = x;
 		if (i == 0)
 			t->b = b;
-		memset(t->b, 0, ncols * sizeof(uint64));
+		memset(t->b, 0, nrows * sizeof(uint64));
 
 		/* fire off each part of the matrix multiply
 		   in a separate thread from the thread pool, 
@@ -116,7 +116,7 @@ static void mul_packed(packed_matrix_t *matrix, uint64 *x, uint64 *b) {
 			mul_packed_core(t);
 		}
 		else {
-			t->command = COMMAND_RUN;
+			t->command = COMMAND_MATMUL;
 #if defined(WIN32) || defined(_WIN64)
 			SetEvent(t->run_event);
 #else
@@ -147,7 +147,7 @@ static void mul_packed(packed_matrix_t *matrix, uint64 *x, uint64 *b) {
 			uint64 *curr_b = t->b;
 			uint32 j;
 
-			for (j = 0; j < ncols; j++)
+			for (j = 0; j < nrows; j++)
 				b[j] ^= curr_b[j];
 		}
 	}
@@ -189,7 +189,7 @@ void mul_trans_packed(packed_matrix_t *matrix, uint64 *x, uint64 *b) {
 			mul_trans_packed_core(t);
 		}
 		else {
-			t->command = COMMAND_RUN_TRANS;
+			t->command = COMMAND_MATMUL_TRANS;
 #if defined(WIN32) || defined(_WIN64)
 			SetEvent(t->run_event);
 #else
@@ -246,32 +246,37 @@ static void matrix_thread_init(thread_data_t *t) {
 	entry_idx_t *e;
 
 	la_col_t *A = t->initial_cols;
-	uint32 nrows = t->nrows_in;
 	uint32 col_min = t->col_min;
 	uint32 col_max = t->col_max;
+	uint32 nrows = t->nrows_in;
+	uint32 ncols = col_max - col_min + 1;
 	uint32 block_size = t->block_size;
 	uint32 num_dense_rows = t->num_dense_rows;
+	uint32 first_block_size = t->first_block_size;
+
+	t->nrows = nrows;
+	t->ncols = ncols;
 
 	/* each thread needs scratch space to store
 	   matrix products. The first thread doesn't need
 	   scratch space, it's provided by calling code */
 
 	if (t->my_oid > 0)
-		t->b = (uint64 *)xmalloc(t->ncols_in * sizeof(uint64));
+		t->b = (uint64 *)xmalloc(MAX(nrows, ncols) * 
+					sizeof(uint64));
 
 	/* pack the dense rows 64 at a time */
 
-	t->ncols = col_max - col_min + 1;
 	dense_row_blocks = (num_dense_rows + 63) / 64;
 	if (dense_row_blocks) {
 		t->dense_blocks = (uint64 **)xmalloc(dense_row_blocks *
 						sizeof(uint64 *));
 		for (i = 0; i < dense_row_blocks; i++) {
-			t->dense_blocks[i] = (uint64 *)xmalloc(t->ncols *
+			t->dense_blocks[i] = (uint64 *)xmalloc(ncols *
 							sizeof(uint64));
 		}
 
-		for (i = 0; i < t->ncols; i++) {
+		for (i = 0; i < ncols; i++) {
 			la_col_t *c = A + col_min + i;
 			uint32 *src = c->data + c->weight;
 			for (j = 0; j < dense_row_blocks; j++) {
@@ -283,12 +288,14 @@ static void matrix_thread_init(thread_data_t *t) {
 	}
 
 	/* allocate blocks in row-major order; a 'stripe' is
-	   a vertical column of blocks */
+	   a vertical column of blocks. If packing the lowest
+	   row indices, the first block has NUM_MEDIUM_ROWS rows
+	   instead of block_size */
 
-	num_row_blocks = (nrows - NUM_MEDIUM_ROWS + 
+	num_col_blocks = (ncols + (block_size-1)) / block_size;
+	num_row_blocks = (nrows - first_block_size +
 				(block_size-1)) / block_size + 1;
-	num_col_blocks = ((col_max - col_min + 1) + 
-				(block_size-1)) / block_size;
+
 	t->num_blocks = num_row_blocks * num_col_blocks;
 	t->blocks = curr_stripe = (packed_block_t *)xcalloc(
 						(size_t)t->num_blocks,
@@ -300,22 +307,19 @@ static void matrix_thread_init(thread_data_t *t) {
 
 	for (i = 0; i < num_col_blocks; i++, curr_stripe++) {
 
-		uint32 curr_cols = MIN(block_size, (col_max - col_min + 1) - 
-						i * block_size);
+		uint32 curr_cols = MIN(block_size, ncols - i * block_size);
 		packed_block_t *b;
 
-		/* initialize the blocks in stripe i. The first
-		   block has NUM_MEDIUM_ROWS rows, and all the
-		   rest have block_size rows */
+		/* initialize the blocks in stripe i */
 
 		for (j = 0, b = curr_stripe; j < num_row_blocks; j++) {
 
 			if (j == 0) {
 				b->start_row = 0;
-				b->num_rows = NUM_MEDIUM_ROWS;
+				b->num_rows = first_block_size;
 			}
 			else {
-				b->start_row = NUM_MEDIUM_ROWS +
+				b->start_row = first_block_size +
 						(j - 1) * block_size;
 				b->num_rows = block_size;
 			}
@@ -377,7 +381,7 @@ static void matrix_thread_init(thread_data_t *t) {
 			c->data = NULL;
 		}
 
-		/* now convert the first block in the stripe to
+		/* convert the first block in the stripe to
 		   a somewhat-compressed format. Entries in this
 		   first block are stored by row, and all rows
 		   are concatenated into a single 16-bit array */
@@ -460,14 +464,25 @@ static void *worker_thread_main(void *thread_data) {
 #endif
 		/* do work */
 
-		if (t->command == COMMAND_RUN)
-			mul_packed_core(t);
-		else if (t->command == COMMAND_RUN_TRANS)
-			mul_trans_packed_core(t);
-		else if (t->command == COMMAND_INIT)
+		switch (t->command) {
+		case COMMAND_INIT:
 			matrix_thread_init(t);
-		else if (t->command == COMMAND_END)
 			break;
+		case COMMAND_MATMUL:
+			mul_packed_core(t);
+			break;
+		case COMMAND_MATMUL_TRANS:
+			mul_trans_packed_core(t);
+			break;
+		case COMMAND_INNER_PRODUCT:
+			core_64xN_Nx64(t->x, t->b, t->y, t->vsize);
+			break;
+		case COMMAND_OUTER_PRODUCT:
+			core_Nx64_64x64_acc(t->x, t->b, t->y, t->vsize);
+			break;
+		default:
+			goto thread_done;
+		}
 
 		/* signal completion */
 
@@ -480,6 +495,7 @@ static void *worker_thread_main(void *thread_data) {
 #endif
 	}
 
+thread_done:
 	matrix_thread_free(t);
 
 #if defined(WIN32) || defined(_WIN64)
@@ -551,8 +567,9 @@ static void stop_worker_thread(thread_data_t *t,
 /*-------------------------------------------------------------------*/
 void packed_matrix_init(msieve_obj *obj,
 			packed_matrix_t *p, la_col_t *A,
-			uint32 nrows, uint32 ncols,
-			uint32 num_dense_rows) {
+			uint32 nrows, uint32 max_nrows, uint32 start_row, 
+			uint32 ncols, uint32 max_ncols, uint32 start_col, 
+			uint32 num_dense_rows, uint32 first_block_size) {
 
 	uint32 i, j, k;
 	uint32 block_size;
@@ -562,13 +579,22 @@ void packed_matrix_init(msieve_obj *obj,
 
 	/* initialize */
 
-	memset(p, 0, sizeof(packed_matrix_t));
 	p->unpacked_cols = A;
 	p->nrows = nrows;
+	p->max_nrows = max_nrows;
+	p->start_row = start_row;
 	p->ncols = ncols;
+	p->max_ncols = max_ncols;
+	p->start_col = start_col;
 	p->num_dense_rows = num_dense_rows;
+	p->num_threads = 1;
+#ifdef HAVE_MPI
+	p->mpi_size = obj->mpi_size;
+	p->mpi_la_row_grid = obj->mpi_la_row_grid;
+	p->mpi_la_col_grid = obj->mpi_la_col_grid;
+#endif
 
-	if (ncols <= MIN_NCOLS_TO_PACK)
+	if (max_nrows <= MIN_NROWS_TO_PACK)
 		return;
 
 	p->unpacked_cols = NULL;
@@ -588,9 +614,9 @@ void packed_matrix_init(msieve_obj *obj,
 	   typically have pretty big caches anyway */
 
 	block_size = obj->cache_size2 / (3 * sizeof(uint64));
-	block_size = MIN(block_size, ncols / 2.5);
+	block_size = MIN(block_size, max_nrows / 2.5);
 #ifdef LARGEBLOCKS
-	block_size = MIN(block_size, 172032);	/* remains to be tested on different CPUs */
+	block_size = MIN(block_size, 172032);	/* needs more tesing */
 #else
 	block_size = MIN(block_size, 65536);
 #endif
@@ -604,7 +630,7 @@ void packed_matrix_init(msieve_obj *obj,
 	/* determine the number of threads to use */
 
 	num_threads = obj->num_threads;
-	if (num_threads < 2 || ncols < MIN_NCOLS_TO_THREAD)
+	if (num_threads < 2 || max_nrows < MIN_NROWS_TO_THREAD)
 		num_threads = 1;
 	p->num_threads = num_threads = MIN(num_threads, MAX_THREADS);
 
@@ -631,8 +657,8 @@ void packed_matrix_init(msieve_obj *obj,
 			t->col_min = j;
 			t->col_max = i;
 			t->nrows_in = nrows;
-			t->ncols_in = ncols;
 			t->block_size = block_size;
+			t->first_block_size = first_block_size;
 			t->num_dense_rows = num_dense_rows;
 			j = i + 1;
 			num_nonzero = 0;
@@ -682,21 +708,33 @@ void packed_matrix_free(packed_matrix_t *p) {
 size_t packed_matrix_sizeof(packed_matrix_t *p) {
 
 	uint32 i, j;
-	size_t mem_use = 0;
+	size_t mem_use;
+
+	/* account for the vectors used in the lanczos iteration */
+
+	if (p->start_row + p->start_col == 0)
+		mem_use = 7 * p->max_ncols;
+	else
+		mem_use = 7 * MAX(p->nrows, p->ncols);
+
+	/* and for the matrix */
 
 	if (p->unpacked_cols) {
 		la_col_t *A = p->unpacked_cols;
-		mem_use = p->ncols * sizeof(la_col_t);
+		mem_use += p->ncols * (sizeof(la_col_t) +
+				(p->num_dense_rows + 31) / 32);
 		for (i = 0; i < p->ncols; i++) {
 			mem_use += A[i].weight * sizeof(uint32);
 		}
 	}
 	else {
+		mem_use += MAX(p->nrows, p->ncols) * sizeof(uint64) *
+				(p->num_threads - 1);
+
 		for (i = 0; i < p->num_threads; i++) {
 			thread_data_t *t = p->thread_data + i;
 
-			mem_use += p->ncols * sizeof(uint64) +
-				   t->num_blocks * sizeof(packed_block_t) +
+			mem_use += t->num_blocks * sizeof(packed_block_t) +
 				   t->ncols * sizeof(uint64) *
 					((t->num_dense_rows + 63) / 64);
 
@@ -718,26 +756,73 @@ size_t packed_matrix_sizeof(packed_matrix_t *p) {
 }
 
 /*-------------------------------------------------------------------*/
-void mul_MxN_Nx64(packed_matrix_t *A, uint64 *x, uint64 *b) {
+void mul_MxN_Nx64(packed_matrix_t *A, uint64 *x, 
+			uint64 *b, uint64 *scratch) {
 
 	/* Multiply the vector x[] by the matrix A (stored
-	   columnwise) and put the result in b[]. */
+	   columnwise) and put the result in b[]. The MPI 
+	   version needs a scratch array because MPI reduction
+	   operations apparently cannot be performed in-place */
 
-	if (A->unpacked_cols)
-		mul_unpacked(A, x, b);
-	else
-		mul_packed(A, x, b);
+#ifdef HAVE_MPI
+	if (A->mpi_size <= 1) {
+#endif
+		if (A->unpacked_cols)
+			mul_unpacked(A, x, b);
+		else
+			mul_packed(A, x, b);
+#ifdef HAVE_MPI
+		return;
+	}
+
+	mul_packed(A, x, scratch);
+
+	MPI_TRY(MPI_Allreduce(scratch, b, A->nrows,
+			MPI_LONG_LONG, MPI_BXOR,
+			A->mpi_la_row_grid));
+#endif
 }
 
 /*-------------------------------------------------------------------*/
-void mul_trans_MxN_Nx64(packed_matrix_t *A, uint64 *x, uint64 *b) {
+void mul_sym_NxN_Nx64(packed_matrix_t *A, uint64 *x, 
+			uint64 *b, uint64 *scratch) {
 
-	/* Multiply the vector x[] by the transpose of the
-	   matrix A and put the result in b[]. Since A is stored
-	   by columns, this is just a matrix-vector product */
+	/* Multiply x by A and write to scratch, then
+	   multiply scratch by the transpose of A and
+	   write to b. x may alias b, but the two must
+	   be distinct from scratch */
 
-	if (A->unpacked_cols)
-		mul_trans_unpacked(A, x, b);
-	else
-		mul_trans_packed(A, x, b);
+#ifdef HAVE_MPI
+	if (A->mpi_size <= 1) {
+#endif
+		if (A->unpacked_cols) {
+			mul_unpacked(A, x, scratch);
+			mul_trans_unpacked(A, scratch, b);
+		}
+		else {
+			mul_packed(A, x, scratch);
+			mul_trans_packed(A, scratch, b);
+		}
+#ifdef HAVE_MPI
+		return;
+	}
+
+	mul_packed(A, x, scratch);
+
+	/* make each MPI row combine its own part of A*x */
+
+	MPI_TRY(MPI_Allreduce(scratch, b, A->nrows,
+			MPI_LONG_LONG, MPI_BXOR, 
+			A->mpi_la_row_grid));
+
+	mul_trans_packed(A, b, scratch);
+
+	/* make each MPI column combine its own part of A^T * A*x 
+	   into the top row of MPI processes */
+
+	MPI_TRY(MPI_Allreduce(scratch, b, A->ncols,
+			MPI_LONG_LONG, MPI_BXOR, 
+			A->mpi_la_col_grid));
+
+#endif
 }

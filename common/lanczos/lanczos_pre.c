@@ -42,7 +42,7 @@ static int compare_weight(const void *x, const void *y) {
 }
 
 /*------------------------------------------------------------------*/
-void count_matrix_nonzero(msieve_obj *obj,
+uint32 count_matrix_nonzero(msieve_obj *obj,
 			uint32 nrows, uint32 num_dense_rows,
 			uint32 ncols, la_col_t *cols) {
 
@@ -80,6 +80,7 @@ void count_matrix_nonzero(msieve_obj *obj,
 	logprintf(obj, "sparse part has weight %u (%5.2f/col)\n", 
 				sparse_weight, 
 				(double)sparse_weight / ncols);
+	return sparse_weight;
 }
 
 /*------------------------------------------------------------------*/
@@ -196,7 +197,7 @@ static void combine_cliques(uint32 num_dense_rows,
 }
 
 /*------------------------------------------------------------------*/
-void reduce_matrix(msieve_obj *obj, uint32 *nrows, 
+uint32 reduce_matrix(msieve_obj *obj, uint32 *nrows, 
 		uint32 num_dense_rows, uint32 *ncols, 
 		la_col_t *cols, uint32 num_excess) {
 
@@ -224,6 +225,7 @@ void reduce_matrix(msieve_obj *obj, uint32 *nrows,
 	uint32 reduced_rows;
 	uint32 reduced_cols;
 	uint32 prune_cliques = (*ncols >= MIN_POST_LANCZOS_DIM);
+	uint32 sparse_weight;
 
 	/* sort the columns in order of increasing weight */
 
@@ -384,11 +386,11 @@ void reduce_matrix(msieve_obj *obj, uint32 *nrows,
 		free(counts);
 		*nrows = reduced_rows;
 		*ncols = reduced_cols;
-		return;
+		return 0;
 	}
 
 	logprintf(obj, "filtering completed in %u passes\n", passes);
-	count_matrix_nonzero(obj, reduced_rows, num_dense_rows,
+	sparse_weight = count_matrix_nonzero(obj, reduced_rows, num_dense_rows,
 				reduced_cols, cols);
 
 	/* change the row indices to remove rows with zero weight */
@@ -416,4 +418,5 @@ void reduce_matrix(msieve_obj *obj, uint32 *nrows,
 	free(counts);
 	*nrows = reduced_rows;
 	*ncols = reduced_cols;
+	return sparse_weight;
 }

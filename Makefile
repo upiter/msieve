@@ -48,6 +48,10 @@ ifeq ($(CUDA),1)
 	LIBS += "$(CUDA_LIB_DIR)/cuda.lib"
 	# LIBS += -lcuda
 endif
+ifeq ($(MPI),1)
+	CC = mpicc -D_FILE_OFFSET_BITS=64
+	CFLAGS += -DHAVE_MPI
+endif
 
 # Note to MinGW users: the library does not use pthreads calls in
 # win32 or win64, so it's safe to pull libpthread into the link line.
@@ -88,6 +92,7 @@ COMMON_SRCS = \
 	common/lanczos/lanczos_matmul1.c \
 	common/lanczos/lanczos_matmul2.c \
 	common/lanczos/lanczos_pre.c \
+	common/lanczos/lanczos_vv.c \
 	common/smallfact/gmp_ecm.c \
 	common/smallfact/smallfact.c \
 	common/smallfact/squfof.c \
@@ -261,6 +266,7 @@ all:
 	@echo "generic   portable code"
 	@echo "add 'ECM=1' if GMP-ECM is available (enables ECM)"
 	@echo "add 'CUDA=1' for Nvidia graphics card support"
+	@echo "add 'MPI=1' for parallel processing using MPI"
 
 x86: $(COMMON_OBJS) $(QS_OBJS) $(QS_CORE_OBJS) \
 		$(QS_CORE_OBJS_X86) $(NFS_OBJS) $(GPU_OBJS)

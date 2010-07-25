@@ -113,9 +113,11 @@ extern "C" {
 
 #if defined(_MSC_VER)
     
-    #include <float.h>
+	#include <float.h>
 	#define INLINE __inline
 	#define getpid _getpid
+	#define ftello _ftelli64
+	#define fseeko _fseeki64
 
 	int64 strtoll(const char *nptr, char **endptr, int base);
 	uint64 strtoull(const char *nptr, char **endptr, int base);

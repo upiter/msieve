@@ -351,6 +351,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\common\lanczos\lanczos_vv.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\common\filter\merge.c"
 				>
 			</File>

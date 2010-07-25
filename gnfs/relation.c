@@ -613,7 +613,7 @@ void nfs_read_cycles(msieve_obj *obj,
 
 	uint32 num_cycles;
 	uint32 num_relations;
-	la_col_t *cycle_list;
+	la_col_t *cycle_list = NULL;
 	relation_t *rlist;
 
 	/* read the raw list of relation numbers for each cycle */

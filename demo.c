@@ -15,6 +15,10 @@ $Id$
 #include <msieve.h>
 #include <signal.h>
 
+#ifdef HAVE_MPI
+#include <mpi.h>
+#endif
+
 msieve_obj *g_curr_factorization = NULL;
 
 /*--------------------------------------------------------------------*/
@@ -131,9 +135,17 @@ void print_usage(char *progname) {
 		 "             if 0 or unspecified) and will only use the \n"
 		 "             first Y relations (or all relations, if 0 \n"
 		 "             or unspecified)\n"
+#ifdef HAVE_MPI
+		 "   -nc2 [X,Y] perform only NFS linear algebra\n"
+		 "   -ncr [X,Y] perform only NFS linear algebra, restarting\n"
+		 "             from a previous checkpoint\n"
+		 "             The X,Y arguments create a X x Y MPI grid,\n"
+		 "             with default of 1 x (argument to mpirun)\n"
+#else
 		 "   -nc2      perform only NFS linear algebra\n"
 		 "   -ncr      perform only NFS linear algebra, restarting\n"
 		 "             from a previous checkpoint\n"
+#endif
 		 "   -nc3 [X,Y] perform only NFS square root (compute \n"
 		 "             dependency numbers X through Y, 1<=X<=Y<=64)\n",
 		 MSIEVE_DEFAULT_SAVEFILE, MSIEVE_DEFAULT_LOGFILE,
@@ -296,6 +308,16 @@ int main(int argc, char **argv) {
 	        printf("could not install handler on SIGTERM\n");
 	        return -1;
 	}     
+#ifdef HAVE_MPI
+	{
+		int32 level;
+		if ((i = MPI_Init_thread(&argc, &argv,
+				MPI_THREAD_FUNNELED, &level)) != MPI_SUCCESS) {
+			printf("error %d initializing MPI, aborting\n", i);
+			MPI_Abort(MPI_COMM_WORLD, i);
+		}
+	}
+#endif
 
 	flags = MSIEVE_FLAG_USE_LOGFILE;
 
@@ -549,5 +571,8 @@ int main(int argc, char **argv) {
 		fclose(infile);
 	}
 
+#ifdef HAVE_MPI
+	MPI_Finalize();
+#endif
 	return 0;
 }

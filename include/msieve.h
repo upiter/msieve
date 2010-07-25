@@ -24,6 +24,10 @@ extern "C" {
 #include <util.h>
 #include <mp.h>
 
+#ifdef HAVE_MPI
+#include <mpi.h>
+#endif
+
 /* version info */
 
 #define MSIEVE_MAJOR_VERSION 1
@@ -127,6 +131,21 @@ typedef struct {
 	uint32 cache_size2;       /* bytes in level 2 cache */
 	enum cpu_type cpu;
 	uint32 num_threads;
+
+#ifdef HAVE_MPI
+	uint32 mpi_size;          /* number of MPI processes, each with
+                                     num_threads threads */
+	uint32 mpi_rank;          /* from 0 to mpi_size - 1 */
+
+	uint32 mpi_nrows;         /* a 2-D MPI lanczos grid */
+	uint32 mpi_ncols;
+	MPI_Comm mpi_la_grid;
+	MPI_Comm mpi_la_row_grid; /* communicator for the current MPI row */
+	MPI_Comm mpi_la_col_grid; /* communicator for the current MPI col */
+	uint32 mpi_la_row_rank;
+	uint32 mpi_la_col_rank;
+#endif
+
 
 	uint32 mem_mb;            /* megabytes usable for NFS filtering */
 

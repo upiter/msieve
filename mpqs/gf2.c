@@ -54,7 +54,8 @@ void solve_linear_system(msieve_obj *obj, uint32 fb_size,
 
 	/* solve the linear system */
 
-	dependencies = block_lanczos(obj, nrows, 0, ncols, cols, &num_deps);
+	dependencies = block_lanczos(obj, nrows, nrows, 0, 0, ncols, 
+					ncols, 0, cols, &num_deps);
 
 	if (num_deps == 0) {
 		free(dependencies);

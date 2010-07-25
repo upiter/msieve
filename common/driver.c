@@ -182,6 +182,11 @@ void msieve_run(msieve_obj *obj) {
 	}
 	n_string = mp_sprintf(&n, 10, obj->mp_sprintf_buf);
 
+#ifdef HAVE_MPI
+	MPI_TRY(MPI_Comm_size(MPI_COMM_WORLD, (int *)&obj->mpi_size));
+	MPI_TRY(MPI_Comm_rank(MPI_COMM_WORLD, (int *)&obj->mpi_rank));
+#endif
+
 	/* print startup banner */
 
 	logprintf(obj, "\n");
@@ -194,6 +199,9 @@ void msieve_run(msieve_obj *obj) {
 	}
 
 	logprintf(obj, "random seeds: %08x %08x\n", obj->seed1, obj->seed2);
+#ifdef HAVE_MPI
+	logprintf(obj, "MPI process %u of %u\n", obj->mpi_rank, obj->mpi_size);
+#endif
 	logprintf(obj, "factoring %s (%d digits)\n", 
 				n_string, strlen(n_string));
 
@@ -320,7 +328,14 @@ void logprintf(msieve_obj *obj, char *fmt, ...) {
 	if (obj->flags & MSIEVE_FLAG_USE_LOGFILE) {
 		time_t t = time(NULL);
 		char buf[64];
+#ifdef HAVE_MPI
+		char namebuf[256];
+		sprintf(namebuf, "%s.mpi%02u", 
+				obj->logfile_name, obj->mpi_rank);
+		FILE *logfile = fopen(namebuf, "a");
+#else
 		FILE *logfile = fopen(obj->logfile_name, "a");
+#endif
 
 		if (logfile == NULL) {
 			fprintf(stderr, "cannot open logfile\n");

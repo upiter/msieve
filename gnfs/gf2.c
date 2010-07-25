@@ -558,79 +558,208 @@ static void build_matrix(msieve_obj *obj, mp_t *n) {
 /*------------------------------------------------------------------*/
 void nfs_solve_linear_system(msieve_obj *obj, mp_t *n) {
 
+	/* convert the list of relations from the sieving 
+	   stage into a matrix */
+
 	uint32 i;
 	la_col_t *cols;
-	uint32 nrows, ncols; 
+	uint32 nrows; 
+	uint32 max_nrows; 
+	uint32 start_row;
+	uint32 ncols; 
+	uint32 max_ncols; 
+	uint32 start_col;
 	uint32 num_dense_rows;
 	uint32 deps_found;
 	uint64 *dependencies;
-	uint32 *rowperm = NULL;
-	uint32 *colperm = NULL;
 	time_t cpu_time = time(NULL);
+#ifdef HAVE_MPI
+	int32 grid_bools[2] = {0};
+	int32 grid_dims[2];
+#endif
 
 	logprintf(obj, "\n");
 	logprintf(obj, "commencing linear algebra\n");
 
-	/* convert the list of relations from the sieving 
-	   stage into a matrix */
+#ifdef HAVE_MPI
+
+	/* create the grid */
+
+	obj->mpi_nrows = grid_dims[0] = 1;
+	obj->mpi_ncols = grid_dims[1] = obj->mpi_size;
+	if (obj->nfs_lower && obj->nfs_upper) {
+		if (obj->mpi_size != obj->nfs_lower * obj->nfs_upper) {
+			printf("error: MPI size %u incompatible with "
+				"%u x %u grid\n", obj->mpi_size, 
+				(uint32)obj->nfs_lower, 
+				(uint32)obj->nfs_upper);
+
+			MPI_Abort(MPI_COMM_WORLD, MPI_ERR_TOPOLOGY);
+		}
+		obj->mpi_nrows = grid_dims[0] = obj->nfs_lower;
+		obj->mpi_ncols = grid_dims[1] = obj->nfs_upper;
+	}
+
+	MPI_TRY(MPI_Cart_create(MPI_COMM_WORLD, 2, grid_dims,
+			grid_bools, 1, &obj->mpi_la_grid))
+
+	/* get the rank of the current process in the grid */
+
+	MPI_TRY(MPI_Comm_rank(obj->mpi_la_grid, (int *)&i))
+
+	/* convert to grid coordinates */
+
+	MPI_TRY(MPI_Cart_coords(obj->mpi_la_grid, i, 2, grid_dims))
+	obj->mpi_la_row_rank = grid_dims[0];
+	obj->mpi_la_col_rank = grid_dims[1];
+
+	/* build communicators for the current row and column */
+
+	grid_bools[0] = 1;
+	grid_bools[1] = 0;
+	MPI_TRY(MPI_Cart_sub(obj->mpi_la_grid, grid_bools, 
+				&obj->mpi_la_col_grid))
+
+	grid_bools[0] = 0;
+	grid_bools[1] = 1;
+	MPI_TRY(MPI_Cart_sub(obj->mpi_la_grid, grid_bools, 
+				&obj->mpi_la_row_grid))
+
+	logprintf(obj, "initialized process (%u,%u) of %u x %u grid\n", 
+			obj->mpi_la_row_rank, obj->mpi_la_col_rank,
+			obj->mpi_nrows, obj->mpi_ncols);
+#endif
+
 	if (!(obj->flags & MSIEVE_FLAG_NFS_LA_RESTART)) {
+
+		/* build the matrix; if using MPI, only process
+		   0 does this, the rest are stalled. This isn't very
+		   elegant, but avoiding it means either solving the
+		   matrix twice, with the first pass having foreknowledge 
+		   of the number of MPI processes that will eventually 
+		   be used, or doing it in one pass with the matrix build
+		   occurring in parallel. That actually is a nice idea
+		   but would need a lot more more memory (a distributed
+		   hashtable, or multiple copies of all the relations
+		   involved) */
+
+#ifdef HAVE_MPI
+		if (obj->mpi_la_row_rank + obj->mpi_la_col_rank == 0) {
+#endif
+		uint32 sparse_weight;
+
+		/* build the initial matrix that is the output from
+		   the filtering */
+
 		build_matrix(obj, n);
-		read_matrix(obj, &nrows, &num_dense_rows, 
-				&ncols, &cols, NULL, NULL);
+
+		/* read the matrix and the list of cycles into memory
+		   again, now that the underlying relations have been freed */
+
+		read_matrix(obj, &nrows, NULL, NULL, &num_dense_rows, 
+				&ncols, NULL, NULL, &cols, NULL, NULL);
+		read_cycles(obj, &ncols, &cols, 0, NULL);
+
 		count_matrix_nonzero(obj, nrows, num_dense_rows, ncols, cols);
-		reduce_matrix(obj, &nrows, num_dense_rows, &ncols, 
-				cols, NUM_EXTRA_RELATIONS);
+
+		/* perform light filtering on the matrix */
+
+		sparse_weight = reduce_matrix(obj, &nrows, num_dense_rows, 
+				&ncols, cols, NUM_EXTRA_RELATIONS);
 		if (ncols == 0) {
 			logprintf(obj, "matrix is corrupt; skipping "
 					"linear algebra\n");
 			free(cols);
 			return;
 		}
-		dump_matrix(obj, nrows, num_dense_rows, ncols, cols);
 
-		/* clear off in-memory structures to defragment the heap */
+		/* save the reduced matrix on disk; if MPI is configured,
+		   also save the file offsets where each MPI process will
+		   begin reading its own slab of matrix columns */
+
+		dump_matrix(obj, nrows, num_dense_rows, 
+				ncols, cols, sparse_weight);
+
+		/* free the matrix */
 		for (i = 0; i < ncols; i++) {
 			free(cols[i].data);
 			free(cols[i].cycle.list);
 		}
 		free(cols);
-
 #if 0
 		/* optimize the layout of large matrices */
-		if (ncols > MIN_REORDER_SIZE)
+		if (ncols > MIN_REORDER_SIZE) {
+
+			uint32 *rowperm;
+			uint32 *colperm;
+
+			/* permute the rows and columns to concentrate
+			   the nonzeros in specific places */
+
 			reorder_matrix(obj, &rowperm, &colperm);
+
+			/* read the matrix back into memory, applying
+			   the permutation in the process */
+
+			read_matrix(obj, &nrows, NULL, NULL, 
+					&num_dense_rows, &ncols, 
+					NULL, NULL, &cols, rowperm, colperm);
+			read_cycles(obj, &ncols, &cols, 0, colperm);
+
+			/* save the permuted matrix */
+
+			dump_matrix(obj, nrows, num_dense_rows, 
+					ncols, cols, sparse_weight);
+
+			/* free everything */
+			free(rowperm);
+			free(colperm);
+			for (i = 0; i < ncols; i++) {
+				free(cols[i].data);
+				free(cols[i].cycle.list);
+			}
+			free(cols);
+		}
+#endif
+
+#ifdef HAVE_MPI
+		}
+		MPI_TRY(MPI_Barrier(obj->mpi_la_grid))
 #endif
 	}
 
-	/* read the matrix again; if a permutation was previously
-	   computed, apply it and save the new matrix */
+	/* read the matrix in; if configured for MPI, this reads
+	   in only the submatrix used by the current MPI process.
+	   Without MPI, this reads the whole matrix, ncols = max_ncols, 
+	   nrows = max_nrows, and start_row = start_col = 0.
+	
+	   Do not read in the relation numbers, the Lanczos code
+	   doesn't need them */
 
-	read_matrix(obj, &nrows, &num_dense_rows, 
-			&ncols, &cols, rowperm, colperm);
+	read_matrix(obj, &nrows, &max_nrows, &start_row,
+			&num_dense_rows, 
+			&ncols, &max_ncols, &start_col,
+			&cols, NULL, NULL);
+	logprintf(obj, "matrix starts at (%u, %u)\n", start_row, start_col);
 	count_matrix_nonzero(obj, nrows, num_dense_rows, ncols, cols);
-	if (rowperm != NULL || colperm != NULL) {
-		dump_matrix(obj, nrows, num_dense_rows, ncols, cols);
-		free(rowperm);
-		free(colperm);
-	}
-
-	/* the matrix is read-only from here on, so conserve memory
-	   by deleting the list of relations that comprise each column */
-
-	for (i = 0; i < ncols; i++) {
-		free(cols[i].cycle.list);
-		cols[i].cycle.list = NULL;
-	}
 
 	/* solve the linear system */
 
-	dependencies = block_lanczos(obj, nrows, num_dense_rows,
-					ncols, cols, &deps_found);
+	dependencies = block_lanczos(obj, 
+				nrows, max_nrows, start_row,
+				num_dense_rows,
+				ncols, max_ncols, start_col,
+				cols, &deps_found);
 	if (deps_found)
-		dump_dependencies(obj, dependencies, ncols);
+		dump_dependencies(obj, dependencies, max_ncols);
 	free(dependencies);
 	free(cols);
 
+#ifdef HAVE_MPI
+	MPI_TRY(MPI_Comm_free(&obj->mpi_la_grid))
+	MPI_TRY(MPI_Comm_free(&obj->mpi_la_row_grid))
+	MPI_TRY(MPI_Comm_free(&obj->mpi_la_col_grid))
+#endif
 	cpu_time = time(NULL) - cpu_time;
 	logprintf(obj, "BLanczosTime: %u\n", (uint32)cpu_time);
 }
