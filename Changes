@@ -1,4 +1,20 @@
 Version 1.46:
+	The polynomial selection work in this release has benefitted
+	greatly from a week-long visit to Paul Zimmermann's CARAMEL group
+	in Nancy, France
+
+	The MPI changes in this release were made possible by generous
+	support from a startup allocation of CPU time on the National
+	Science Foundation's Teragrid system (TG-DMS100013), courtesy
+       	of Greg Childers at Cal State Fullerton
+
+	- NFS linear algebra changes:
+		- Added MPI support to the linear algebra. Still a work in 
+		  progress, but for large problems the speedup from using 
+		  many nodes of a parallel system is just incredible
+		- Added multithreading to the vector-vector operations
+		- Made the linear algebra use actual time measurements to
+		  decide how often a checkpoint file gets written
 	- NFS poly selection changes:
 		- Added a high-performance root sieve for degree 6 problems
 		- Allowed stage 1 and stage 2 to be run separately,
@@ -11,6 +27,11 @@ Version 1.46:
 		  Paul Zimmermann)
 		- When rating poynomials, remember the number of real roots
 		  (thanks Paul Zimmermann)
+		- Patch from Jayson King: resolve a GPU race condition
+		- Patch from Jayson King: start overhaul of the arithmetic
+		  progression generator
+	- Patches from Serge Batalov: use zlib to allow QS or NFS relations 
+		to be compressed on unix systems
 	- Reduced the number of clique removal passes when there is a large
 		amount of excess (thanks Greg Childers)
 	- Optimized the power detection code in the main driver (thanks axn)
