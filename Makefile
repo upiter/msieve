@@ -18,9 +18,6 @@ CC = gcc -D_FILE_OFFSET_BITS=64
 WARN_FLAGS = -Wall -W
 OPT_FLAGS = -O3 -fomit-frame-pointer -march=athlon-xp -DNDEBUG
 #OPT_FLAGS = -O3 -fomit-frame-pointer -march=k8 -DNDEBUG
-LIBS = -lz
-#if you don't have zlib (http://zlib.net), then comment above and uncomment below:
-#OPT_FLAGS += -DNO_ZLIB
 
 CFLAGS = $(OPT_FLAGS) $(MACHINE_FLAGS) $(WARN_FLAGS) \
 		-I. -Iinclude -Ignfs -Ignfs/poly -Ignfs/poly/stage1
@@ -52,6 +49,12 @@ ifeq ($(MPI),1)
 	CC = mpicc -D_FILE_OFFSET_BITS=64
 	CFLAGS += -DHAVE_MPI
 endif
+ifeq ($(NO_ZLIB),1)
+	CFLAGS += -DNO_ZLIB
+else
+	LIBS += -lz
+endif
+
 
 # Note to MinGW users: the library does not use pthreads calls in
 # win32 or win64, so it's safe to pull libpthread into the link line.
@@ -267,6 +270,7 @@ all:
 	@echo "add 'ECM=1' if GMP-ECM is available (enables ECM)"
 	@echo "add 'CUDA=1' for Nvidia graphics card support"
 	@echo "add 'MPI=1' for parallel processing using MPI"
+	@echo "add 'NO_ZLIB=1' if you don't have zlib"
 
 x86: $(COMMON_OBJS) $(QS_OBJS) $(QS_CORE_OBJS) \
 		$(QS_CORE_OBJS_X86) $(NFS_OBJS) $(GPU_OBJS)
