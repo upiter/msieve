@@ -125,6 +125,7 @@ typedef struct {
 	uint32 p;
 	uint8 num_roots[POLY_BATCH_SIZE];
 	uint32 roots[POLY_BATCH_SIZE][MAX_POLYSELECT_DEGREE];
+	uint64 cofactor_max;
 } aprog_t;
 
 typedef struct {
@@ -160,21 +161,8 @@ typedef struct {
 
 typedef struct {
 	uint32 num_factors;
-	uint64 prod;
-} ss_t;
-
-typedef struct {
-	ss_t *list;
-	uint32 num_entries;
-	uint32 num_entries_alloc;
-} subset_sum_t;
-
-typedef struct {
-	subset_sum_t curr_list;
-	subset_sum_t new_list;
-
-	uint32 curr_entry;
-	uint32 next_prime;
+	uint32 factors[MAX_P_FACTORS];
+	uint64 products[MAX_P_FACTORS];
 } p_enum_t;
 
 #define ALGO_SIEVE 1

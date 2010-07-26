@@ -50,9 +50,6 @@ sieve_fb_free(sieve_fb_t *s)
 	free(s->p_sieve.good_primes.primes);
 	free(s->p_sieve.bad_primes.primes);
 	
-	free(s->p_enum.curr_list.list);
-	free(s->p_enum.new_list.list);
-
 	mpz_clear(s->p);
 	mpz_clear(s->p2);
 	mpz_clear(s->m0);
@@ -167,7 +164,6 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 	prime_sieve_t prime_sieve;
 	aprog_list_t *aprog = &s->aprog_data;
 	p_sieve_t *p_sieve = &s->p_sieve;
-	p_enum_t *p_enum = &s->p_enum;
 
 	if (factor_max <= factor_min)
 		return;
@@ -200,11 +196,6 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 	p_sieve->bad_primes.num_primes_alloc = i;
 	p_sieve->bad_primes.primes = (sieve_prime_t *)xmalloc(
 					i * sizeof(sieve_prime_t));
-
-	p_enum->curr_list.num_entries_alloc = i;
-	p_enum->curr_list.list = (ss_t *)xmalloc(i * sizeof(ss_t));
-	p_enum->new_list.num_entries_alloc = i;
-	p_enum->new_list.list = (ss_t *)xmalloc(i * sizeof(ss_t));
 
 	init_prime_sieve(&prime_sieve, 2, factor_max);
 
@@ -290,76 +281,12 @@ sieve_run(sieve_fb_t *s)
 }
 
 /*------------------------------------------------------------------------*/
-static void add_to_enum(subset_sum_t *new_list, ss_t new_entry)
-{
-	if (new_list->num_entries == new_list->num_entries_alloc) {
-		new_list->num_entries_alloc *= 2;
-		new_list->list = (ss_t *)xrealloc(new_list->list,
-					new_list->num_entries_alloc *
-					sizeof(ss_t));
-	}
-	new_list->list[new_list->num_entries++] = new_entry;
-}
-
-#define MAX_POWER 3
-
-static void enum_run(sieve_fb_t *s)
-{
-	uint32 i, j;
-	p_enum_t *p_enum = &s->p_enum;
-	uint32 curr_entries = p_enum->curr_list.num_entries;
-	subset_sum_t *curr_list = &p_enum->curr_list;
-	subset_sum_t *new_list = &p_enum->new_list;
-	subset_sum_t tmp;
-
-	aprog_t *aprog = s->aprog_data.aprogs + p_enum->next_prime;
-	uint32 p = aprog->p;
-	uint64 cutoff = s->p_max / p;
-
-	uint32 power_limit = (uint32)(-1) / p;
-	uint32 num_powers;
-
-	i = p;
-	for (num_powers = 1; num_powers <= MAX_POWER; num_powers++) {
-		if (i >= power_limit)
-			break;
-		i *= p;
-	}
-			
-	new_list->num_entries = 0;
-	for (i = 0; i < curr_entries; i++) {
-
-		ss_t new_ss = curr_list->list[i];
-
-		if (new_ss.prod > s->p_min ||
-		    new_ss.num_factors == MAX_P_FACTORS ||
-		    new_ss.prod > cutoff)
-			continue;
-
-		add_to_enum(new_list, new_ss);
-
-		new_ss.num_factors++;
-		for (j = 0; j < num_powers; j++) {
-			new_ss.prod *= p;
-			add_to_enum(new_list, new_ss);
-
-			if (new_ss.prod > cutoff)
-				break;
-		}
-	}
-
-	p_enum->next_prime++;
-	tmp = p_enum->curr_list;
-	p_enum->curr_list = p_enum->new_list;
-	p_enum->new_list = tmp;
-}
-
-/*------------------------------------------------------------------------*/
 void 
 sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 		uint32 num_roots_min, uint32 num_roots_max)
 {
 	uint32 i;
+	aprog_list_t *aprog = &s->aprog_data;
 
 	free_prime_sieve(&s->p_prime);
 
@@ -370,17 +297,14 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 	s->num_roots_min = num_roots_min;
 	s->num_roots_max = num_roots_max;
 
-	if (p_max > 10000000) {
+	if (p_max > 10000000 && aprog->num_aprogs > 0) {
 		p_enum_t *p_enum = &s->p_enum;
 
 		s->curr_algo = ALGO_ENUM;
 
-		p_enum->next_prime = 0;
-		p_enum->curr_entry = 0;
-
-		p_enum->curr_list.num_entries = 1;
-		p_enum->curr_list.list[0].num_factors = 0;
-		p_enum->curr_list.list[0].prod = 1;
+		p_enum->num_factors = 1;
+		p_enum->factors[0] = 0;
+		p_enum->products[0] = aprog->aprogs[0].p;
 	}
 	else {
 		p_sieve_t *p_sieve = &s->p_sieve;
@@ -414,6 +338,12 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 		}
 
 		sieve_run(s);
+	}
+
+	for (i = 0; i < aprog->num_aprogs; i++) {
+		aprog_t *a = aprog->aprogs + i;
+
+		a->cofactor_max = p_max / a->p;
 	}
 }
 
@@ -673,28 +603,39 @@ static uint64
 get_next_enum_composite(sieve_fb_t *s)
 {
 	p_enum_t *p_enum = &s->p_enum;
+	aprog_t *aprogs = s->aprog_data.aprogs;
+	uint32 num_primes = s->aprog_data.num_aprogs;
+	uint32 *facts = p_enum->factors;
+	uint64 *prods = p_enum->products;
 
 	while (1) {
-		uint32 curr_entry;
-		ss_t *list = p_enum->curr_list.list;
-		uint32 num_entries = p_enum->curr_list.num_entries;
+		uint32 i = p_enum->num_factors;
 
-		for (curr_entry = p_enum->curr_entry;
-				curr_entry < num_entries; curr_entry++) {
+		if (i < MAX_P_FACTORS &&
+		    prods[i - 1] <= aprogs[facts[i - 1]].cofactor_max) {
 
-			ss_t *curr_prod = list + curr_entry;
-
-			if (curr_prod->prod > s->p_min) {
-				p_enum->curr_entry = curr_entry + 1;
-				return curr_prod->prod;
-			}
+			facts[i] = facts[i - 1];
+			prods[i] = prods[i - 1] * aprogs[facts[i]].p;
 		}
+		else {
+			while (i--) {
+				uint64 prod = (i == 0) ? 1 : prods[i - 1];
 
-		if (p_enum->next_prime == s->aprog_data.num_aprogs)
-			break;
+				if (facts[i]++ < num_primes &&
+				    prod <= aprogs[facts[i]].cofactor_max) {
 
-		enum_run(s);
-		p_enum->curr_entry = 0;
+					prods[i] = prod * aprogs[facts[i]].p;
+					break;
+				}
+			}
+
+			if (i >= MAX_P_FACTORS)
+				break;
+		}
+		p_enum->num_factors = i + 1;
+
+		if (prods[i] >= s->p_min)
+			return prods[i];
 	}
 
 	return P_SEARCH_DONE;
