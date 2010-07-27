@@ -453,6 +453,10 @@ sieve_lattice_deg46_64(msieve_obj *obj, lattice_fb_t *L,
 			small_p_min, small_p_max,
 			large_p_min, large_p_max);
 
+	if (2 * L->poly->batch[0].sieve_size /
+			((double)small_p_min * small_p_min) > (uint32)(-1))
+		goto finished;
+
 	if (degree == 4) {
 		p_min_roots = 4;
 		p_max_roots = 8;

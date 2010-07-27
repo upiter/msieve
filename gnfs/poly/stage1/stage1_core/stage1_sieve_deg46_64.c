@@ -197,6 +197,10 @@ sieve_lattice_deg46_64(msieve_obj *obj, lattice_fb_t *L,
 			small_p_min, small_p_max,
 			large_p_min, large_p_max);
 
+	if (2 * L->poly->batch[num_poly - 1].sieve_size /
+			((double)small_p_min * small_p_min) > (uint32)(-1))
+		goto finished;
+
 	min_large = large_p_min;
 	sieve_fb_reset(sieve_small, (uint64)large_p_min, 
 			(uint64)large_p_max, 4, MAX_ROOTS);
