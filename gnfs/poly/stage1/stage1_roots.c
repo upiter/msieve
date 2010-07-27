@@ -569,9 +569,11 @@ get_composite_factors(sieve_fb_t *s, uint64 p,
 
 /*------------------------------------------------------------------------*/
 static uint64
-get_next_composite(sieve_fb_t *s)
+get_next_composite(sieve_fb_t *s, uint32 *num_factors,
+			uint32 factors[MAX_FACTORS])
 {
 	while (1) {
+		uint64 p;
 		uint32 curr_offset;
 		p_sieve_t *p_sieve = &s->p_sieve;
 		uint8 *sieve_block = p_sieve->sieve_block;
@@ -585,7 +587,9 @@ get_next_composite(sieve_fb_t *s)
 				continue;
 
 			p_sieve->curr_offset = curr_offset + 1;
-			return p_sieve->sieve_start + (2 * curr_offset + 1);
+			p = p_sieve->sieve_start + (2 * curr_offset + 1);
+			*num_factors = get_composite_factors(s, p, factors);
+			return p;
 		}
 
 		p_sieve->sieve_start += 2 * SIEVE_SIZE;
@@ -600,42 +604,53 @@ get_next_composite(sieve_fb_t *s)
 
 /*------------------------------------------------------------------------*/
 static uint64
-get_next_enum_composite(sieve_fb_t *s)
+get_next_enum_composite(sieve_fb_t *s, uint32 *num_factors,
+			uint32 factors[MAX_FACTORS])
 {
+	uint64 p;
 	p_enum_t *p_enum = &s->p_enum;
 	aprog_t *aprogs = s->aprog_data.aprogs;
 	uint32 num_primes = s->aprog_data.num_aprogs;
-	uint32 *facts = p_enum->factors;
+	uint32 *enum_facs = p_enum->factors;
 	uint64 *prods = p_enum->products;
 
 	while (1) {
 		uint32 i = p_enum->num_factors;
 
 		if (i < MAX_P_FACTORS &&
-		    prods[i - 1] <= aprogs[facts[i - 1]].cofactor_max) {
+		    prods[i - 1] <= aprogs[enum_facs[i - 1]].cofactor_max) {
+			/* can fit another factor */
 
-			facts[i] = facts[i - 1];
-			prods[i] = prods[i - 1] * aprogs[facts[i]].p;
+			enum_facs[i] = enum_facs[i - 1];
+			p = prods[i - 1] * aprogs[enum_facs[i]].p;
 		}
 		else {
+			/* can't fit any more factors, so increment factors */
+
 			while (i--) {
-				uint64 prod = (i == 0) ? 1 : prods[i - 1];
+				p = (i == 0) ? 1 : prods[i - 1];
 
-				if (facts[i]++ < num_primes &&
-				    prod <= aprogs[facts[i]].cofactor_max) {
+				if (++enum_facs[i] < num_primes &&
+				    p <= aprogs[enum_facs[i]].cofactor_max) {
 
-					prods[i] = prod * aprogs[facts[i]].p;
+					p *= aprogs[enum_facs[i]].p;
 					break;
 				}
 			}
 
-			if (i >= MAX_P_FACTORS)
+			if (i >= MAX_P_FACTORS) /* can't increment factors */
 				break;
 		}
-		p_enum->num_factors = i + 1;
+		prods[i] = p;
+		p_enum->num_factors = *num_factors = i + 1;
 
-		if (prods[i] >= s->p_min)
-			return prods[i];
+		if (p >= s->p_min) {
+			do {
+				factors[i] = enum_facs[i];
+			} while (i--);
+
+			return p;
+		}
 	}
 
 	return P_SEARCH_DONE;
@@ -659,9 +674,11 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 		    s->curr_algo == ALGO_SIEVE) {
 
 			if (s->curr_algo == ALGO_ENUM)
-				p = get_next_enum_composite(s);
+				p = get_next_enum_composite(s, &num_factors,
+								factors);
 			else
-				p = get_next_composite(s);
+				p = get_next_composite(s, &num_factors,
+							factors);
 
 			if (p == P_SEARCH_DONE) {
 				uint32 last_p = s->aprog_data.aprogs[
@@ -680,8 +697,6 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 						(uint32)s->p_max);
 				continue;
 			}
-
-			num_factors = get_composite_factors(s, p, factors);
 
 			for (i = found = 0; i < poly->num_poly; i++) {
 				num_roots = get_composite_roots(s, 
