@@ -13,6 +13,10 @@ Version 1.46:
 		  progress, but for large problems the speedup from using 
 		  many nodes of a parallel system is just incredible
 		- Added multithreading to the vector-vector operations
+		- Patch from Serge Batalov: use larger structures to represent
+		  matrix blocks; the larger blocks that are possible make
+		  matrix multiplies run noticeably faster at the expense of
+		  needing more memory to represent the matrix
 		- Made the linear algebra use actual time measurements to
 		  decide how often a checkpoint file gets written
 	- NFS poly selection changes:
