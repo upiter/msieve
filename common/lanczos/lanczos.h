@@ -56,17 +56,14 @@ extern "C" {
    from the top left corner of the block */
 
 #ifdef LARGEBLOCKS
-#ifdef GCC_ASM32A
-error "cannot use LARGEBLOCKS with 32-bit assembly code"
-#endif
-typedef uint32 med_off_t; /* experimental, --SB */
+typedef uint32 med_off_t;
 #else
 typedef uint16 med_off_t;
 #endif
 
 typedef struct {
 	med_off_t row_off;
-	med_off_t col_off;
+	uint16 col_off;
 } entry_idx_t;
 
 /* struct representing one block */
@@ -77,8 +74,13 @@ typedef struct {
 	uint32 num_rows;
 	uint32 num_entries;       /* number of nonzero matrix entries */
 	uint32 num_entries_alloc; /* nonzero matrix entries allocated */
+#ifdef LARGEBLOCKS
+	uint32 *row_off;
+	uint16 *col_off;
+#else
 	entry_idx_t *entries;     /* nonzero entries */
-	med_off_t *med_entries;   /* nonzero entries for medium dense rows */
+#endif
+	uint16 *med_entries;	  /* nonzero entries for medium dense rows */
 } packed_block_t;
 
 enum thread_command {

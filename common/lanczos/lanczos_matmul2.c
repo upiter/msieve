@@ -21,10 +21,22 @@ $Id$
 static void mul_trans_one_med_block(packed_block_t *curr_block,
 			uint64 *curr_row, uint64 *curr_b) {
 
-	med_off_t *entries = curr_block->med_entries;
+	uint16 *entries = curr_block->med_entries;
 
 	while (1) {
 		uint64 t;
+#ifdef LARGEBLOCKS
+#if defined(GCC_ASM64X)
+		uint64 i = 0;
+		uint64 row = (entries[0]<<16) | entries[1];
+		uint64 count = entries[2];
+#else
+		uint32 i = 0;
+		uint32 row = (entries[0]<<16) | entries[1];
+		uint32 count = entries[2];
+#endif
+		entries++;	/* we've used an extra word */
+#else
 #if defined(GCC_ASM64X)
 		uint64 i = 0;
 		uint64 row = entries[0];
@@ -33,6 +45,7 @@ static void mul_trans_one_med_block(packed_block_t *curr_block,
 		uint32 i = 0;
 		uint32 row = entries[0];
 		uint32 count = entries[1];
+#endif
 #endif
 
 		if (count == 0)
@@ -89,54 +102,6 @@ static void mul_trans_one_med_block(packed_block_t *curr_block,
 		:"r"(curr_b), "r"(entries),
 		 "g"(count & (uint32)(~15)), "y"(t)
 		:"%eax", "%ecx", "%edx", "%mm0", "%mm1", "memory", "cc");
-
-	#undef _txor
-
-#elif defined(GCC_ASM64X) && defined(LARGEBLOCKS)
-
-	#define _txor(k)				\
-		"xorq %4, (%1,%%r8,8)         	\n\t"	\
-		"movl 4*(10+0+" #k ")(%2,%0,4), %%r8d	\n\t"	\
-		"xorq %4, (%1,%%r9,8)         	\n\t"	\
-		"movl 4*(10+1+" #k ")(%2,%0,4), %%r9d	\n\t"	\
-		"xorq %4, (%1,%%r10,8)         	\n\t"	\
-		"movl 4*(10+2+" #k ")(%2,%0,4), %%r10d	\n\t"	\
-		"xorq %4, (%1,%%r11,8)         	\n\t"	\
-		"movl 4*(10+3+" #k ")(%2,%0,4), %%r11d	\n\t"	\
-		"xorq %4, (%1,%%r12,8)         	\n\t"	\
-		"movl 4*(10+4+" #k ")(%2,%0,4), %%r12d	\n\t"	\
-		"xorq %4, (%1,%%r13,8)         	\n\t"	\
-		"movl 4*(10+5+" #k ")(%2,%0,4), %%r13d	\n\t"	\
-		"xorq %4, (%1,%%r14,8)         	\n\t"	\
-		"movl 4*(10+6+" #k ")(%2,%0,4), %%r14d	\n\t"	\
-		"xorq %4, (%1,%%r15,8)         	\n\t"	\
-		"movl 4*(10+7+" #k ")(%2,%0,4), %%r15d	\n\t"
-
-	ASM_G volatile(
-		"movl 4*(2+0)(%2,%0,4), %%r8d	\n\t"
-		"movl 4*(2+1)(%2,%0,4), %%r9d	\n\t"
-		"movl 4*(2+2)(%2,%0,4), %%r10d	\n\t"
-		"movl 4*(2+3)(%2,%0,4), %%r11d	\n\t"
-		"movl 4*(2+4)(%2,%0,4), %%r12d	\n\t"
-		"movl 4*(2+5)(%2,%0,4), %%r13d	\n\t"
-		"movl 4*(2+6)(%2,%0,4), %%r14d	\n\t"
-		"movl 4*(2+7)(%2,%0,4), %%r15d	\n\t"
-		"cmpq $0, %3			\n\t"
-		"je 1f				\n\t"
-		ALIGN_LOOP
-		"0:				\n\t"
-
-		_txor(0) _txor(8)
-
-		"addq $16, %0			\n\t"
-		"cmpq %3, %0			\n\t"
-		"jne 0b				\n\t"
-		"1:				\n\t"
-		:"+r"(i)
-		:"r"(curr_b), "r"(entries),
-		 "g"(count & (uint64)(~15)), "r"(t)
-		:"%r8", "%r9", "%r10", "%r11", 
-		 "%r12", "%r13", "%r14", "%r15", "memory", "cc");
 
 	#undef _txor
 
@@ -265,10 +230,13 @@ static void mul_trans_one_block(packed_block_t *curr_block,
 				uint64 *curr_row, uint64 *curr_b) {
 
 	uint32 i = 0;
-	uint32 j = 0;
-	uint32 k;
 	uint32 num_entries = curr_block->num_entries;
+#ifdef LARGEBLOCKS
+        uint32 *row_off = curr_block->row_off;
+        uint16 *col_off = curr_block->col_off;
+#else
 	entry_idx_t *entries = curr_block->entries;
+#endif
 
 	/* unroll by 16, i.e. the number of matrix elements
 	   in one cache line (usually). For 32-bit x86, we get
@@ -345,8 +313,13 @@ static void mul_trans_one_block(packed_block_t *curr_block,
 	}
 
 #else
+#ifdef LARGEBLOCKS
+	#define _txor(x) curr_b[col_off[i+x]] ^= \
+				 curr_row[row_off[i+x]]	
+#else
 	#define _txor(x) curr_b[entries[i+x].col_off] ^= \
 				 curr_row[entries[i+x].row_off]	
+#endif
 
 	for (i = 0; i < (num_entries & (uint32)(~15)); i += 16) {
 		#ifdef MANUAL_PREFETCH
@@ -361,9 +334,11 @@ static void mul_trans_one_block(packed_block_t *curr_block,
 	#undef _txor
 
 	for (; i < num_entries; i++) {
-		j = entries[i].row_off;
-		k = entries[i].col_off;
-		curr_b[k] ^= curr_row[j];
+#ifdef LARGEBLOCKS
+		curr_b[col_off[i]] ^= curr_row[row_off[i]];
+#else
+		curr_b[entries[i].col_off] ^= curr_row[entries[i].row_off];
+#endif
 	}
 }
 
