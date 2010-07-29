@@ -236,8 +236,8 @@ translate_gmp(curr_poly_t *c, mpz_t *gmp_c, uint32 deg,
 }
 
 /*-------------------------------------------------------------------------*/
-#define TRANSLATE_SIZE 0
-#define SKEWNESS 1
+#define SKEWNESS 0
+#define TRANSLATE_SIZE 1
 #define ROTATE0 2
 #define ROTATE1 3
 #define ROTATE2 4
@@ -327,13 +327,15 @@ static double poly_murphy_callback(double *v, void *extra)
 
 /*-------------------------------------------------------------------------*/
 void
-optimize_initial(poly_stage2_t *data, double *pol_norm)
+optimize_initial(poly_stage2_t *data, double *pol_norm,
+		uint32 skew_only)
 {
 	stage2_curr_data_t *curr_data = 
 			(stage2_curr_data_t *)(data->internal);
 	curr_poly_t *c = &curr_data->curr_poly;
 	uint32 deg = data->degree;
 	uint32 rotate_dim = deg - 4;
+	uint32 num_vars = rotate_dim + 3;
 	opt_data_t opt_data;
 	uint32 i, j;
 	double best[MAX_VARS];
@@ -354,18 +356,20 @@ optimize_initial(poly_stage2_t *data, double *pol_norm)
 		apoly.coeff[i] = mpz_get_d(c->gmp_a[i]);
 	}
 
-	best[TRANSLATE_SIZE] = 0;
 	best[SKEWNESS] = 1000;
+	best[TRANSLATE_SIZE] = 0;
 	best[ROTATE0] = 0;
 	best[ROTATE1] = 0;
 	best[ROTATE2] = 0;
 	score = 1e100;
 	tol = 1e-3;
+	if (skew_only)
+		num_vars = 1;
 
 	for (i = 0; i < 2; i++) {
 		do {
 			last_score = score;
-			score = minimize(best, rotate_dim + 3, tol, 40, 
+			score = minimize(best, num_vars, tol, 40, 
 					poly_rotate_callback, &opt_data);
 
 			for (j = 0; j <= rotate_dim; j++) {
@@ -400,7 +404,7 @@ optimize_initial(poly_stage2_t *data, double *pol_norm)
 	}
 
 	*pol_norm = sqrt(fabs(score));
-#if 0
+#if 1
 	printf("norm %.7e skew %lf\n", *pol_norm, best[SKEWNESS]);
 	for (i = 0; i < 2; i++)
 		gmp_printf("%+Zd\n", c->gmp_lina[i]);

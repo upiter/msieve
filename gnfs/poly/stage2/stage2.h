@@ -57,7 +57,8 @@ uint32 stage2_root_score(uint32 deg1, mpz_t *coeff1,
 /*-----------------------------------------------------------------------*/
 /* routines for optimizing polynomials */
 
-void optimize_initial(poly_stage2_t *data, double *pol_norm);
+void optimize_initial(poly_stage2_t *data, double *pol_norm,
+			uint32 skew_only);
 
 void optimize_final(mpz_t x, mpz_t y, int64 z, poly_stage2_t *data);
 

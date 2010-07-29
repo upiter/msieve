@@ -203,7 +203,8 @@ static void get_poly_params(double digits, poly_param_t *params,
 static void stage1_callback(mpz_t high_coeff, mpz_t p, mpz_t m, 
 				double coeff_bound, void *extra) {
 	
-	poly_stage2_run((poly_stage2_t *)extra, high_coeff, p, m, coeff_bound);
+	poly_stage2_run((poly_stage2_t *)extra, high_coeff, p, m, 
+			coeff_bound, NULL);
 }
 
 /*------------------------------------------------------------------*/
@@ -426,11 +427,15 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 		poly_stage1_free(&stage1_data);
 	}
 	else if (obj->flags & MSIEVE_FLAG_NFS_POLY2) {
+		uint32 i;
 		mpz_t ad, p, m;
+		mpz_t full_apoly[MAX_POLY_DEGREE + 1];
 
 		mpz_init(ad);
 		mpz_init(p);
 		mpz_init(m);
+		for (i = 0; i <= MAX_POLY_DEGREE; i++)
+			mpz_init(full_apoly[i]);
 
 		sprintf(buf, "%s.m", obj->savefile.name);
 		stage1_outfile = fopen(buf, "r");
@@ -439,15 +444,30 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 			exit(-1);
 		}
 
-		while(gmp_fscanf(stage1_outfile, "%Zd %Zd %Zd",
-					ad, p, m) == 3) {
+		while (1) {
+			mpz_t *arg = NULL;
+			if (gmp_fscanf(stage1_outfile, "%Zd", ad) != 1)
+				break;
 
-			poly_stage2_run(&stage2_data, ad, p, m, 1e100);
+			if (mpz_cmp_ui(ad, 0) == 0) {
+				for (i = 0; i <= degree; i++) {
+					gmp_fscanf(stage1_outfile, "%Zd", 
+						full_apoly[degree - i]);
+				}
+
+				mpz_set(ad, full_apoly[degree]);
+				arg = full_apoly;
+			}
+			gmp_fscanf(stage1_outfile, "%Zd %Zd", p, m);
+
+			poly_stage2_run(&stage2_data, ad, p, m, 1e100, arg);
 		}
 
 		mpz_clear(ad);
 		mpz_clear(p);
 		mpz_clear(m);
+		for (i = 0; i <= MAX_POLY_DEGREE; i++)
+			mpz_clear(full_apoly[i]);
 		fclose(stage1_outfile);
 		fclose(stage2_callback_data.all_poly_file);
 		poly_stage2_free(&stage2_data);

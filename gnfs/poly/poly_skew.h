@@ -70,8 +70,9 @@ void poly_stage2_init(poly_stage2_t *data, msieve_obj *obj,
 		      stage2_callback_t callback,
 		      void *callback_data);
 void poly_stage2_free(poly_stage2_t *data);
-void poly_stage2_run(poly_stage2_t *data, mpz_t a5, mpz_t p, 
-			mpz_t d, double a3_bound);
+void poly_stage2_run(poly_stage2_t *data, mpz_t ad, mpz_t p, 
+			mpz_t d, double a3_bound,
+			mpz_t *full_apoly);
 
 #ifdef __cplusplus
 }

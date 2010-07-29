@@ -36,7 +36,6 @@ assess_free(assess_t *a)
 }
 
 /*-------------------------------------------------------------------------*/
-#ifdef CHECK
 static uint32
 check_poly(curr_poly_t *c, mpz_t *coeffs, mpz_t lin0, 
 		mpz_t gmp_N, uint32 degree) {
@@ -58,7 +57,7 @@ check_poly(curr_poly_t *c, mpz_t *coeffs, mpz_t lin0,
 	}
 	return 1;
 }
-#endif
+
 /*-------------------------------------------------------------------------*/
 static int
 pol_expand(curr_poly_t *c, mpz_t gmp_N, mpz_t high_coeff,
@@ -66,11 +65,6 @@ pol_expand(curr_poly_t *c, mpz_t gmp_N, mpz_t high_coeff,
 		double coeff_bound, uint32 degree)
 {
 	uint32 i;
-
-	mpz_set(c->gmp_p, gmp_p);
-	mpz_set(c->gmp_d, gmp_d);
-	mpz_set(c->gmp_lina[1], gmp_p);
-	mpz_neg(c->gmp_lina[0], gmp_d);
 
 	if (mpz_cmp_ui(c->gmp_p, (mp_limb_t)1) == 0)
 		mpz_set_ui(c->gmp_help1, (mp_limb_t)1);
@@ -228,7 +222,8 @@ poly_stage2_free(poly_stage2_t *data)
 /*-------------------------------------------------------------------------*/
 void
 poly_stage2_run(poly_stage2_t *data, mpz_t high_coeff, mpz_t p, 
-			mpz_t d, double coeff_bound)
+			mpz_t d, double coeff_bound,
+			mpz_t *full_apoly)
 {
 	double pol_norm;
 	double alpha_proj;
@@ -236,6 +231,7 @@ poly_stage2_run(poly_stage2_t *data, mpz_t high_coeff, mpz_t p,
 	stage2_curr_data_t *s;
 	curr_poly_t *c;
 	uint32 degree;
+	uint32 skew_only = 0;
 
 	dd_precision_t precision = 0;
 	uint32 precision_changed = 0;
@@ -256,15 +252,34 @@ poly_stage2_run(poly_stage2_t *data, mpz_t high_coeff, mpz_t p,
 	}
 
 	c = &s->curr_poly;
-	status = pol_expand(c, data->gmp_N, high_coeff,
-				p, d, coeff_bound, degree);
-       	if (status != 2) {
-		if (status == 0)
-			fprintf(stderr, "expand failed\n");
-		goto finished;
+	mpz_set(c->gmp_d, d);
+	mpz_set(c->gmp_p, p);
+	mpz_neg(c->gmp_lina[0], c->gmp_d);
+	mpz_set(c->gmp_lina[1], c->gmp_p);
+
+	if (full_apoly != NULL) {
+		uint32 i;
+
+		for (i = 0; i <= degree; i++)
+			mpz_set(c->gmp_a[i], full_apoly[i]);
+
+		if (check_poly(c, c->gmp_a, c->gmp_lina[0], 
+				data->gmp_N, degree) != 1) {
+			goto finished;
+		}
+		skew_only = 1;
+	}
+	else {
+		status = pol_expand(c, data->gmp_N, high_coeff,
+					p, d, coeff_bound, degree);
+		if (status != 2) {
+			if (status == 0)
+				fprintf(stderr, "expand failed\n");
+			goto finished;
+		}
 	}
 
-	optimize_initial(data, &pol_norm);
+	optimize_initial(data, &pol_norm, skew_only);
 
 #ifdef CHECK
 	if (check_poly(c, c->gmp_a, c->gmp_lina[0],
