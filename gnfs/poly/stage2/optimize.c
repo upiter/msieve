@@ -272,6 +272,15 @@ static double poly_xlate_callback(double *v, void *extra)
 	return ifs_rectangular(translated, apoly->degree, s);
 }
 
+static double poly_skew_callback(double *v, void *extra)
+{
+	opt_data_t *opt = (opt_data_t *)extra;
+	dpoly_t *apoly = opt->dapoly;
+	double s = v[SKEWNESS];
+
+	return ifs_rectangular(apoly->coeff, apoly->degree, s);
+}
+
 static double poly_rotate_callback(double *v, void *extra)
 {
 	uint32 i;
@@ -341,6 +350,7 @@ optimize_initial(poly_stage2_t *data, double *pol_norm,
 	double best[MAX_VARS];
 	double score, last_score, tol;
 	dpoly_t rpoly, apoly;
+	objective_func objective = poly_rotate_callback;
 
 	opt_data.rotate_dim = rotate_dim;
 	opt_data.drpoly = &rpoly;
@@ -363,14 +373,16 @@ optimize_initial(poly_stage2_t *data, double *pol_norm,
 	best[ROTATE2] = 0;
 	score = 1e100;
 	tol = 1e-3;
-	if (skew_only)
+	if (skew_only) {
 		num_vars = 1;
+		objective = poly_skew_callback;
+	}
 
 	for (i = 0; i < 2; i++) {
 		do {
 			last_score = score;
 			score = minimize(best, num_vars, tol, 40, 
-					poly_rotate_callback, &opt_data);
+					objective, &opt_data);
 
 			for (j = 0; j <= rotate_dim; j++) {
 				double cj = floor(best[ROTATE0 + j] + 0.5);
