@@ -97,6 +97,7 @@ typedef struct {
 #else
 	gzFile *fp;
 	char isCompressed;
+	char is_a_FILE;
 #endif
 	char *name;
 	char *buf;
