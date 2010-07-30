@@ -111,6 +111,17 @@ void savefile_open(savefile_t *s, uint32 flags) {
 		s->isCompressed = 1;
 		s->fp = gzopen(name_gz, open_string);
 		/* fprintf(stderr, "using compressed '%s'\n", name_gz); */
+	} else if (flags & SAVEFILE_APPEND) {
+		/* Unfortunately, append is not intuitive in zlib */
+		s->fp = gzopen(s->name, "r");
+		s->isCompressed = gzdirect(s->fp); /* must determine */
+		gzclose(s->fp);
+		if (s->isCompressed) {
+			s->fp = gzopen(s->name, "a");
+		} else { /* we will have to open a real plain FILE and drag it */
+			s->fp = (gzFile *)fopen(s->name, "a");
+			s->is_a_FILE = 1;
+		}
 	} else
 #endif
 	{
@@ -134,7 +145,11 @@ void savefile_close(savefile_t *s) {
 	CloseHandle(s->file_handle);
 	s->file_handle = INVALID_HANDLE_VALUE;
 #else
-	gzclose(s->fp);
+	if (s->is_a_FILE) {
+		fclose((FILE *)s->fp);
+	} else {
+		gzclose(s->fp);
+	}
 	s->fp = NULL;
 #endif
 }
@@ -227,8 +242,12 @@ void savefile_flush(savefile_t *s) {
 	}
 	FlushFileBuffers(s->file_handle);
 #else
-	gzputs(s->fp, s->buf); /*or: gzprintf(s->fp, "%s", s->buf); */
-	gzflush(s->fp, Z_SYNC_FLUSH); /* should be used rarely */
+	if (s->is_a_FILE) {
+		fprintf((FILE *)s->fp, "%s", s->buf);
+		fflush((FILE *)s->fp);
+	} else {
+		gzputs(s->fp, s->buf);
+	}
 #endif
 
 	s->buf_off = 0;
