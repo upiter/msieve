@@ -93,8 +93,10 @@ void savefile_open(savefile_t *s, uint32 flags) {
 
 #else
 	char *open_string;
+#ifndef NO_ZLIB
 	char name_gz[256];
 	struct stat dummy;
+#endif
 
 	if (flags & SAVEFILE_APPEND)
 		open_string = "a";
@@ -105,6 +107,8 @@ void savefile_open(savefile_t *s, uint32 flags) {
 	else
 		open_string = "w";
 
+	s->is_a_FILE = s->isCompressed = 0;
+
 #ifndef NO_ZLIB
 	sprintf(name_gz, "%s.gz", s->name);
 	if (stat(name_gz, &dummy) == 0) {
@@ -114,18 +118,17 @@ void savefile_open(savefile_t *s, uint32 flags) {
 	} else if (flags & SAVEFILE_APPEND) {
 		/* Unfortunately, append is not intuitive in zlib */
 		s->fp = gzopen(s->name, "r");
-		s->isCompressed = gzdirect(s->fp); /* must determine */
+		s->is_a_FILE = gzdirect(s->fp);	/* direct, so will fopen a FILE */
 		gzclose(s->fp);
-		if (s->isCompressed) {
-			s->fp = gzopen(s->name, "a");
-		} else { /* we will have to open a real plain FILE and drag it */
+		if (s->is_a_FILE) {
 			s->fp = (gzFile *)fopen(s->name, "a");
-			s->is_a_FILE = 1;
+		} else {
+			s->fp = gzopen(s->name, "a");
+			s->isCompressed = 1;
 		}
 	} else
 #endif
 	{
-		s->isCompressed = 0;
 		s->fp = gzopen(s->name, open_string);
 	}
 	if (s->fp == NULL) {
@@ -145,11 +148,7 @@ void savefile_close(savefile_t *s) {
 	CloseHandle(s->file_handle);
 	s->file_handle = INVALID_HANDLE_VALUE;
 #else
-	if (s->is_a_FILE) {
-		fclose((FILE *)s->fp);
-	} else {
-		gzclose(s->fp);
-	}
+	s->is_a_FILE ? fclose((FILE *)s->fp) : gzclose(s->fp);
 	s->fp = NULL;
 #endif
 }
@@ -160,7 +159,7 @@ uint32 savefile_eof(savefile_t *s) {
 #if defined(WIN32) || defined(_WIN64)
 	return (s->buf_off == s->read_size && s->eof);
 #else
-	return gzeof(s->fp);
+	return (s->is_a_FILE ? feof((FILE *)s->fp) : gzeof(s->fp));
 #endif
 }
 
@@ -265,7 +264,7 @@ void savefile_rewind(savefile_t *s) {
 	s->buf_off = 0;
 	s->eof = 0;
 #else
-	gzrewind(s->fp);
+	s->is_a_FILE ? rewind((FILE *)s->fp) : gzrewind(s->fp);
 #endif
 }
 
