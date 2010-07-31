@@ -416,7 +416,7 @@ optimize_initial(poly_stage2_t *data, double *pol_norm,
 	}
 
 	*pol_norm = sqrt(fabs(score));
-#if 1
+#if 0
 	printf("norm %.7e skew %lf\n", *pol_norm, best[SKEWNESS]);
 	for (i = 0; i < 2; i++)
 		gmp_printf("%+Zd\n", c->gmp_lina[i]);

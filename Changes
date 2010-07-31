@@ -36,9 +36,11 @@ Version 1.46:
 		  progression generator
 	- Patches from Serge Batalov: use zlib to allow QS or NFS relations 
 		to be compressed on unix systems
+	- Patch from Brian Gladman: add support for MSVC 10
 	- Reduced the number of clique removal passes when there is a large
 		amount of excess (thanks Greg Childers)
 	- Optimized the power detection code in the main driver (thanks axn)
+	- The demo binary now uses GMP 5.0.1 and GMP-ECM 6.3
 
 
 Version 1.45: 4/21/10
