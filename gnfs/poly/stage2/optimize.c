@@ -278,7 +278,7 @@ static double poly_skew_callback(double *v, void *extra)
 	dpoly_t *apoly = opt->dapoly;
 	double s = v[SKEWNESS];
 
-	return ifs_rectangular(apoly->coeff, apoly->degree, s);
+	return opt->norm_callback(apoly->coeff, apoly->degree, s);
 }
 
 static double poly_rotate_callback(double *v, void *extra)
