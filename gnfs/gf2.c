@@ -271,8 +271,6 @@ static void fill_qcb(msieve_obj *obj, mp_poly_t *apoly,
 }
 
 /*------------------------------------------------------------------*/
-#define MAX_COL_IDEALS 1000
-
 static uint32 combine_relations(la_col_t *col, relation_t *rlist,
 				ideal_t *merged_ideals, uint32 *dense_rows,
 				uint32 num_dense_rows) {

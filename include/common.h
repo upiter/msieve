@@ -267,6 +267,8 @@ typedef struct {
 
 /* A column of the matrix */
 
+#define MAX_COL_IDEALS 1000
+
 typedef struct {
 	uint32 *data;		/* The list of occupied rows in this column */
 	uint32 weight;		/* Number of nonzero entries in this column */

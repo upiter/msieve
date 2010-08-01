@@ -212,8 +212,6 @@ void dump_matrix(msieve_obj *obj,
 }
 
 /*--------------------------------------------------------------------*/
-#define MAX_CYCLE_SIZE 500
-
 void read_cycles(msieve_obj *obj, 
 		uint32 *num_cycles_out, 
 		la_col_t **cycle_list_out, 
@@ -223,7 +221,7 @@ void read_cycles(msieve_obj *obj,
 	uint32 i;
 	uint32 num_cycles;
 	uint32 curr_cycle;
-	uint32 rel_index[MAX_CYCLE_SIZE];
+	uint32 rel_index[MAX_COL_IDEALS];
 	char buf[256];
 	FILE *cycle_fp;
 	FILE *dep_fp = NULL;
@@ -273,7 +271,7 @@ void read_cycles(msieve_obj *obj,
 					(size_t)1, cycle_fp) != 1)
 			break;
 
-		if (num_relations > MAX_CYCLE_SIZE) {
+		if (num_relations > MAX_COL_IDEALS) {
 			printf("error: cycle too large; corrupt file?\n");
 			exit(-1);
 		}
@@ -448,7 +446,7 @@ void read_matrix(msieve_obj *obj,
 
 	for (i = 0; i < ncols; i++) {
 		la_col_t *c;
-		uint32 tmp_col[MAX_CYCLE_SIZE];
+		uint32 tmp_col[MAX_COL_IDEALS];
 		uint32 num;
 		
 		if (colperm != NULL)
@@ -459,7 +457,7 @@ void read_matrix(msieve_obj *obj,
 		/* read the whole column */
 
 		fread(&num, sizeof(uint32), (size_t)1, matrix_fp);
-		if (num + dense_row_words > MAX_CYCLE_SIZE) {
+		if (num + dense_row_words > MAX_COL_IDEALS) {
 			printf("error: column too large; corrupt file?\n");
 			exit(-1);
 		}
