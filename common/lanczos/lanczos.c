@@ -560,7 +560,15 @@ static void dump_lanczos_state(msieve_obj *obj,
 		printf("error: previous checkpoint file not overwritten\n");
 		exit(-1);
 	}
+#if 1
+	{ /* let's keep two latest .chk files? */
+		char buf_bak[256];
+		sprintf(buf_bak, "%s.bak.chk", obj->savefile.name);
+		rename(buf_old, buf_bak);
+	}
+#else
 	remove(buf_old);
+#endif
 	if (rename(buf, buf_old)) {
 		printf("error: cannot update checkpoint file\n");
 		exit(-1);
