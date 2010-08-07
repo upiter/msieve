@@ -564,6 +564,7 @@ static void dump_lanczos_state(msieve_obj *obj,
 	{ /* let's keep two latest .chk files? */
 		char buf_bak[256];
 		sprintf(buf_bak, "%s.bak.chk", obj->savefile.name);
+		remove(buf_bak);
 		rename(buf_old, buf_bak);
 	}
 #else
