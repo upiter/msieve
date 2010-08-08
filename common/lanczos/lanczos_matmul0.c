@@ -679,6 +679,7 @@ void packed_matrix_init(msieve_obj *obj,
 	p->start_col = start_col;
 	p->num_dense_rows = num_dense_rows;
 	p->num_threads = 1;
+	p->vsize = ncols;
 #ifdef HAVE_MPI
 	p->mpi_size = obj->mpi_size;
 	p->mpi_la_row_grid = obj->mpi_la_row_grid;
@@ -724,6 +725,7 @@ void packed_matrix_init(msieve_obj *obj,
 	if (num_threads < 2 || max_nrows < MIN_NROWS_TO_THREAD)
 		num_threads = 1;
 	p->num_threads = num_threads = MIN(num_threads, MAX_THREADS);
+	p->vsize = ncols / p->num_threads;
 
 	/* compute the number of nonzero elements in the submatrix
 	   given to each thread; overestimate the number slightly

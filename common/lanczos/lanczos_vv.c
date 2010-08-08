@@ -161,7 +161,7 @@ void tmul_Nx64_64x64_acc(packed_matrix_t *matrix,
 	uint32 i, j, k;
 	uint64 c[8 * 256];
 	uint64 *tmp_b[MAX_THREADS];
-	uint32 vsize = n / matrix->num_threads;
+	uint32 vsize = matrix->vsize;
 	uint32 off;
 
 	for (i = 0; i < 8; i++) {
@@ -394,7 +394,7 @@ void tmul_64xN_Nx64(packed_matrix_t *matrix,
 	uint32 i, j;
 	uint64 c[8 * 256];
 	uint64 btmp[8 * 256];
-	uint32 vsize = n / matrix->num_threads;
+	uint32 vsize = matrix->vsize;
 	uint32 off;
 #ifdef HAVE_MPI
 	uint64 xytmp[64];
