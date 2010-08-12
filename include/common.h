@@ -289,11 +289,11 @@ uint64 * block_lanczos(msieve_obj *obj,
 			uint32 ncols, uint32 max_ncols, uint32 start_col,
 			la_col_t *cols, uint32 *deps_found);
 
-uint32 count_matrix_nonzero(msieve_obj *obj,
+uint64 count_matrix_nonzero(msieve_obj *obj,
 			uint32 nrows, uint32 num_dense_rows,
 			uint32 ncols, la_col_t *cols);
 
-uint32 reduce_matrix(msieve_obj *obj, uint32 *nrows, 
+uint64 reduce_matrix(msieve_obj *obj, uint32 *nrows, 
 		uint32 num_dense_rows, uint32 *ncols, 
 		la_col_t *cols, uint32 num_excess);
 
@@ -308,7 +308,7 @@ void dump_cycles(msieve_obj *obj, la_col_t *cols, uint32 ncols);
 void dump_matrix(msieve_obj *obj, 
 		uint32 nrows, uint32 num_dense_rows,
 		uint32 ncols, la_col_t *cols,
-		uint32 num_nonzero);
+		uint64 num_nonzero);
 
 void read_matrix(msieve_obj *obj, 
 		uint32 *nrows, uint32 *max_nrows, uint32 *start_row,

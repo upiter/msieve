@@ -23,15 +23,15 @@ typedef struct {
 } mat_block_t;
 
 typedef struct {
-	uint32 sparse_per_proc;
+	uint64 sparse_per_proc;
+	uint64 curr_sparse;
+	uint64 target_sparse;
 	uint32 curr_mpi;
-	uint32 curr_sparse;
-	uint32 target_sparse;
 	uint32 curr_col;
 	mat_block_t idx_entries[MAX_MPI_PROCS + 1];
 } mat_idx_t;
 
-static mat_idx_t * mat_idx_init(uint32 num_sparse) {
+static mat_idx_t * mat_idx_init(uint64 num_sparse) {
 
 	uint32 i;
 	mat_idx_t *m = (mat_idx_t *)xcalloc(MAX_MPI_PROCS,
@@ -170,7 +170,7 @@ void dump_cycles(msieve_obj *obj, la_col_t *cols, uint32 ncols) {
 void dump_matrix(msieve_obj *obj, 
 		uint32 nrows, uint32 num_dense_rows,
 		uint32 ncols, la_col_t *cols,
-		uint32 sparse_weight) {
+		uint64 sparse_weight) {
 
 	uint32 i;
 	uint32 dense_row_words;

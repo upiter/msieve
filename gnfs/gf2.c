@@ -644,7 +644,7 @@ void nfs_solve_linear_system(msieve_obj *obj, mp_t *n) {
 #ifdef HAVE_MPI
 		if (obj->mpi_la_row_rank + obj->mpi_la_col_rank == 0) {
 #endif
-		uint32 sparse_weight;
+		uint64 sparse_weight;
 
 		/* build the initial matrix that is the output from
 		   the filtering */

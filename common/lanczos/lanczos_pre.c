@@ -42,13 +42,13 @@ static int compare_weight(const void *x, const void *y) {
 }
 
 /*------------------------------------------------------------------*/
-uint32 count_matrix_nonzero(msieve_obj *obj,
+uint64 count_matrix_nonzero(msieve_obj *obj,
 			uint32 nrows, uint32 num_dense_rows,
 			uint32 ncols, la_col_t *cols) {
 
 	uint32 i, j;
-	uint32 total_weight;
-	uint32 sparse_weight;
+	uint64 total_weight;
+	uint64 sparse_weight;
 	size_t mem_use;
 
 	mem_use = ncols * (sizeof(la_col_t) +
@@ -72,7 +72,7 @@ uint32 count_matrix_nonzero(msieve_obj *obj,
 	}
 
 	logprintf(obj, "matrix is %u x %u (%.1f MB) with "
-			"weight %u (%5.2f/col)\n", 
+			"weight %" PRIu64 " (%5.2f/col)\n", 
 				nrows, ncols, 
 				(double)mem_use / 1048576,
 				total_weight, 
@@ -197,7 +197,7 @@ static void combine_cliques(uint32 num_dense_rows,
 }
 
 /*------------------------------------------------------------------*/
-uint32 reduce_matrix(msieve_obj *obj, uint32 *nrows, 
+uint64 reduce_matrix(msieve_obj *obj, uint32 *nrows, 
 		uint32 num_dense_rows, uint32 *ncols, 
 		la_col_t *cols, uint32 num_excess) {
 
@@ -225,7 +225,7 @@ uint32 reduce_matrix(msieve_obj *obj, uint32 *nrows,
 	uint32 reduced_rows;
 	uint32 reduced_cols;
 	uint32 prune_cliques = (*ncols >= MIN_POST_LANCZOS_DIM);
-	uint32 sparse_weight;
+	uint64 sparse_weight;
 
 	/* sort the columns in order of increasing weight */
 
