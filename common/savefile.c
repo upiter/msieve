@@ -117,9 +117,18 @@ void savefile_open(savefile_t *s, uint32 flags) {
 		/* fprintf(stderr, "using compressed '%s'\n", name_gz); */
 	} else if (flags & SAVEFILE_APPEND) {
 		/* Unfortunately, append is not intuitive in zlib */
-		s->fp = gzopen(s->name, "r");
-		s->is_a_FILE = gzdirect(s->fp);	/* direct, so will fopen a FILE */
-		gzclose(s->fp);
+		uint8 header[4];
+		FILE *fp;
+		int n;
+
+		if((fp = fopen(s->name, "r"))) {
+			if((n = fread(header, sizeof(uint8), 3, fp)) && 
+		   	   (n != 3 || header[0]!=31 || header[1]!=139 || header[2]!=8))
+				s->is_a_FILE = 1; 
+			/* exists, non-empty and not gzipped,
+			   so we will fopen a FILE to append plainly */
+			fclose(fp);
+		}
 		if (s->is_a_FILE) {
 			s->fp = (gzFile *)fopen(s->name, "a");
 		} else {
