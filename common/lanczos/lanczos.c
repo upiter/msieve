@@ -946,8 +946,12 @@ static uint64 * block_lanczos_core(msieve_obj *obj,
 			tmul_64xN_Nx64(packed_matrix, v0, vnext, d, n);
 			for (i = 0; i < 64; i++) {
 				if (d[i] != (uint64)0) {
-					printf("\nerror: corrupt state, please "
-						"restart from checkpoint\n");
+					logprintf(obj, "error: corrupt state, "
+					       "please restart from "
+					       "checkpoint\n");
+					printf("\nerror: corrupt state, "
+					       "please restart from "
+					       "checkpoint\n");
 #ifdef HAVE_MPI
 					MPI_Abort(MPI_COMM_WORLD, 
 							MPI_ERR_ASSERT);
