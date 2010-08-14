@@ -112,11 +112,24 @@ void savefile_open(savefile_t *s, uint32 flags) {
 #ifndef NO_ZLIB
 	sprintf(name_gz, "%s.gz", s->name);
 	if (stat(name_gz, &dummy) == 0) {
+		if (stat(s->name, &dummy) == 0) {
+			printf("error: both '%s' and '%s' exist. "
+			       "Remove the wrong one and restart\n",
+				s->name, name_gz);
+			exit(-1);
+		}
 		s->isCompressed = 1;
 		s->fp = gzopen(name_gz, open_string);
+		if (s->fp == NULL) {
+			printf("error: cannot open '%s'\n", name_gz);
+			exit(-1);
+		}
 		/* fprintf(stderr, "using compressed '%s'\n", name_gz); */
 	} else if (flags & SAVEFILE_APPEND) {
 		/* Unfortunately, append is not intuitive in zlib */
+		/* Note: the .dat file may be a compressed file   */
+		/*       we are using UNIX philosophy here:       */
+		/*       it is the content, not filename, that matters */
 		uint8 header[4];
 		FILE *fp;
 		int n;
@@ -141,7 +154,7 @@ void savefile_open(savefile_t *s, uint32 flags) {
 		s->fp = gzopen(s->name, open_string);
 	}
 	if (s->fp == NULL) {
-		printf("error: cannot open '%s'", s->name);
+		printf("error: cannot open '%s'\n", s->name);
 		exit(-1);
 	}
 #endif
