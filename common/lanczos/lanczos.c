@@ -1117,6 +1117,22 @@ static uint64 * block_lanczos_core(msieve_obj *obj,
 					       (dim_solved - first_dim_solved); 
 				dump_interval = MAX(dump_interval,
 						   DEFAULT_DUMP_INTERVAL + 1);
+
+				/* make the dump interval a multiple of
+				   the check interval. If this is not done,
+				   eventually we will perform a check and
+				   then less than three iterations later
+				   will get a dump, which performs another
+				   check. The Lanczos recurrence only
+				   guarantees that check vectors more than
+				   three iterations back will be orthogonal
+				   to the current x, so this will cause 
+				   spurious failures */
+
+				dump_interval += check_interval -
+						dump_interval %
+						check_interval;
+
 				logprintf(obj, "checkpointing every %u "
 					   "dimensions\n", dump_interval);
 				MPI_NODE_0_END
@@ -1397,7 +1413,7 @@ uint64 * block_lanczos(msieve_obj *obj,
 	   just to establish timing information */
 
 	dump_interval = 0;
-	if (max_nrows > 1000000) {
+	if (max_nrows > 100000) {
 		dump_interval = DEFAULT_DUMP_INTERVAL;
 		obj->flags |= MSIEVE_FLAG_SIEVING_IN_PROGRESS;
 	}

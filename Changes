@@ -1,7 +1,12 @@
 Version 1.47:
+	- Fixed several bugs in the linear algebra (thanks Serge
+		Batalov and many mersenneforum testers)
+	- Patches from Serge Batalov: fix some portability problems 
+		dealing with the hodgepodge of zlib versions everybody
+		has on their unix systems
 
 
-Version 1.46:
+Version 1.46: 7/31/10
 	The polynomial selection work in this release has benefitted
 	greatly from a week-long visit to Paul Zimmermann's CARAMEL group
 	in Nancy, France
