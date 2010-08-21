@@ -23,6 +23,37 @@ $Id$
 
 #define MAX_P ((uint64)(-1))
 
+typedef struct {
+	uint32 bits; /* in leading rational coeff */
+	double p_scale;
+	uint32 num_pieces; /* for randomization */
+	uint32 small_fb_max;
+	uint32 large_fb_max;
+} sieve_fb_param_t;
+
+static const sieve_fb_param_t sieve_fb_params[] = {
+
+	/* target composite small_p having 2 factors */
+	{ 40, 1.3,  1,   100,  10000},
+	{ 48, 1.2,  1,   250,  25000},
+	{ 56, 1.1,  1,   750,  50000},
+	{ 64, 1.1,  5,  3500, 150000},
+	{ 72, 1.1, 10, 15000, 500000},
+
+	/* . . . . 3 factors */
+	{ 80, 1.1, 25,  1500,  50000},
+	{ 88, 1.1, 50,  3500, 100000},
+	{ 96, 1.1, 50,  7500, 250000},
+	{104, 1.1, 50, 15000, 500000},
+
+	/* . . . . 4 factors */
+	{116, 1.1, 50,  5000, 100000},
+	{128, 1.1, 50, 10000, 250000},
+};
+
+#define NUM_SIEVE_FB_PARAMS (sizeof(sieve_fb_params) / \
+				sizeof(sieve_fb_params[0]))
+
 /*------------------------------------------------------------------------*/
 void
 handle_collision(poly_search_t *poly, uint32 which_poly,
@@ -87,16 +118,17 @@ handle_collision(poly_search_t *poly, uint32 which_poly,
 
 /*------------------------------------------------------------------------*/
 void
-sieve_lattice(msieve_obj *obj, poly_search_t *poly, 
-		uint32 small_fb_max, uint32 large_fb_min, 
-		uint32 large_fb_max, uint32 deadline)
+sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 {
+	uint32 i;
 	lattice_fb_t L;
 	sieve_fb_t sieve_small, sieve_large;
 	uint64 small_p_min, small_p_max;
 	uint64 large_p_min, large_p_max;
+	uint32 small_fb_max, large_fb_max;
+	uint32 num_pieces;
 	uint32 bits;
-	double p_scale = 1.1;
+	double p_scale;
 	uint32 degree = poly->degree;
 	uint32 max_roots;
 	curr_poly_t *middle_poly;
@@ -115,29 +147,20 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly,
 		exit(-1);
 	}
 
-	bits = mpz_sizeinbase(poly->N, 2);
-	switch (degree) {
-	case 4:
-		if (bits < 320)
-			p_scale = 1.3;
-		break;
-
-	case 5:
-		if (bits < 363)
-			p_scale = 1.3;
-		else if (bits < 396)
-			p_scale = 1.2;
-		break;
-
-	case 6:
-		if (bits < 512)
-			p_scale = 1.3;
-		else if (bits < 690)
-			p_scale = 1.2;
-		else
-			p_scale = 1.1;
-		break;
+	bits = log(middle_poly->p_size_max) / M_LN2;
+	for (i = 0; i < NUM_SIEVE_FB_PARAMS; i++) {
+		if (bits < sieve_fb_params[i].bits)
+			break;
 	}
+	if (i == NUM_SIEVE_FB_PARAMS) {
+		printf("error: no factor base parameters for "
+			"%u bit leading rational coefficient\n", bits);
+		exit(-1);
+	}
+	p_scale = sieve_fb_params[i].p_scale;
+	small_fb_max = sieve_fb_params[i].small_fb_max;
+	large_fb_max = sieve_fb_params[i].large_fb_max;
+	num_pieces = sieve_fb_params[i].num_pieces;
 
 	large_p_min = sqrt(middle_poly->p_size_max);
 	if (large_p_min >= MAX_P / p_scale)
@@ -164,7 +187,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly,
 			5, small_fb_max, 
 			1, max_roots);
 	sieve_fb_init(&sieve_large, poly, 
-			large_fb_min, large_fb_max, 
+			small_fb_max + 1, large_fb_max, 
 			1, max_roots);
 
 	L.poly = poly;
@@ -181,43 +204,27 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly,
 		uint64 large_p_min2 = large_p_min;
 		uint64 large_p_max2 = large_p_max;
 
-		if (small_p_min2 > 1.0e8) {
+		if (num_pieces > 1) {
 			uint32 small_piece;
 			uint32 large_piece;
-			uint32 num_small_pieces = 50;
-			uint32 num_large_pieces = 50;
-			
-			if (small_p_max2 < 1.0e9)
-				num_small_pieces = 5;
-			else if (small_p_max2 < 1.0e10)
-				num_small_pieces = 10;
-			else if (small_p_max2 < 1.0e11)
-				num_small_pieces = 25;
 			
 			small_piece = get_rand(&obj->seed1, 
-					&obj->seed2) % num_small_pieces;
+					&obj->seed2) % num_pieces;
 			small_p_min2 = small_p_min + small_piece *
 						((small_p_max - small_p_min) /
-						num_small_pieces);
+						num_pieces);
 			small_p_max2 = small_p_min + (small_piece + 1) *
 						((small_p_max - small_p_min) /
-						num_small_pieces);
-
-			if (large_p_max2 < 1.0e9)
-				num_large_pieces = 5;
-			else if (large_p_max2 < 1.0e10)
-				num_large_pieces = 10;
-			else if (large_p_max2 < 1.0e11)
-				num_large_pieces = 25;
+						num_pieces);
 
 			large_piece = get_rand(&obj->seed1, 
-					&obj->seed2) % num_large_pieces;
+					&obj->seed2) % num_pieces;
 			large_p_min2 = large_p_min + large_piece *
 						((large_p_max - large_p_min) /
-						num_large_pieces);
+						num_pieces);
 			large_p_max2 = large_p_min + (large_piece + 1) *
 						((large_p_max - large_p_min) /
-						num_large_pieces);
+						num_pieces);
 		}
 
 #ifdef HAVE_CUDA

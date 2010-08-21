@@ -194,8 +194,7 @@ search_coeffs_core(msieve_obj *obj, poly_search_t *poly,
 		mpz_set_d(c->mp_sieve_size, c->sieve_size);
 	}
 
-	sieve_lattice(obj, poly, 2000, 2001, 100000, 
-			num_poly * deadline);
+	sieve_lattice(obj, poly, num_poly * deadline);
 }
 
 /*------------------------------------------------------------------------*/

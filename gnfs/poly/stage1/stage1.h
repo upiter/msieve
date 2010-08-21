@@ -277,9 +277,7 @@ handle_collision(poly_search_t *poly, uint32 which_poly,
 
 /* main search routine */
 
-void sieve_lattice(msieve_obj *obj, poly_search_t *poly, 
-			uint32 small_fb_max, uint32 large_fb_min, 
-			uint32 large_fb_max, uint32 deadline);
+void sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline); 
 
 #ifdef __cplusplus
 }
