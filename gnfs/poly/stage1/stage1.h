@@ -161,8 +161,8 @@ typedef struct {
 
 typedef struct {
 	uint32 num_factors;
-	uint32 factors[MAX_P_FACTORS];
-	uint64 products[MAX_P_FACTORS];
+	uint32 factors[MAX_P_FACTORS + 1];
+	uint64 products[MAX_P_FACTORS + 1];
 } p_enum_t;
 
 #define ALGO_SIEVE 1

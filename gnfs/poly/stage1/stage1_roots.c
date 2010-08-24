@@ -302,9 +302,13 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 
 		s->curr_algo = ALGO_ENUM;
 
-		p_enum->num_factors = 1;
-		p_enum->factors[0] = 0;
-		p_enum->products[0] = aprog->aprogs[0].p;
+		/* The first enum factor is fake, and it always takes
+		 * the value of the largest possible factor. Slightly
+		 * ugly, but simplifies the logic somewhat in
+		 * get_next_enum_composite() */
+		p_enum->factors[0] = aprog->num_aprogs - 1;
+		p_enum->products[0] = 1;
+		p_enum->num_factors = 0;
 	}
 	else {
 		p_sieve_t *p_sieve = &s->p_sieve;
@@ -610,44 +614,42 @@ get_next_enum_composite(sieve_fb_t *s, uint32 *num_factors,
 	uint64 p;
 	p_enum_t *p_enum = &s->p_enum;
 	aprog_t *aprogs = s->aprog_data.aprogs;
-	uint32 num_primes = s->aprog_data.num_aprogs;
 	uint32 *enum_facs = p_enum->factors;
 	uint64 *prods = p_enum->products;
 
 	while (1) {
 		uint32 i = p_enum->num_factors;
 
-		if (i < MAX_P_FACTORS &&
-		    prods[i - 1] <= aprogs[enum_facs[i - 1]].cofactor_max) {
+		if (prods[i] <= aprogs[0].cofactor_max &&
+		    i < MAX_P_FACTORS) {
 			/* can fit another factor */
 
-			enum_facs[i] = enum_facs[i - 1];
-			p = prods[i - 1] * aprogs[enum_facs[i]].p;
+			p = prods[i] * aprogs[0].p;
+			enum_facs[++i] = 0;
 		}
 		else {
 			/* can't fit any more factors, so increment factors */
 
-			while (i--) {
-				p = (i == 0) ? 1 : prods[i - 1];
+			do {
+				p = prods[i - 1];
 
-				if (++enum_facs[i] < num_primes &&
+				if (++enum_facs[i] <= enum_facs[i - 1] &&
 				    p <= aprogs[enum_facs[i]].cofactor_max) {
 
 					p *= aprogs[enum_facs[i]].p;
 					break;
 				}
-			}
+			} while (--i);
 
-			if (i >= MAX_P_FACTORS) /* can't increment factors */
+			if (i == 0) /* can't increment factors */
 				break;
 		}
 		prods[i] = p;
-		p_enum->num_factors = *num_factors = i + 1;
+		p_enum->num_factors = *num_factors = i;
 
 		if (p >= s->p_min) {
-			do {
-				factors[i] = enum_facs[i];
-			} while (i--);
+			while (i--)
+				factors[i] = enum_facs[i + 1];
 
 			return p;
 		}
