@@ -835,7 +835,8 @@ static uint64 * block_lanczos_core(msieve_obj *obj,
 		next_dump = (dim_solved / dump_interval + 1) * 
 					dump_interval;
 		check_interval = 10000;
-		next_check = (dim_solved / check_interval + 1) * 
+		/* avoid next_check within 4*64 dim + some cushion */
+		next_check = ((dim_solved + 400) / check_interval + 1) * 
 					check_interval;
 	}
 
