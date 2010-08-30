@@ -165,9 +165,6 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 	aprog_list_t *aprog = &s->aprog_data;
 	p_sieve_t *p_sieve = &s->p_sieve;
 
-	if (factor_max <= factor_min)
-		return;
-
 	memset(s, 0, sizeof(sieve_fb_t));
 	s->degree = poly->degree;
 
@@ -181,6 +178,9 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 		mpz_init(s->accum[i]);
 	for (i = 0; i < MAX_ROOTS; i++)
 		mpz_init(s->roots[i]);
+
+	if (factor_max <= factor_min)
+		return;
 
 	i = 500;
 	aprog->num_aprogs = 0;
@@ -287,6 +287,7 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 {
 	uint32 i;
 	aprog_list_t *aprog = &s->aprog_data;
+	uint32 num_aprogs = aprog->num_aprogs;
 
 	free_prime_sieve(&s->p_prime);
 
@@ -296,11 +297,33 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 	s->p_max = p_max;
 	s->num_roots_min = num_roots_min;
 	s->num_roots_max = num_roots_max;
+	s->avail_algos = 0;
 
-	if (p_max > 10000000 && aprog->num_aprogs > 0) {
+	if (p_min < P_PRIME_LIMIT &&
+	    p_max < P_PRIME_LIMIT &&
+	    s->degree >= num_roots_min) {
+		uint32 last_p;
+
+		if (num_aprogs == 0)
+			last_p = 0;
+		else
+			last_p = aprog->aprogs[num_aprogs - 1].p;
+
+		if (p_max > last_p) {
+			s->avail_algos |= ALGO_PRIME;
+
+			init_prime_sieve(&s->p_prime, MAX(p_min, last_p + 1),
+					 (uint32)p_max);
+		}
+	}
+
+	if (num_aprogs == 0)
+		return;
+
+	if (p_max > 10000000) {
 		p_enum_t *p_enum = &s->p_enum;
 
-		s->curr_algo = ALGO_ENUM;
+		s->avail_algos |= ALGO_ENUM;
 
 		/* The first enum factor is fake, and it always takes
 		 * the value of the largest possible factor. Slightly
@@ -314,7 +337,7 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 		p_sieve_t *p_sieve = &s->p_sieve;
 		sieve_prime_list_t *list;
 
-		s->curr_algo = ALGO_SIEVE;
+		s->avail_algos |= ALGO_SIEVE;
 		p_sieve->sieve_start = p_min;
 
 		list = &p_sieve->good_primes;
@@ -671,11 +694,11 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 	uint32 found;
 
 	while (1) {
+		found = 0;
 
-		if (s->curr_algo == ALGO_ENUM || 
-		    s->curr_algo == ALGO_SIEVE) {
+		if (s->avail_algos & (ALGO_ENUM | ALGO_SIEVE)) {
 
-			if (s->curr_algo == ALGO_ENUM)
+			if (s->avail_algos & ALGO_ENUM)
 				p = get_next_enum_composite(s, &num_factors,
 								factors);
 			else
@@ -683,24 +706,12 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 							factors);
 
 			if (p == P_SEARCH_DONE) {
-				uint32 last_p = s->aprog_data.aprogs[
-						s->aprog_data.num_aprogs-1].p;
+				s->avail_algos &= ~(ALGO_ENUM | ALGO_SIEVE);
 
-				if (s->p_max >= P_PRIME_LIMIT ||
-				    s->p_min >= P_PRIME_LIMIT ||
-				    last_p >= s->p_max ||
-				    s->num_roots_min > s->degree) {
-					break;
-				}
-
-				s->curr_algo = ALGO_PRIME;
-				init_prime_sieve(&s->p_prime, 
-						MAX(s->p_min, last_p + 1),
-						(uint32)s->p_max);
 				continue;
 			}
 
-			for (i = found = 0; i < poly->num_poly; i++) {
+			for (i = 0; i < poly->num_poly; i++) {
 				num_roots = get_composite_roots(s, 
 							poly->batch + i, i, p, 
 							num_factors, factors,
@@ -717,19 +728,17 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 				lift_roots(s, poly->batch + i, p, num_roots);
 				callback(p, num_roots, i, s->roots, extra);
 			}
-
-			if (found > 0)
-				break;
 		}
-		else {
+		else if (s->avail_algos & ALGO_PRIME) {
 			p = get_next_prime(&s->p_prime);
 
 			if (p >= s->p_max) {
-				p = P_SEARCH_DONE;
-				break;
+				s->avail_algos &= ~ALGO_PRIME;
+
+				continue;
 			}
 
-			for (i = found = 0; i < poly->num_poly; i++) {
+			for (i = 0; i < poly->num_poly; i++) {
 
 				uint32 roots[MAX_POLYSELECT_DEGREE];
 
@@ -751,11 +760,14 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 				lift_roots(s, poly->batch + i, p, num_roots);
 				callback(p, num_roots, i, s->roots, extra);
 			}
-
-			if (found > 0)
-				break;
 		}
+		else {
+			break;
+		}
+
+		if (found > 0)
+			return p;
 	}
 
-	return p;
+	return P_SEARCH_DONE;
 }

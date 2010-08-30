@@ -165,14 +165,14 @@ typedef struct {
 	uint64 products[MAX_P_FACTORS + 1];
 } p_enum_t;
 
-#define ALGO_SIEVE 1
-#define ALGO_ENUM  2
-#define ALGO_PRIME 3
+#define ALGO_SIEVE 0x1
+#define ALGO_ENUM  0x2
+#define ALGO_PRIME 0x4
 
 typedef struct {
 	uint32 num_roots_min;
 	uint32 num_roots_max;
-	uint32 curr_algo;
+	uint32 avail_algos;
 	uint32 degree;
 	uint64 p_min, p_max;
 
