@@ -329,11 +329,11 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 		 * the value of the largest possible factor. Slightly
 		 * ugly, but simplifies the logic somewhat in
 		 * get_next_enum_composite() */
-		p_enum->factors[0] = aprog->num_aprogs - 1;
+		p_enum->factors[0] = num_aprogs - 1;
 		p_enum->products[0] = 1;
 		p_enum->num_factors = 0;
 
-		for (i = 0; i < aprog->num_aprogs; i++) {
+		for (i = 0; i < num_aprogs; i++) {
 			aprog_t *a = aprog->aprogs + i;
 
 			a->cofactor_max = p_max / a->p;
