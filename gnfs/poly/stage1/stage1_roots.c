@@ -332,6 +332,12 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 		p_enum->factors[0] = aprog->num_aprogs - 1;
 		p_enum->products[0] = 1;
 		p_enum->num_factors = 0;
+
+		for (i = 0; i < aprog->num_aprogs; i++) {
+			aprog_t *a = aprog->aprogs + i;
+
+			a->cofactor_max = p_max / a->p;
+		}
 	}
 	else {
 		p_sieve_t *p_sieve = &s->p_sieve;
@@ -365,12 +371,6 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 		}
 
 		sieve_run(s);
-	}
-
-	for (i = 0; i < aprog->num_aprogs; i++) {
-		aprog_t *a = aprog->aprogs + i;
-
-		a->cofactor_max = p_max / a->p;
 	}
 }
 
