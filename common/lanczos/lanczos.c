@@ -1414,7 +1414,7 @@ uint64 * block_lanczos(msieve_obj *obj,
 	   just to establish timing information */
 
 	dump_interval = 0;
-	if (max_nrows > 100000) {
+	if (max_nrows > 1000000) {
 		dump_interval = DEFAULT_DUMP_INTERVAL;
 		obj->flags |= MSIEVE_FLAG_SIEVING_IN_PROGRESS;
 	}
