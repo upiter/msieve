@@ -153,6 +153,14 @@ void hashtable_close(hashtable_t *h);
 void hashtable_free(hashtable_t *h);
 size_t hashtable_sizeof(hashtable_t *h);
 
+static INLINE void hashtable_reset(hashtable_t *h) {
+	h->match_array_size = 1;
+	h->num_used = 0;
+
+	memset(h->hashtable, 0, 
+		sizeof(uint32) << h->log2_hashtable_size);
+}
+
 static INLINE uint32 hashtable_get_num(hashtable_t *h) {
 	return h->match_array_size - 1;
 }
