@@ -71,13 +71,13 @@ uint64 count_matrix_nonzero(msieve_obj *obj,
 		}
 	}
 
-	logprintf(obj, "matrix is %u x %u (%.1f MB) with "
-			"weight %" PRIu64 " (%5.2f/col)\n", 
+	logprintf(obj, "matrix is %u x %u (%.1lf MB) with "
+			"weight %" PRIu64 " (%5.2lf/col)\n", 
 				nrows, ncols, 
 				(double)mem_use / 1048576,
 				total_weight, 
 				(double)total_weight / ncols);
-	logprintf(obj, "sparse part has weight %u (%5.2f/col)\n", 
+	logprintf(obj, "sparse part has weight %" PRIu64 " (%5.2lf/col)\n", 
 				sparse_weight, 
 				(double)sparse_weight / ncols);
 	return sparse_weight;
