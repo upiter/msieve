@@ -1315,7 +1315,7 @@ uint64 * block_lanczos(msieve_obj *obj,
 
 	if (max_ncols <= max_nrows) {
 		logprintf(obj, "matrix needs more columns than rows; "
-                 "try adding 2-3% more relations\n");
+                 "try adding 2-3%% more relations\n");
 		exit(-1);
 	}
 
