@@ -185,10 +185,12 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 
 	sieve_fb_init(&sieve_small, poly, 
 			5, small_fb_max, 
-			1, max_roots);
+			1, max_roots,
+			0);
 	sieve_fb_init(&sieve_large, poly, 
 			small_fb_max + 1, large_fb_max, 
-			1, max_roots);
+			1, max_roots,
+			0);
 
 	L.poly = poly;
 	L.start_time = time(NULL);

@@ -173,6 +173,7 @@ typedef struct {
 	uint32 num_roots_min;
 	uint32 num_roots_max;
 	uint32 avail_algos;
+	uint32 fb_only;
 	uint32 degree;
 	uint64 p_min, p_max;
 
@@ -191,7 +192,8 @@ typedef struct {
 
 void sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 			uint32 factor_min, uint32 factor_max,
-			uint32 fb_roots_min, uint32 fb_roots_max);
+			uint32 fb_roots_min, uint32 fb_roots_max,
+			uint32 fb_only);
 
 void sieve_fb_free(sieve_fb_t *s);
 

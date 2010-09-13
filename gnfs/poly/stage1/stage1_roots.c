@@ -158,7 +158,8 @@ sieve_add_aprog(sieve_fb_t *s, poly_search_t *poly,
 void
 sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 		uint32 factor_min, uint32 factor_max,
-		uint32 fb_roots_min, uint32 fb_roots_max)
+		uint32 fb_roots_min, uint32 fb_roots_max,
+		uint32 fb_only)
 {
 	uint32 i, j;
 	prime_sieve_t prime_sieve;
@@ -167,6 +168,7 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 
 	memset(s, 0, sizeof(sieve_fb_t));
 	s->degree = poly->degree;
+	s->fb_only = fb_only;
 
 	mpz_init(s->p);
 	mpz_init(s->p2);
@@ -299,7 +301,8 @@ sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
 	s->num_roots_max = num_roots_max;
 	s->avail_algos = 0;
 
-	if (p_min < P_PRIME_LIMIT &&
+	if (s->fb_only == 0 &&
+	    p_min < P_PRIME_LIMIT &&
 	    p_max < P_PRIME_LIMIT &&
 	    s->degree >= num_roots_min) {
 		uint32 last_p;
