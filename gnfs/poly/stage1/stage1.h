@@ -30,7 +30,9 @@ extern "C" {
 #error "supported poly degree must be at least 6"
 #endif
 
-#define MULTIPLIER 60	/* 2*2*3*5 */
+#define HIGH_COEFF_MULTIPLIER 12
+#define HIGH_COEFF_PRIME_LIMIT 100
+#define HIGH_COEFF_POWER_LIMIT 2
 
 /* 96-bit integers */
 

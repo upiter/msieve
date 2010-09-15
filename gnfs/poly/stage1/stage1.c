@@ -202,7 +202,8 @@ static void
 search_coeffs(msieve_obj *obj, poly_search_t *poly, 
 		bounds_t *bounds, uint32 deadline)
 {
-	mpz_t curr_high_coeff;
+	uint32 i, j, p;
+	mpz_t curr_high_coeff, tmp;
 	double dn = mpz_get_d(poly->N);
 	uint32 digits = mpz_sizeinbase(poly->N, 10);
 	double start_time = get_cpu_time();
@@ -226,21 +227,20 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly,
 	printf("deadline: %u seconds per coefficient\n", deadline_per_coeff);
 
 	mpz_init(curr_high_coeff);
-	mpz_fdiv_q_ui(curr_high_coeff, 
-			bounds->gmp_high_coeff_begin, 
-			(mp_limb_t)MULTIPLIER);
+	mpz_init(tmp);
+	mpz_sub_ui(curr_high_coeff, bounds->gmp_high_coeff_begin, (mp_limb_t)1);
+	mpz_fdiv_q_ui(curr_high_coeff, curr_high_coeff, 
+			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 	mpz_mul_ui(curr_high_coeff, curr_high_coeff, 
-			(mp_limb_t)MULTIPLIER);
-	if (mpz_cmp(curr_high_coeff, 
-			bounds->gmp_high_coeff_begin) < 0) {
-		mpz_add_ui(curr_high_coeff, curr_high_coeff, 
-				(mp_limb_t)MULTIPLIER);
-	}
+			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 
 	poly->num_poly = 0;
 
 	while (1) {
 		curr_poly_t *c = poly->batch + poly->num_poly;
+
+		mpz_add_ui(curr_high_coeff, curr_high_coeff,
+				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 
 		if (mpz_cmp(curr_high_coeff, 
 					bounds->gmp_high_coeff_end) > 0) {
@@ -251,6 +251,23 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly,
 			}
 			break;
 		}
+
+		mpz_divexact_ui(tmp, curr_high_coeff, HIGH_COEFF_MULTIPLIER);
+		for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
+			p += prime_delta[i];
+
+			if (p > HIGH_COEFF_PRIME_LIMIT)
+				break;
+
+			for (j = 0; j < HIGH_COEFF_POWER_LIMIT; j++) {
+				if (mpz_divisible_ui_p(tmp, (mp_limb_t)p))
+					mpz_divexact_ui(tmp, tmp, p);
+				else
+					break;
+			}
+		}
+		if (mpz_cmp_ui(tmp, (mp_limb_t)1))
+			continue;
 
 		stage1_bounds_update(bounds, dn, 
 					mpz_get_d(curr_high_coeff),
@@ -276,9 +293,6 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly,
 			}
 			poly->num_poly = 0;
 		}
-
-		mpz_add_ui(curr_high_coeff, curr_high_coeff, 
-				(mp_limb_t)MULTIPLIER);
 	}
 
 	mpz_clear(curr_high_coeff);
