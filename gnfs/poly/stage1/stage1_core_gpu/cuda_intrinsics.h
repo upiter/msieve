@@ -15,6 +15,10 @@ $Id$
 #if defined(__CUDACC__) && !defined(CUDA_INTRINSICS_H)
 #define CUDA_INTRINSICS_H
 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 200
+#define HAVE_FERMI
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -215,7 +219,11 @@ wide_sqr48(uint64 a)
 	prod_hi = __umulhi(a0, a1);
 	acc += 2 * ((uint64)prod_hi << 32 | prod_lo);
 	res.w[1] = (uint32)acc;
+#ifdef HAVE_FERMI
+	res.w[2] = (uint32)(acc >> 32) + a1 * a1;
+#else
 	res.w[2] = (uint32)(acc >> 32) + __umul24(a1, a1);
+#endif
 
 	return res;
 }
@@ -439,6 +447,9 @@ modinv64(uint64 a, uint64 p) {
 }
 
 /*------------------- Montgomery arithmetic --------------------------*/
+#ifdef HAVE_FERMI
+#define montmul48(a,b,n,w) montmul64(a,b,n,w)
+#else
 __device__ uint64 
 montmul48(uint64 a, uint64 b,
 		uint64 n, uint32 w) {
@@ -497,6 +508,7 @@ montmul48(uint64 a, uint64 b,
 	else
 		return r;
 }
+#endif
 
 __device__ uint64 
 montmul64(uint64 a, uint64 b,
@@ -562,6 +574,9 @@ montmul64(uint64 a, uint64 b,
 		return r;
 }
 
+#ifdef HAVE_FERMI
+#define montmul72(a,b,n,w) montmul96(a,b,n,w)
+#else
 __device__ uint96 
 montmul72(uint96 a, uint96 b,
 		uint96 n, uint32 w) {
@@ -671,6 +686,7 @@ montmul72(uint96 a, uint96 b,
 	else
 		return r;
 }
+#endif
 
 __device__ uint96 
 montmul96(uint96 a, uint96 b,
@@ -1040,6 +1056,9 @@ montmul128(uint128 a, uint128 b,
 
 /*------------------ Initializing Montgomery arithmetic -----------------*/
 
+#ifdef HAVE_FERMI
+#define montmul24_w(n) montmul32_w(n)
+#else
 __device__ uint32 
 montmul24_w(uint32 n) {
 
@@ -1048,6 +1067,7 @@ montmul24_w(uint32 n) {
 	res = __umul24(res, 2 + __umul24(n, res));
 	return __umul24(res, 2 + __umul24(n, res));
 }
+#endif
 
 __device__ uint32 
 montmul32_w(uint32 n) {
@@ -1059,6 +1079,9 @@ montmul32_w(uint32 n) {
 	return res * (2 + n * res);
 }
 
+#ifdef HAVE_FERMI
+#define montmul48_r(n,w) montmul64_r(n,w)
+#else
 __device__ uint64 
 montmul48_r(uint64 n, uint32 w) {
 
@@ -1085,6 +1108,7 @@ montmul48_r(uint64 n, uint32 w) {
 	res = montmul48(res, res, n, w);
 	return montmul48(res, res, n, w);
 }
+#endif
 
 __device__ uint64 
 montmul64_r(uint64 n, uint32 w) {
@@ -1114,6 +1138,9 @@ montmul64_r(uint64 n, uint32 w) {
 	return montmul64(res, res, n, w);
 }
 
+#ifdef HAVE_FERMI
+#define montmul72_r(n,w) montmul96_r(n,w)
+#else
 __device__ uint96 
 montmul72_r(uint96 n, uint32 w) {
 
@@ -1177,6 +1204,7 @@ montmul72_r(uint96 n, uint32 w) {
 	res = montmul72(res, res, n, w);
 	return montmul72(res, res, n, w);
 }
+#endif
 
 __device__ uint96 
 montmul96_r(uint96 n, uint32 w) {
