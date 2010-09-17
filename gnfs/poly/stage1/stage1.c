@@ -252,7 +252,8 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly,
 			break;
 		}
 
-		mpz_divexact_ui(tmp, curr_high_coeff, HIGH_COEFF_MULTIPLIER);
+		mpz_divexact_ui(tmp, curr_high_coeff, 
+					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 		for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
 			p += prime_delta[i];
 
@@ -261,7 +262,7 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly,
 
 			for (j = 0; j < HIGH_COEFF_POWER_LIMIT; j++) {
 				if (mpz_divisible_ui_p(tmp, (mp_limb_t)p))
-					mpz_divexact_ui(tmp, tmp, p);
+					mpz_divexact_ui(tmp, tmp, (mp_limb_t)p);
 				else
 					break;
 			}
