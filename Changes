@@ -1,9 +1,14 @@
-Version 1.47:
+Version 1.47: 8/18/10
 	- Fixed several bugs in the linear algebra (thanks Serge
 		Batalov and many mersenneforum testers)
+	- Patches from Jayson King: tune some of the choices for NFS
+		polynomial selection
 	- Patches from Serge Batalov: fix some portability problems 
 		dealing with the hodgepodge of zlib versions everybody
 		has on their unix systems
+	- Added a little optimization for Fermi GPUs
+	- Patch from Brian Gladman: fix bad printf format string
+	- Fixed other format string problems introduced in v1.46
 
 
 Version 1.46: 7/31/10
