@@ -266,9 +266,11 @@ all:
 	@echo "pick a target:"
 	@echo "x86       32-bit Intel/AMD systems (required if gcc used)"
 	@echo "x86_64    64-bit Intel/AMD systems (required if gcc used)"
+	@echo "          (uncomment the second OPT_FLAGS in the Makefile)"
 	@echo "generic   portable code"
 	@echo "add 'ECM=1' if GMP-ECM is available (enables ECM)"
 	@echo "add 'CUDA=1' for Nvidia graphics card support"
+	@echo "             (add NVCCFLAGS=\"-arch sm_20\" for Fermi tuning)"
 	@echo "add 'MPI=1' for parallel processing using MPI"
 	@echo "add 'NO_ZLIB=1' if you don't have zlib"
 
@@ -391,4 +393,4 @@ mpqs/sieve_core_k8_64_64k.qo: mpqs/sieve_core.c $(COMMON_HDR) $(QS_HDR)
 # GPU build rules
 
 %.ptx: gnfs/poly/stage1/stage1_core_gpu/%.cu $(NFS_GPU_HDR)
-	nvcc -ptx -o $@ $<
+	nvcc $(NVCCFLAGS) -ptx -o $@ $<
