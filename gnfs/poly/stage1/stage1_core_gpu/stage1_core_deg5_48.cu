@@ -19,7 +19,11 @@ $Id$
 extern "C" {
 #endif
 
+#if __CUDA_ARCH__ >= 200
+#define SHARED_BATCH_SIZE 148
+#else
 #define SHARED_BATCH_SIZE 48
+#endif
 
 typedef struct {
 	uint32 p[SHARED_BATCH_SIZE];
