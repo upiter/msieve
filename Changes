@@ -1,4 +1,7 @@
-Version 1.47: 8/18/10
+Version 1.48:
+
+
+Version 1.47: 9/18/10
 	- Fixed several bugs in the linear algebra (thanks Serge
 		Batalov and many mersenneforum testers)
 	- Patches from Jayson King: tune some of the choices for NFS
