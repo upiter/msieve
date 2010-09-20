@@ -139,9 +139,6 @@
     <ClInclude Include="..\..\gnfs\sieve\sieve.h">
       <Filter>Source Files\sieve</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\ap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\batch_factor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -152,9 +149,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\ddcomplex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\fastmult.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\common\filter\filter.h">
@@ -173,9 +167,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\mp_int.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\msieve.h">
