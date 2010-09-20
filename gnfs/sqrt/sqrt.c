@@ -361,11 +361,13 @@ uint32 nfs_find_factors(msieve_obj *obj, mp_t *n,
 		   to be valid */
 
 		if (num_relations % 2) {
-			/* the number of relations in the dependency must
-			   be even, because each relation represents a
-			   degree-1 polynomial, and the product of these
-			   relations will not have a square root unless the
-			   degree of the product is even */
+			/* the LA is supposed to force the number of 
+			   relations in the dependency to be even. 
+			   This isn't necessary if both NFS polynomials 
+			   are monic, since the corrections below that 
+			   need the number of relations are avoided. 
+			   But only a small minority of NFS jobs have 
+			   both polynomials monic. */
 			logprintf(obj, "number of relations is not even\n");
 			nfs_free_relation_list(rlist, num_relations);
 			continue;
