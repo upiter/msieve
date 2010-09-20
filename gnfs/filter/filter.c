@@ -203,35 +203,18 @@ static uint32 do_partial_filtering(msieve_obj *obj, filter_t *filter,
 		if ((relations_needed = do_merge(obj, filter, merge)) > 0)
 			return relations_needed;
 
-		/* retry the filtering with more aggressive
-		   settings if the clique max weight was 
-		   small and the largest number of relations 
-		   in a relation set is close to the clique 
-		   max weight. This is an indication that the 
-		   clique processing ignored too many ideals 
-		   that the merge phase should have seen */
+		/* accept the collection of generated cycles 
+		   if the matrix they form is dense enough or
+		   max_weight has been incremented enough */
 
-		if (filter->max_ideal_weight < 18 &&
-		    merge->max_relations > filter->max_ideal_weight - 3) {
-			logprintf(obj, "matrix can improve, retrying\n");
-			filter_free_relsets(merge);
-			continue;
-		}
-
-		/* do not accept the collection of generated cycles 
-		   unless the matrix they form is dense enough */
-
-		if (merge->avg_cycle_weight > 63.0)
+		if (merge->avg_cycle_weight > 63.0 ||
+		    max_weight >= MAX_KEEP_WEIGHT - 5) 
 			break;
 
 		logprintf(obj, "matrix not dense enough, retrying\n");
 		filter_free_relsets(merge);
 	}
 
-	if (max_weight >= MAX_KEEP_WEIGHT) {
-		printf("error: too many merge attempts\n");
-		exit(-1);
-	}
 	return 0;
 }
 
