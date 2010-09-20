@@ -278,56 +278,55 @@ void core_64xN_Nx64(uint64 *x, uint64 *c,
 			:"%eax", "%ecx", "%mm0", "%mm1", "memory");
 
 #elif defined(MSC_ASM32A)
-	i = 0;
 	ASM_M
 	{
-		push	ebx
-		mov	edi,y
-		lea	ebx,c
-		mov	esi,x
-		mov	ecx,i
+		push    ebx
+		mov	    edi,c
+		mov	    esi,x
+		mov     ebx,y
+		xor	    ecx,ecx
 		align 16
-	L0:	movq	mm0,[edi+ecx*8]
-		mov	eax,[esi+ecx*8]
-		inc	ecx
+    L0:	movq	mm0,[ebx+ecx*8]
+		mov	    eax,[esi+ecx*8]
+		inc	    ecx
 		movzx	edx,al
 		movq	mm1,mm0
-		pxor	mm1,[ebx+edx*8]
-		movq	[ebx+edx*8],mm1
+		pxor	mm1,[edi+edx*8]
+		movq	[edi+edx*8],mm1
 		movzx	edx,ah
 		movq	mm1, mm0
-		pxor	mm1,[1*256*8+ebx+edx*8]
-		movq	[1*256*8+ebx+edx*8],mm1
-		shr	eax,16
+		pxor	mm1,[1*256*8+edi+edx*8]
+		movq	[1*256*8+edi+edx*8],mm1
+		shr	    eax,16
 		movzx	edx,al
 		movq	mm1,mm0
-		pxor	mm1,[2*256*8+ebx+edx*8]
-		movq	[2*256*8+ebx+edx*8],mm1
+		pxor	mm1,[2*256*8+edi+edx*8]
+		movq	[2*256*8+edi+edx*8],mm1
 		movzx	edx,ah
 		movq	mm1,mm0
-		pxor	mm1,[3*256*8+ebx+edx*8]
-		movq	[3*256*8+ebx+edx*8],mm1
-		mov	eax,[4-8+esi+ecx*8]
+		pxor	mm1,[3*256*8+edi+edx*8]
+		movq	[3*256*8+edi+edx*8],mm1
+		mov	    eax,[4-8+esi+ecx*8]
 		movzx	edx,al
 		movq	mm1,mm0
-		pxor	mm1,[4*256*8+ebx+edx*8]
-		movq	[4*256*8+ebx+edx*8],mm1
+		pxor	mm1,[4*256*8+edi+edx*8]
+		movq	[4*256*8+edi+edx*8],mm1
 		movzx	edx,ah
-		shr	eax,16
-		cmp	ecx,n
+		shr	    eax,16
+		cmp	    ecx,n
 		movq	mm1,mm0
-		pxor	mm1,[5*256*8+ebx+edx*8]
-		movq	[5*256*8+ebx+edx*8],mm1
+		pxor	mm1,[5*256*8+edi+edx*8]
+		movq	[5*256*8+edi+edx*8],mm1
 		movzx	edx,al
 		movq	mm1,mm0
-		pxor	mm1,[6*256*8+ebx+edx*8]
-		movq	[6*256*8+ebx+edx*8],mm1
+		pxor	mm1,[6*256*8+edi+edx*8]
+		movq	[6*256*8+edi+edx*8],mm1
 		movzx	edx,ah
-		pxor	mm0,[7*256*8+ebx+edx*8]
-		movq	[7*256*8+ebx+edx*8],mm0
-		jne	L0
-		emms
-		pop	ebx
+		pxor	mm0,[7*256*8+edi+edx*8]
+		movq	[7*256*8+edi+edx*8],mm0
+		jne	    L0
+		emms 
+		pop     ebx
 	}
 #else
 
