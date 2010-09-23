@@ -531,7 +531,7 @@ uint32 analyze_poly_murphy(integrate_t *integ_aux, dickman_t *dickman_aux,
 			uint32 *num_real_roots) {
 
 	/* Given the skewness and root score for an NFS polynomial
-	   pair, calculate the probability that an anverage sieve 
+	   pair, calculate the probability that an average sieve 
 	   value in the sieving region has all rational (resp. algebraic)
 	   factors less than rfb_limit (resp. afb_limit) 
 	 
