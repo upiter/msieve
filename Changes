@@ -1,4 +1,5 @@
 Version 1.48:
+	- Added a fix to prevent potential overflow in the hashtable code
 
 
 Version 1.47: 9/18/10
