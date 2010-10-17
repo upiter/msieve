@@ -1,5 +1,6 @@
 Version 1.48:
 	- Added a fix to prevent potential overflow in the hashtable code
+	- Increased the maximum input size to 1024 bits
 
 
 Version 1.47: 9/18/10

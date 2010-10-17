@@ -32,7 +32,7 @@ extern "C" {
    no support in C for 128-bit data types, so that 64x64 multiplies
    and 128/64 divides would need assembly language support */
 
-#define MAX_MP_WORDS 30
+#define MAX_MP_WORDS 32
 
 #define MP_RADIX 4294967296.0
 
