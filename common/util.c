@@ -171,12 +171,21 @@ void set_idle_priority(void) {
 	#include <intrin.h>
 	#define HAS_CPUID
 	#define CPUID(code, a, b, c, d)	\
-	{	uint32 _z[4]; 		\
-		__cpuid(_z, code); 	\
-		a = _z[0];    		\
-		b = _z[1]; 		\
-		c = _z[2]; 		\
-		d = _z[3];		\
+	{	uint32 _z[4]; \
+		__cpuid(_z, code); \
+		a = _z[0]; \
+		b = _z[1]; \
+		c = _z[2]; \
+		d = _z[3]; \
+	}
+	#define HAS_CPUID2
+	#define CPUID2(code1, code2, a, b, c, d) \
+	{	uint32 _z[4]; \
+        __cpuidex(_z, code1, code2); \
+		a = _z[0]; \
+		b = _z[1]; \
+		c = _z[2]; \
+		d = _z[3]; \
 	}
 #endif
 
