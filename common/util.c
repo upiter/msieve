@@ -122,6 +122,26 @@ void set_idle_priority(void) {
 #define DEFAULT_L1_CACHE_SIZE (32 * 1024)
 #define DEFAULT_L2_CACHE_SIZE (512 * 1024)
 
+typedef union {
+	uint32 data;
+
+	struct {
+		uint32 cache_type : 5;
+		uint32 cache_level : 3;
+		uint32 i_dont_care : 24;
+	} s;
+} cache_type_t;
+
+typedef union {
+	uint32 data;
+
+	struct {
+		uint32 line_size : 12;
+		uint32 num_lines : 10;
+		uint32 ways : 10;
+	} s;
+} cache_size_t;
+
 /* macro to execute the x86 CPUID instruction. Note that
    this is more verbose than it needs to be; Intel Macs reserve
    the EBX or RBX register for the PIC base address, and so
@@ -137,7 +157,6 @@ void set_idle_priority(void) {
 			"movl %%esi, %%ebx   \n\t"		\
 			:"=a"(a), "=m"(b), "=c"(c), "=d"(d) 	\
 			:"0"(code) : "%esi")
-	#define HAS_CPUID2
 	#define CPUID2(code1, code2, a, b, c, d) 			\
 		ASM_G volatile(					\
 			"movl %%ebx, %%esi   \n\t"		\
@@ -157,7 +176,6 @@ void set_idle_priority(void) {
 			"movq %%rsi, %%rbx   \n\t"		\
 			:"=a"(a), "=m"(b), "=c"(c), "=d"(d) 	\
 			:"0"(code) : "%rsi")
-	#define HAS_CPUID2
 	#define CPUID2(code1, code2, a, b, c, d)		\
 		ASM_G volatile(					\
 			"movq %%rbx, %%rsi   \n\t"		\
@@ -178,10 +196,9 @@ void set_idle_priority(void) {
 		c = _z[2]; \
 		d = _z[3]; \
 	}
-	#define HAS_CPUID2
 	#define CPUID2(code1, code2, a, b, c, d) \
 	{	uint32 _z[4]; \
-        __cpuidex(_z, code1, code2); \
+		__cpuidex(_z, code1, code2); \
 		a = _z[0]; \
 		b = _z[1]; \
 		c = _z[2]; \
@@ -229,27 +246,6 @@ void get_cache_sizes(uint32 *level1_size_out,
 
 		/* handle newer Intel */
 
-#if defined(HAS_CPUID2)
-		typedef union {
-			uint32 data;
-
-			struct {
-				uint32 cache_type : 5;
-				uint32 cache_level : 3;
-				uint32 i_dont_care : 24;
-			} s;
-		} cache_type_t;
-
-		typedef union {
-			uint32 data;
-
-			struct {
-				uint32 line_size : 12;
-				uint32 num_lines : 10;
-				uint32 ways : 10;
-			} s;
-		} cache_size_t;
-
 		if (a >= 4) {
 			for (i = 0; i < 100; i++) {
 				uint32 num_sets;
@@ -277,7 +273,6 @@ void get_cache_sizes(uint32 *level1_size_out,
 					j2 = MAX(j2, d);
 			}
 		}
-#endif
 
 		CPUID(0x80000000, max_special, b, c, d);
 		if (max_special >= 0x80000006) {

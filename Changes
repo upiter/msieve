@@ -1,4 +1,5 @@
 Version 1.48:
+	- Added more cache size detection for Intel processors
 	- Added a fix to prevent potential overflow in the hashtable code
 	- Increased the maximum input size to 1024 bits
 
