@@ -164,7 +164,7 @@ typedef union {
 			"movl %%ebx, %1      \n\t"		\
 			"movl %%esi, %%ebx   \n\t"		\
 			:"=a"(a), "=m"(b), "=c"(c), "=d"(d) 	\
-			:"0"(code), "2"(code2) : "%esi")
+			:"0"(code1), "2"(code2) : "%esi")
 
 #elif defined(GCC_ASM64X)
 	#define HAS_CPUID
