@@ -290,7 +290,7 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 	poly_stage2_t stage2_data;
 	stage2_callback_data_t stage2_callback_data;
 	poly_param_t params;
-	char buf[256];
+	char buf[2048];
 	FILE *stage1_outfile = NULL;
 	uint32 do_both_stages = 0;
 	double digits;
@@ -445,20 +445,29 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 		}
 
 		while (1) {
+			int c;
+			char *tmp = buf;
 			mpz_t *arg = NULL;
-			if (gmp_fscanf(stage1_outfile, "%Zd", ad) != 1)
+
+			if (fgets(buf, sizeof(buf), stage1_outfile) == NULL)
 				break;
+
+			if (gmp_sscanf(tmp, "%Zd%n", ad, &c) != 1)
+				continue;
+			tmp += c;
 
 			if (mpz_cmp_ui(ad, 0) == 0) {
 				for (i = 0; i <= degree; i++) {
-					gmp_fscanf(stage1_outfile, "%Zd", 
-						full_apoly[degree - i]);
+					gmp_sscanf(tmp, "%Zd%n", 
+						full_apoly[degree - i], &c);
+					tmp += c;
 				}
 
 				mpz_set(ad, full_apoly[degree]);
 				arg = full_apoly;
 			}
-			gmp_fscanf(stage1_outfile, "%Zd %Zd", p, m);
+			if (gmp_sscanf(tmp, "%Zd %Zd", p, m) != 2)
+				continue;
 
 			poly_stage2_run(&stage2_data, ad, p, m, 1e100, arg);
 		}
