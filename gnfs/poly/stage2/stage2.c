@@ -59,12 +59,14 @@ check_poly(curr_poly_t *c, mpz_t *coeffs, mpz_t lin0,
 }
 
 /*-------------------------------------------------------------------------*/
+#define MAX_CORRECT_STEPS 10
+
 static int
 pol_expand(curr_poly_t *c, mpz_t gmp_N, mpz_t high_coeff,
 		mpz_t gmp_p, mpz_t gmp_d, 
 		double coeff_bound, uint32 degree)
 {
-	uint32 i;
+	uint32 i, j;
 
 	if (mpz_cmp_ui(c->gmp_p, (mp_limb_t)1) == 0)
 		mpz_set_ui(c->gmp_help1, (mp_limb_t)1);
@@ -106,7 +108,9 @@ pol_expand(curr_poly_t *c, mpz_t gmp_N, mpz_t high_coeff,
 
 	mpz_tdiv_q_2exp(c->gmp_help1, gmp_d, (mp_limb_t)1);
 	for (i = 0; i < degree; i++) {
-		while (mpz_cmpabs(c->gmp_a[i], c->gmp_help1) > 0) {
+		for (j = 0; j < MAX_CORRECT_STEPS &&
+			    mpz_cmpabs(c->gmp_a[i], c->gmp_help1) > 0; j++) {
+
 			if (mpz_sgn(c->gmp_a[i]) < 0) {
 				mpz_add(c->gmp_a[i], c->gmp_a[i], gmp_d);
 				mpz_sub(c->gmp_a[i+1], c->gmp_a[i+1], gmp_p);
@@ -116,6 +120,9 @@ pol_expand(curr_poly_t *c, mpz_t gmp_N, mpz_t high_coeff,
 				mpz_add(c->gmp_a[i+1], c->gmp_a[i+1], gmp_p);
 			}
 		}
+
+		if (j == MAX_CORRECT_STEPS)
+			return 2;
 	}
 
 #if 0
