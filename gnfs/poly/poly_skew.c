@@ -458,8 +458,9 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 
 			if (mpz_cmp_ui(ad, 0) == 0) {
 				for (i = 0; i <= degree; i++) {
-					gmp_sscanf(tmp, "%Zd%n", 
-						full_apoly[degree - i], &c);
+					if (gmp_sscanf(tmp, "%Zd%n", 
+					    full_apoly[degree - i], &c) != 1)
+						break;
 					tmp += c;
 				}
 
