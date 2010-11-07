@@ -122,7 +122,7 @@ pol_expand(curr_poly_t *c, mpz_t gmp_N, mpz_t high_coeff,
 		}
 
 		if (j == MAX_CORRECT_STEPS)
-			return 2;
+			return 0;
 	}
 
 #if 0
