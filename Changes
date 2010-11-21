@@ -1,4 +1,6 @@
 Version 1.48:
+	- Added a fast MPI parallel all-against-all xor implementation
+		courtesy of Ilya Popovyan
 	- Added more cache size detection for Intel processors
 	- Added a fix to prevent potential overflow in the hashtable code
 	- Increased the maximum input size to 1024 bits

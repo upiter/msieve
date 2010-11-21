@@ -438,8 +438,7 @@ void tmul_64xN_Nx64(packed_matrix_t *matrix,
 		while (t->command != COMMAND_WAIT)
 			pthread_cond_wait(&t->run_cond, &t->run_lock);
 #endif
-		for (j = 0; j < 8 * 256; j++)
-			c[j] ^= curr_c[j];
+		accum_xor(c, curr_c, 8 * 256);
 	}
 
 	for (i = 0; i < 8; i++) {
@@ -470,8 +469,7 @@ void tmul_64xN_Nx64(packed_matrix_t *matrix,
 #ifdef HAVE_MPI
 	/* combine the results across an entire MPI row */
 
-	MPI_TRY(MPI_Allreduce(xy, xytmp, 64, MPI_LONG_LONG,
-			MPI_BXOR, matrix->mpi_la_row_grid))
+	global_xor(xy, xytmp, 64, matrix->mpi_la_row_grid);
 	memcpy(xy, xytmp, sizeof(xytmp));
 #endif
 }

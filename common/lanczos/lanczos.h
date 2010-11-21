@@ -209,6 +209,11 @@ void tmul_Nx64_64x64_acc(packed_matrix_t *A, uint64 *v, uint64 *x,
 void tmul_64xN_Nx64(packed_matrix_t *A, uint64 *x, uint64 *y, 
 			uint64 *xy, uint32 n);
 
+#ifdef HAVE_MPI
+void global_xor(uint64 *send_buf, uint64 *recv_buf, 
+		uint32 count, MPI_Comm comm);
+#endif
+
 /* single-threaded */
 
 void mul_Nx64_64x64_acc(uint64 *v, uint64 *x, uint64 *y, uint32 n);
@@ -220,6 +225,8 @@ void mul_64xN_Nx64(uint64 *x, uint64 *y, uint64 *xy, uint32 n);
 void core_Nx64_64x64_acc(uint64 *v, uint64 *c, uint64 *y, uint32 n);
 
 void core_64xN_Nx64(uint64 *x, uint64 *c, uint64 *y, uint32 n);
+
+void accum_xor(uint64 *dest, uint64 *src, uint32 n);
 
 #ifdef __cplusplus
 }

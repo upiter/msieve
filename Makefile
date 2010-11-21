@@ -96,6 +96,7 @@ COMMON_SRCS = \
 	common/lanczos/lanczos_matmul2.c \
 	common/lanczos/lanczos_pre.c \
 	common/lanczos/lanczos_vv.c \
+	common/lanczos/matmul_util.c \
 	common/smallfact/gmp_ecm.c \
 	common/smallfact/smallfact.c \
 	common/smallfact/squfof.c \
