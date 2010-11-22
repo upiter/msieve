@@ -54,8 +54,8 @@ void accum_xor(uint64 *dest, uint64 *src, uint32 n) {
 #endif
 
 void global_xor(uint64 *send_buf, uint64 *recv_buf, 
-		uint32 num_nodes, uint32 my_id,
-		uint32 total_size, MPI_Comm comm) {
+		uint32 total_size, uint32 num_nodes, 
+		uint32 my_id, MPI_Comm comm) {
 	
 	uint32 i;
 	uint32 m, size, chunk, remainder;
