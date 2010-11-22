@@ -48,7 +48,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="..\Cuda.props" />
+    <Import Project="..\..\..\..\..\..\..\..\ProgramData\NVIDIA Corporation\NVIDIA GPU Computing SDK\C\common\Cuda.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -205,6 +205,6 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\Cuda.targets" />
+    <Import Project="..\..\..\..\..\..\..\..\ProgramData\NVIDIA Corporation\NVIDIA GPU Computing SDK\C\common\Cuda.targets" />
   </ImportGroup>
 </Project>
