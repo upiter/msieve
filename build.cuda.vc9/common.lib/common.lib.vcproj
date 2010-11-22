@@ -359,6 +359,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\common\lanczos\matmul_util.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\common\filter\merge.c"
 				>
 			</File>

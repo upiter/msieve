@@ -110,6 +110,9 @@
     <ClCompile Include="..\..\common\lanczos\lanczos_vv.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\common\lanczos\matmul_util.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\batch_factor.h">
