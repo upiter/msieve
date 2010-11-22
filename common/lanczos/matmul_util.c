@@ -59,9 +59,9 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 	
 	uint32 i;
 	uint32 m, size, chunk, remainder;
-	uint32 next_node, prev_node;
-	MPI_Status status;
-	MPI_Request req;
+	uint32 next_id, prev_id;
+	MPI_Status mpi_status;
+	MPI_Request mpi_req;
 	uint64 *curr_buf;
 		
 	/* only get fancy for large buffers; even the
@@ -102,7 +102,7 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 
 		MPI_TRY(MPI_Isend(curr_buf + m * chunk, size, 
 				MPI_LONG_LONG, next_id, 97, 
-				comm, &req))
+				comm, &mpi_req))
 
 		/* switch to the recvbuf after the first send */
 
@@ -119,7 +119,7 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 
 		MPI_TRY(MPI_Recv(curr_buf + m * chunk, size,
 				MPI_LONG_LONG, prev_id, 97, 
-				comm, &status))
+				comm, &mpi_status))
 
 		/* combine the new chunk with our own */
 
@@ -128,7 +128,7 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 		
 		/* now wait for the send to end */
 
-		MPI_TRY(MPI_Wait(&req, &status))
+		MPI_TRY(MPI_Wait(&mpi_req, &mpi_status))
 	}	
 		
 	/* stage 2
@@ -143,11 +143,11 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 		/* async send to chunk the next proc in circle */
 
 		MPI_TRY(MPI_Isend(curr_buf, size, MPI_LONG_LONG, 
-				next_id, 98, comm, &req))
+				next_id, 98, comm, &mpi_req))
 		
 		size = chunk;
 		curr_buf -= chunk;
-		if(curr_buf < recv_buf) {
+		if (curr_buf < recv_buf) {
 			curr_buf += chunk * num_nodes;			
 			size += remainder;
 		}		
@@ -157,11 +157,11 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 		   data just where it should be in recv_buf */
 
 		MPI_TRY(MPI_Recv(curr_buf, size, MPI_LONG_LONG,
-				prev_id, 98, comm, &status))
+				prev_id, 98, comm, &mpi_status))
 				
 		/* now wait for the send to end */
 
-		MPI_TRY(MPI_Wait(&req, &status))
+		MPI_TRY(MPI_Wait(&mpi_req, &mpi_status))
 	}
 }
 

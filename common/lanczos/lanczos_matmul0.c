@@ -917,7 +917,7 @@ void mul_sym_NxN_Nx64(packed_matrix_t *A, uint64 *x,
 	   into the top row of MPI processes */
 
 	global_xor(scratch, b, A->ncols, A->mpi_ncols, 
-			A->mpi_col_rank, A->mpi_la_col_grid);
+			A->mpi_la_col_rank, A->mpi_la_col_grid);
 
 #endif
 }
