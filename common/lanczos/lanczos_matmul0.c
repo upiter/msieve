@@ -677,6 +677,10 @@ void packed_matrix_init(msieve_obj *obj,
 	p->vsize = ncols;
 #ifdef HAVE_MPI
 	p->mpi_size = obj->mpi_size;
+	p->mpi_nrows = obj->mpi_nrows;
+	p->mpi_ncols = obj->mpi_ncols;
+	p->mpi_la_row_rank = obj->mpi_la_row_rank;
+	p->mpi_la_col_rank = obj->mpi_la_col_rank;
 	p->mpi_la_row_grid = obj->mpi_la_row_grid;
 	p->mpi_la_col_grid = obj->mpi_la_col_grid;
 #endif
@@ -871,7 +875,8 @@ void mul_MxN_Nx64(packed_matrix_t *A, uint64 *x,
 
 	mul_packed(A, x, scratch);
 
-	global_xor(scratch, b, A->nrows, A->mpi_la_row_grid);
+	global_xor(scratch, b, A->nrows, A->mpi_nrows,
+			A->mpi_la_row_rank, A->mpi_la_row_grid);
 #endif
 }
 
@@ -903,14 +908,16 @@ void mul_sym_NxN_Nx64(packed_matrix_t *A, uint64 *x,
 
 	/* make each MPI row combine its own part of A*x */
 
-	global_xor(scratch, b, A->nrows, A->mpi_la_row_grid);
+	global_xor(scratch, b, A->nrows, A->mpi_nrows,
+			A->mpi_la_row_rank, A->mpi_la_row_grid);
 
 	mul_trans_packed(A, b, scratch);
 
 	/* make each MPI column combine its own part of A^T * A*x 
 	   into the top row of MPI processes */
 
-	global_xor(scratch, b, A->ncols, A->mpi_la_col_grid);
+	global_xor(scratch, b, A->ncols, A->mpi_ncols, 
+			A->mpi_col_rank, A->mpi_la_col_grid);
 
 #endif
 }

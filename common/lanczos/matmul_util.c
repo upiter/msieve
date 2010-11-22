@@ -54,11 +54,12 @@ void accum_xor(uint64 *dest, uint64 *src, uint32 n) {
 #endif
 
 void global_xor(uint64 *send_buf, uint64 *recv_buf, 
+		uint32 num_nodes, uint32 my_id,
 		uint32 total_size, MPI_Comm comm) {
 	
 	uint32 i;
 	uint32 m, size, chunk, remainder;
-	uint32 num_nodes, my_id, next_node, prev_node;
+	uint32 next_node, prev_node;
 	MPI_Status status;
 	MPI_Request req;
 	uint64 *curr_buf;
@@ -67,7 +68,7 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 	   fancy method is only faster when many nodes 
 	   are involved */
 
-	if (total_size < GLOBAL_BREAKOVER) {
+	if (total_size < GLOBAL_BREAKOVER || num_nodes < 2) {
 		MPI_TRY(MPI_Allreduce(send_buf, recv_buf, total_size,
 				MPI_LONG_LONG, MPI_BXOR, comm))
 		return;
@@ -75,8 +76,6 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 
 	/* split data */
 
-	MPI_TRY(MPI_Comm_size(comm, (int *)&num_nodes))
-	MPI_TRY(MPI_Comm_rank(comm, (int *)&my_id))
 	chunk = total_size / num_nodes;
 	remainder = total_size % num_nodes;	
 	

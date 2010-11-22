@@ -163,6 +163,10 @@ typedef struct {
 
 #ifdef HAVE_MPI
 	uint32 mpi_size;
+	uint32 mpi_nrows;
+	uint32 mpi_ncols;
+	uint32 mpi_la_row_rank;
+	uint32 mpi_la_col_rank;
 	MPI_Comm mpi_la_row_grid;
 	MPI_Comm mpi_la_col_grid;
 
@@ -211,7 +215,8 @@ void tmul_64xN_Nx64(packed_matrix_t *A, uint64 *x, uint64 *y,
 
 #ifdef HAVE_MPI
 void global_xor(uint64 *send_buf, uint64 *recv_buf, 
-		uint32 count, MPI_Comm comm);
+		uint32 bufsize, uint32 mpi_nodes, 
+		uint32 mpi_rank, MPI_Comm comm);
 #endif
 
 /* single-threaded */
