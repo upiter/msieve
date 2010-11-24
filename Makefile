@@ -37,8 +37,9 @@ endif
 ifeq ($(CUDA),1)
 	# these environment variables are set in windows
 	# but not in linux; attempt to sample them anyway
-	CUDA_INC_DIR = $(shell echo $$CUDA_INC_PATH)
-	CUDA_LIB_DIR = $(shell echo $$CUDA_LIB_PATH)
+	CUDA_ROOT = $(shell echo $$CUDA_PATH)
+	CUDA_INC_DIR = $(CUDA_ROOT)include
+	CUDA_LIB_DIR = $(CUDA_ROOT)lib/win32
 	CFLAGS += -I"$(CUDA_INC_DIR)" -DHAVE_CUDA
 
 	# Also, the CUDA driver library has a different name in linux
