@@ -469,8 +469,8 @@ void tmul_64xN_Nx64(packed_matrix_t *matrix,
 #ifdef HAVE_MPI
 	/* combine the results across an entire MPI row */
 
-	global_xor(xy, xytmp, 64, matrix->mpi_nrows,
-			matrix->mpi_la_row_rank,
+	global_xor(xy, xytmp, 64, matrix->mpi_ncols,
+			matrix->mpi_la_col_rank,
 			matrix->mpi_la_row_grid);
 	memcpy(xy, xytmp, sizeof(xytmp));
 #endif

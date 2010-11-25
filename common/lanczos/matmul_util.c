@@ -47,7 +47,7 @@ void accum_xor(uint64 *dest, uint64 *src, uint32 n) {
 	   Wormhole Routing". The implementation below is
 	   based on code kindly contributed by Ilya Popovyan */
 
-#if 0
+#if 1
 #define GLOBAL_BREAKOVER 5000
 #else
 #define GLOBAL_BREAKOVER (uint32)(-1) /* turn off the fancy method */
