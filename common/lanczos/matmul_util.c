@@ -53,9 +53,11 @@ void accum_xor(uint64 *dest, uint64 *src, uint32 n) {
 #define GLOBAL_BREAKOVER (uint32)(-1) /* turn off the fancy method */
 #endif
 
-void global_xor(uint64 *send_buf, uint64 *recv_buf, 
-		uint32 total_size, uint32 num_nodes, 
-		uint32 my_id, MPI_Comm comm) {
+
+/*------------------------------------------------------------------*/
+static void global_xor_async(uint64 *send_buf, uint64 *recv_buf, 
+			uint32 total_size, uint32 num_nodes, 
+			uint32 my_id, MPI_Comm comm) {
 	
 	uint32 i;
 	uint32 m, size, chunk, remainder;
@@ -64,16 +66,6 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 	MPI_Request mpi_req;
 	uint64 *curr_buf;
 		
-	/* only get fancy for large buffers; even the
-	   fancy method is only faster when many nodes 
-	   are involved */
-
-	if (total_size < GLOBAL_BREAKOVER || num_nodes < 2) {
-		MPI_TRY(MPI_Allreduce(send_buf, recv_buf, total_size,
-				MPI_LONG_LONG, MPI_BXOR, comm))
-		return;
-	}
-
 	/* split data */
 
 	chunk = total_size / num_nodes;
@@ -163,6 +155,130 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 
 		MPI_TRY(MPI_Wait(&mpi_req, &mpi_status))
 	}
+}
+
+static void global_xor_sendrecv(uint64 *send_buf, uint64 *recv_buf, 
+		uint32 total_size, uint32 num_nodes, 
+		uint32 my_id, MPI_Comm comm) {
+	
+	uint32 i;
+	uint32 m, n, size_m, size_n; 
+	uint32 chunk, remainder;
+	uint32 next_id, prev_id;
+	MPI_Status mpi_status;
+	uint64 *curr_buf;
+		
+	/* split data */
+
+	chunk = total_size / num_nodes;
+	remainder = total_size % num_nodes;	
+	
+	/* we expect a circular topology here */
+
+	next_id = mp_modadd_1(my_id, 1, num_nodes);
+	prev_id = mp_modsub_1(my_id, 1, num_nodes);
+			
+	/* stage 1
+	   P_m sends P_{m+1} the m-th chunk of data while receiving 
+	   another chunk from P_{m-1}, and does the summation op 
+	   on the received chunk and (m-1)-th own chunk */
+
+	m = my_id;
+	size_m = chunk;
+	if (m == num_nodes - 1)
+		size_m += remainder;
+
+	n = prev_id;
+	size_n = chunk;
+	if (n == num_nodes - 1)
+		size_n += remainder;
+
+	curr_buf = send_buf;
+
+	for (i = 0; i < num_nodes - 1; i++) {
+				
+		/* asynchronously send the current chunk and receive
+		   the previous one */
+
+		MPI_TRY(MPI_Sendrecv(curr_buf + m * chunk, size_m, 
+				MPI_LONG_LONG, next_id, 97,
+				recv_buf + n * chunk, size_n,
+				MPI_LONG_LONG, prev_id, 97,
+				comm, &mpi_status))
+
+		/* switch to the recvbuf after the first send */
+
+		curr_buf = recv_buf;
+
+		/* combine the new chunk with our own */
+
+		accum_xor(curr_buf + n * chunk,
+			  send_buf + n * chunk, size_n);
+
+		/* now change m and n */
+
+		m = n;
+		size_m = size_n;
+
+		size_n = chunk;
+		if ((int32)(--n) < 0) {
+			n += num_nodes;
+			size_n += remainder;
+		}
+	}	
+		
+	/* stage 2
+	   P_m sends P_{m+1} m-th chunk of data, now containing 
+	   a full summation of all m-th chunks in the comm,
+	   while recieving another chunk from P_{m-1} and 
+	   puts it to (m-1)-th own chunk */
+
+	for (i = 0; i < num_nodes - 1; i++) {
+				
+		/* asynchronously send the current chunk and receive
+		   the previous one */
+
+		MPI_TRY(MPI_Sendrecv(recv_buf + m * chunk, size_m, 
+				MPI_LONG_LONG, next_id, 98,
+				recv_buf + n * chunk, size_n,
+				MPI_LONG_LONG, prev_id, 98,
+				comm, &mpi_status))
+
+		/* now change m and n */
+
+		m = n;
+		size_m = size_n;
+
+		size_n = chunk;
+		if ((int32)(--n) < 0) {
+			n += num_nodes;
+			size_n += remainder;
+		}
+	}
+}
+
+/*------------------------------------------------------------------*/
+void global_xor(uint64 *send_buf, uint64 *recv_buf, 
+		uint32 total_size, uint32 num_nodes, 
+		uint32 my_id, MPI_Comm comm) {
+	
+	/* only get fancy for large buffers; even the
+	   fancy method is only faster when many nodes 
+	   are involved */
+
+	if (total_size < GLOBAL_BREAKOVER || num_nodes < 2) {
+		MPI_TRY(MPI_Allreduce(send_buf, recv_buf, total_size,
+				MPI_LONG_LONG, MPI_BXOR, comm))
+		return;
+	}
+
+#if 1
+	global_xor_async(send_buf, recv_buf, 
+		total_size, num_nodes, my_id, comm);
+#elif 0
+	global_xor_sendrecv(send_buf, recv_buf, 
+		total_size, num_nodes, my_id, comm);
+#endif
 }
 
 #endif /* HAVE_MPI */
