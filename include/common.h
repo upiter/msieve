@@ -23,7 +23,7 @@ extern "C" {
 #endif
 
 #ifdef HAVE_MPI
-	#define MAX_MPI_PROCS 128
+	#define MAX_MPI_GRID_DIM 35
 
 	#define MPI_TRY(x) \
 	{								\

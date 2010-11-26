@@ -28,16 +28,16 @@ typedef struct {
 	uint64 target_sparse;
 	uint32 curr_mpi;
 	uint32 curr_col;
-	mat_block_t idx_entries[MAX_MPI_PROCS + 1];
+	mat_block_t idx_entries[MAX_MPI_GRID_DIM + 1];
 } mat_idx_t;
 
 static mat_idx_t * mat_idx_init(uint64 num_sparse) {
 
 	uint32 i;
-	mat_idx_t *m = (mat_idx_t *)xcalloc(MAX_MPI_PROCS,
+	mat_idx_t *m = (mat_idx_t *)xcalloc(MAX_MPI_GRID_DIM,
 					sizeof(mat_idx_t));
 
-	for (i = 1; i <= MAX_MPI_PROCS; i++)
+	for (i = 1; i <= MAX_MPI_GRID_DIM; i++)
 		m[i-1].sparse_per_proc = num_sparse / i + 100;
 
 	return m;
@@ -48,7 +48,7 @@ static void mat_idx_update(mat_idx_t *m, FILE *mat_fp,
 
 	uint32 i;
 
-	for (i = 0; i < MAX_MPI_PROCS; i++) {
+	for (i = 0; i < MAX_MPI_GRID_DIM; i++) {
 		mat_idx_t *curr_m = m + i;
 
 		if (curr_m->curr_sparse >= curr_m->target_sparse) {
@@ -80,10 +80,10 @@ static void mat_idx_final(msieve_obj *obj, mat_idx_t *m,
 		exit(-1);
 	}
 
-	i = MAX_MPI_PROCS;
+	i = MAX_MPI_GRID_DIM;
 	fwrite(&i, sizeof(uint32), (size_t)1, idx_fp);
 
-	for (i = 1; i <= MAX_MPI_PROCS; i++) {
+	for (i = 1; i <= MAX_MPI_GRID_DIM; i++) {
 		mat_idx_t *curr_m = m + (i-1);
 
 		curr_m->idx_entries[i].col_start = ncols;

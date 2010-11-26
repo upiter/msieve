@@ -171,10 +171,10 @@ typedef struct {
 	MPI_Comm mpi_la_col_grid;
 
 	/* needed on root node only */
-	int32 col_counts[MAX_MPI_PROCS];
-	int32 col_offsets[MAX_MPI_PROCS]; 
-	int32 row_counts[MAX_MPI_PROCS];
-	int32 row_offsets[MAX_MPI_PROCS];
+	int32 col_counts[MAX_MPI_GRID_DIM];
+	int32 col_offsets[MAX_MPI_GRID_DIM]; 
+	int32 row_counts[MAX_MPI_GRID_DIM];
+	int32 row_offsets[MAX_MPI_GRID_DIM];
 #endif
 
 } packed_matrix_t;
