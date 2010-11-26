@@ -597,6 +597,12 @@ void nfs_solve_linear_system(msieve_obj *obj, mp_t *n) {
 		obj->mpi_nrows = grid_dims[0] = obj->nfs_lower;
 		obj->mpi_ncols = grid_dims[1] = obj->nfs_upper;
 	}
+	if (obj->mpi_nrows > MAX_MPI_GRID_DIM ||
+	    obj->mpi_ncols > MAX_MPI_GRID_DIM) {
+		printf("error: MPI grid can be at most %u on a side\n",
+			MAX_MPI_GRID_DIM);
+		MPI_Abort(MPI_COMM_WORLD, MPI_ERR_TOPOLOGY);
+	}
 
 	MPI_TRY(MPI_Cart_create(MPI_COMM_WORLD, 2, grid_dims,
 			grid_bools, 1, &obj->mpi_la_grid))
