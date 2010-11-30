@@ -257,6 +257,163 @@ static void global_xor_sendrecv(uint64 *send_buf, uint64 *recv_buf,
 	}
 }
 
+static void global_xor_asyncall(uint64 *send_buf, uint64 *recv_buf, 
+		uint32 total_size, uint32 num_nodes, 
+		uint32 my_id, MPI_Comm comm) {
+	
+	int32 i;
+	uint32 size;
+	uint32 chunk, remainder;
+	uint32 next_id, prev_id;
+	uint32 num_finished;
+	MPI_Request send_requests[MAX_MPI_GRID_DIM];
+	MPI_Request recv_requests[MAX_MPI_GRID_DIM];
+	MPI_Status mpi_status[MAX_MPI_GRID_DIM];
+	int32 recv_done[MAX_MPI_GRID_DIM];
+		
+	/* split data */
+
+	chunk = total_size / num_nodes;
+	remainder = total_size % num_nodes;	
+	
+	/* we expect a circular topology here */
+
+	next_id = mp_modadd_1(my_id, 1, num_nodes);
+	prev_id = mp_modsub_1(my_id, 1, num_nodes);
+
+	/* stage 1; start by sending our chunk */
+
+	size = chunk;
+	if (my_id == num_nodes - 1)
+		size += remainder;
+
+	MPI_TRY(MPI_Isend(send_buf + my_id * chunk, size,
+			MPI_LONG_LONG, next_id, my_id,
+			comm, send_requests + my_id))
+
+	/* set up all of the receives */
+
+	for (i = 0; i < (int32)num_nodes; i++) {
+		size = chunk;
+		if (i == (int32)num_nodes - 1)
+			size += remainder;
+
+		MPI_TRY(MPI_Irecv(recv_buf + i * chunk, size,
+				MPI_LONG_LONG, prev_id, i, 
+				comm, recv_requests + i))
+	}
+
+	/* now wait for all the receives to finish */
+
+	num_finished = 0;
+	do {
+		int32 curr_finished;
+
+		MPI_TRY(MPI_Waitsome(num_nodes, recv_requests,
+					&curr_finished, recv_done,
+					mpi_status))
+
+		for (i = 0; i < curr_finished; i++) {
+			uint32 curr_chunk = recv_done[i];
+
+			/* we own chunk my_id; don't pass it on
+			   once it has traversed the ring */
+
+			if (curr_chunk == my_id)
+				continue;
+
+			/* fold in send_buf, pass it on */
+
+			size = chunk;
+			if (curr_chunk == num_nodes - 1)
+				size += remainder;
+
+			accum_xor(recv_buf + curr_chunk * chunk,
+				  send_buf + curr_chunk * chunk, size);
+
+			MPI_TRY(MPI_Isend(recv_buf + curr_chunk * chunk, 
+					size, MPI_LONG_LONG, 
+					next_id, curr_chunk, comm, 
+					send_requests + curr_chunk))
+		}
+
+		num_finished += curr_finished;
+	} while (num_finished < num_nodes);
+
+	/* clear out all the send requests */
+
+	MPI_TRY(MPI_Waitall(num_nodes, send_requests, mpi_status))
+			
+	/* stage 2; start by sending our chunk */
+
+	size = chunk;
+	if (my_id == num_nodes - 1)
+		size += remainder;
+
+	MPI_TRY(MPI_Isend(recv_buf + my_id * chunk, size,
+			MPI_LONG_LONG, next_id, 
+			my_id + MAX_MPI_GRID_DIM,
+			comm, send_requests + my_id))
+
+	/* set up all of the receives at once; there is
+	   one receive for each chunk that is not ours */
+
+	for (i = 0; i < (int32)num_nodes; i++) {
+		if (i == (int32)my_id) {
+			recv_requests[i] = MPI_REQUEST_NULL;
+			continue;
+		}
+
+		size = chunk;
+		if (i == (int32)num_nodes - 1)
+			size += remainder;
+
+		MPI_TRY(MPI_Irecv(recv_buf + i * chunk, size,
+				MPI_LONG_LONG, prev_id, 
+				i + MAX_MPI_GRID_DIM, 
+				comm, recv_requests + i))
+	}
+
+	/* don't send chunk next_id to process next_id */
+
+	send_requests[next_id] = MPI_REQUEST_NULL;
+
+	/* now wait for all the receives to finish */
+
+	num_finished = 0;
+	do {
+		int32 curr_finished;
+
+		MPI_TRY(MPI_Waitsome(num_nodes, recv_requests,
+					&curr_finished, recv_done,
+					mpi_status))
+
+		for (i = 0; i < curr_finished; i++) {
+			uint32 curr_chunk = recv_done[i];
+
+			if (curr_chunk == my_id || curr_chunk == next_id)
+				continue;
+
+			/* pass curr_chunk on */
+
+			size = chunk;
+			if (curr_chunk == num_nodes - 1)
+				size += remainder;
+
+			MPI_TRY(MPI_Isend(recv_buf + curr_chunk * chunk, 
+					size, MPI_LONG_LONG, next_id, 
+					curr_chunk + MAX_MPI_GRID_DIM, comm, 
+					send_requests + curr_chunk))
+		}
+
+		num_finished += curr_finished;
+	} while (num_finished < num_nodes);
+
+	/* clear out all the send requests */
+
+	MPI_TRY(MPI_Waitall(num_nodes, send_requests, mpi_status))
+}
+
 /*------------------------------------------------------------------*/
 void global_xor(uint64 *send_buf, uint64 *recv_buf, 
 		uint32 total_size, uint32 num_nodes, 
@@ -277,6 +434,9 @@ void global_xor(uint64 *send_buf, uint64 *recv_buf,
 		total_size, num_nodes, my_id, comm);
 #elif 0
 	global_xor_sendrecv(send_buf, recv_buf, 
+		total_size, num_nodes, my_id, comm);
+#elif 0
+	global_xor_asyncall(send_buf, recv_buf, 
 		total_size, num_nodes, my_id, comm);
 #endif
 }
