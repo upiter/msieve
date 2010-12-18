@@ -17,9 +17,6 @@
     <Filter Include="Source Files\poly\Stage2">
       <UniqueIdentifier>{376b570d-dfed-41ed-9b4c-e93916bfb0e7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\poly\Stage1_gpu">
-      <UniqueIdentifier>{1ed41125-625f-4f0f-9ddb-52f65c988a58}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\sieve">
       <UniqueIdentifier>{7fc9941c-d00f-4265-b607-29674ac3887c}</UniqueIdentifier>
     </Filter>
@@ -92,51 +89,6 @@
     <ClCompile Include="..\..\gnfs\sqrt\sqrt_a.c">
       <Filter>Source Files\sqrt</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1.c">
-      <Filter>Source Files\poly</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_roots.c">
-      <Filter>Source Files\poly</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve.c">
-      <Filter>Source Files\poly</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg5_64.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg5_96.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg5_128.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg6_96.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg6_128.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg46_64.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg5_64.c">
-      <Filter>Source Files\poly\Stage1_gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg5_96.c">
-      <Filter>Source Files\poly\Stage1_gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg5_128.c">
-      <Filter>Source Files\poly\Stage1_gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg6_96.c">
-      <Filter>Source Files\poly\Stage1_gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg6_128.c">
-      <Filter>Source Files\poly\Stage1_gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg46_64.c">
-      <Filter>Source Files\poly\Stage1_gpu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6.c">
       <Filter>Source Files\poly\Stage2</Filter>
     </ClCompile>
@@ -151,6 +103,18 @@
     </ClCompile>
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_xyz.c">
       <Filter>Source Files\poly\Stage2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1.c">
+      <Filter>Source Files\poly\Stage1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_roots.c">
+      <Filter>Source Files\poly\Stage1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve.c">
+      <Filter>Source Files\poly\Stage1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu.c">
+      <Filter>Source Files\poly\Stage1</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -241,11 +205,8 @@
     <ClInclude Include="..\..\include\util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\gnfs\poly\stage1\stage1_core\cpu_intrinsics.h">
+    <ClInclude Include="..\..\gnfs\poly\stage1\cpu_intrinsics.h">
       <Filter>Source Files\poly\Stage1</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gnfs\poly\stage1\stage1_core_gpu\cuda_intrinsics.h">
-      <Filter>Source Files\poly\Stage1_gpu</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -34,12 +34,6 @@ extern "C" {
 #define HIGH_COEFF_PRIME_LIMIT 100
 #define HIGH_COEFF_POWER_LIMIT 2
 
-/* 96-bit integers */
-
-typedef struct {
-	uint32 w[3];
-} uint96;
-
 /* 128-bit integers */
 
 typedef struct {
@@ -97,9 +91,6 @@ typedef struct {
 	gpu_info_t *gpu_info; 
 	CUmodule gpu_module48; 
 	CUmodule gpu_module64; 
-	CUmodule gpu_module72; 
-	CUmodule gpu_module96; 
-	CUmodule gpu_module128; 
 #endif
 
 	stage1_callback_t callback;
@@ -112,14 +103,14 @@ void poly_search_free(poly_search_t *poly);
 /*-----------------------------------------------------------------------*/
 
 /* Rational leading coeffs of NFS polynomials are assumed 
-   to be the product of two groups of factors p; each group 
-   can be up to 64 bits in size and the product of (powers 
+   to be the product of three groups of factors p; each group 
+   can be up to 32 bits in size and the product of (powers 
    of) up to MAX_P_FACTORS distinct primes */
 
 #define MAX_P_FACTORS 7
 #define MAX_ROOTS 128
 
-#define P_SEARCH_DONE ((uint64)(-1))
+#define P_SEARCH_DONE ((uint32)(-2))
 
 /* structure for building arithmetic progressions */
 
@@ -127,7 +118,7 @@ typedef struct {
 	uint32 p;
 	uint8 num_roots[POLY_BATCH_SIZE];
 	uint32 roots[POLY_BATCH_SIZE][MAX_POLYSELECT_DEGREE];
-	uint64 cofactor_max;
+	uint32 cofactor_max;
 } aprog_t;
 
 typedef struct {
@@ -136,38 +127,15 @@ typedef struct {
 	uint32 num_aprogs_alloc;
 } aprog_list_t;
 
-/* structures for finding arithmetic progressions by sieving */
-
-typedef struct {
-	uint32 p;
-	uint32 r;
-	uint8 log_p;
-} sieve_prime_t;
-
-typedef struct {
-	sieve_prime_t *primes;
-	uint32 num_primes;
-	uint32 num_primes_alloc;
-} sieve_prime_list_t;
-
-typedef struct {
-	uint8 *sieve_block;
-	uint32 curr_offset;
-	uint64 sieve_start;
-	sieve_prime_list_t good_primes;
-	sieve_prime_list_t bad_primes;
-} p_sieve_t;
-
 /* structures for finding arithmetic progressions via
    explicit enumeration */
 
 typedef struct {
 	uint32 num_factors;
 	uint32 factors[MAX_P_FACTORS + 1];
-	uint64 products[MAX_P_FACTORS + 1];
+	uint32 products[MAX_P_FACTORS + 1];
 } p_enum_t;
 
-#define ALGO_SIEVE 0x1
 #define ALGO_ENUM  0x2
 #define ALGO_PRIME 0x4
 
@@ -177,13 +145,11 @@ typedef struct {
 	uint32 avail_algos;
 	uint32 fb_only;
 	uint32 degree;
-	uint64 p_min, p_max;
+	uint32 p_min, p_max;
 
 	aprog_list_t aprog_data;
 
 	prime_sieve_t p_prime;
-
-	p_sieve_t p_sieve;
 
 	p_enum_t p_enum;
 
@@ -199,14 +165,14 @@ void sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 
 void sieve_fb_free(sieve_fb_t *s);
 
-void sieve_fb_reset(sieve_fb_t *s, uint64 p_min, uint64 p_max,
+void sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 			uint32 num_roots_min, uint32 num_roots_max);
 
-typedef void (*root_callback)(uint64 p, uint32 num_roots, 
+typedef void (*root_callback)(uint32 p, uint32 num_roots, 
 				uint32 which_poly, mpz_t *roots, 
 				void *extra);
 
-uint64 sieve_fb_next(sieve_fb_t *s, 
+uint32 sieve_fb_next(sieve_fb_t *s, 
 			poly_search_t *poly, 
 			root_callback callback,
 			void *extra);
@@ -214,9 +180,9 @@ uint64 sieve_fb_next(sieve_fb_t *s,
 /*-----------------------------------------------------------------------*/
 
 typedef struct {
-	uint32 fill_p;
-	void *p_array;
-	void *q_array;
+	void *orig_p_array, *trans_p_array;
+	void *orig_q_array, *trans_q_array;
+	void *special_q_array;
 
 #ifdef HAVE_CUDA
 	CUdeviceptr gpu_p_array;
@@ -226,9 +192,6 @@ typedef struct {
 	uint32 found_array_size;
 	void *p_marshall;
 	void *q_marshall;
-	gpu_info_t *gpu_info;
-	CUmodule gpu_module;
-	CUfunction gpu_kernel;
 #endif
 
 	poly_search_t *poly;
@@ -241,47 +204,50 @@ typedef struct {
 
 uint32
 sieve_lattice_deg46_64(msieve_obj *obj, lattice_fb_t *L, 
-		sieve_fb_t *sieve_small, sieve_fb_t *sieve_large, 
-		uint32 small_p_min, uint32 small_p_max, 
+		sieve_fb_t *sieve_special_q, 
+		uint32 special_q_min, uint32 special_q_max,
+		sieve_fb_t *sieve_small_p,
+		uint32 small_p_min, uint32 small_p_max,
+		sieve_fb_t *sieve_large_p,
 		uint32 large_p_min, uint32 large_p_max);
 
 uint32
 sieve_lattice_deg5_64(msieve_obj *obj, lattice_fb_t *L, 
-		sieve_fb_t *sieve_small, sieve_fb_t *sieve_large, 
-		uint32 small_p_min, uint32 small_p_max, 
+		sieve_fb_t *sieve_special_q, 
+		uint32 special_q_min, uint32 special_q_max,
+		sieve_fb_t *sieve_small_p,
+		uint32 small_p_min, uint32 small_p_max,
+		sieve_fb_t *sieve_large_p,
 		uint32 large_p_min, uint32 large_p_max);
-
-uint32
-sieve_lattice_deg5_96(msieve_obj *obj, lattice_fb_t *L, 
-		sieve_fb_t *sieve_small, sieve_fb_t *sieve_large, 
-		uint64 small_p_min, uint64 small_p_max, 
-		uint64 large_p_min, uint64 large_p_max);
-
-uint32
-sieve_lattice_deg5_128(msieve_obj *obj, lattice_fb_t *L, 
-		sieve_fb_t *sieve_small, sieve_fb_t *sieve_large, 
-		uint64 small_p_min, uint64 small_p_max, 
-		uint64 large_p_min, uint64 large_p_max);
-
-uint32
-sieve_lattice_deg6_96(msieve_obj *obj, lattice_fb_t *L, 
-		sieve_fb_t *sieve_small, sieve_fb_t *sieve_large, 
-		uint64 small_p_min, uint64 small_p_max, 
-		uint64 large_p_min, uint64 large_p_max);
-
-uint32
-sieve_lattice_deg6_128(msieve_obj *obj, lattice_fb_t *L, 
-		sieve_fb_t *sieve_small, sieve_fb_t *sieve_large, 
-		uint64 small_p_min, uint64 small_p_max, 
-		uint64 large_p_min, uint64 large_p_max);
 
 void
 handle_collision(poly_search_t *poly, uint32 which_poly,
-		uint64 p, uint128 proot, uint128 res, uint64 q);
+			uint32 p1, uint32 p2, uint32 special_q,
+			uint64 special_q_root, uint128 res);
 
-/* main search routine */
+/* main search routines */
 
-void sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline); 
+typedef struct {
+	uint32 bits; /* in leading rational coeff */
+	double p_scale;
+	uint32 max_diverge;
+	uint32 num_pieces; /* for randomization */
+	uint32 special_q_min;
+	uint32 special_q_max;
+} sieve_fb_param_t;
+
+void sieve_lattice(msieve_obj *obj, poly_search_t *poly, 
+				uint32 deadline);
+
+uint32 sieve_lattice_gpu(msieve_obj *obj, lattice_fb_t *L, 
+		sieve_fb_param_t *params,
+		sieve_fb_t *sieve_special_q,
+		uint32 special_q_min, uint32 special_q_max);
+
+uint32 sieve_lattice_cpu(msieve_obj *obj, lattice_fb_t *L, 
+		sieve_fb_param_t *params,
+		sieve_fb_t *sieve_special_q,
+		uint32 special_q_min, uint32 special_q_max);
 
 #ifdef __cplusplus
 }

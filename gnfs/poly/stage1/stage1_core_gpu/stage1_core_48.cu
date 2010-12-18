@@ -13,7 +13,7 @@ $Id$
 --------------------------------------------------------------------*/
 
 #include "cuda_intrinsics.h"
-#include "stage1_core_deg5_64.h"
+#include "stage1_core.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,12 +115,14 @@ sieve_kernel(p_soa_t *pbatch,
 							modsub64(qroot, proot,
 							q2), q2, q2_w);
 
-					if (res < lattice_size) {
+					if (res < lattice_size &&
+							qroot != 0 &&
+							proot != 0) {
 						found_t *f = found_array + 
 								my_threadid;
 						f->p = p;
 						f->q = q;
-						f->which_poly = k;
+						f->k = k;
 						f->offset = res;
 						f->proot = proot;
 					}

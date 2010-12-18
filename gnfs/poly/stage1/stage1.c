@@ -98,40 +98,10 @@ poly_search_init(poly_search_t *poly, poly_stage1_t *data)
 			CU_CTX_BLOCKING_SYNC,
 			poly->gpu_info->device_handle))
 
-	switch (poly->degree) {
-	case 4:
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module48, 
-				"stage1_core_deg46_48.ptx"))
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module64, 
-				"stage1_core_deg46_64.ptx"))
-		break;
-
-	case 5:
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module48, 
-				"stage1_core_deg5_48.ptx"))
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module64, 
-				"stage1_core_deg5_64.ptx"))
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module72, 
-				"stage1_core_deg5_72.ptx"))
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module96, 
-				"stage1_core_deg5_96.ptx"))
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module128, 
-				"stage1_core_deg5_128.ptx"))
-		break;
-
-	case 6:
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module48, 
-				"stage1_core_deg46_48.ptx"))
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module64, 
-				"stage1_core_deg46_64.ptx"))
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module72, 
-				"stage1_core_deg6_72.ptx"))
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module96, 
-				"stage1_core_deg6_96.ptx"))
-		CUDA_TRY(cuModuleLoad(&poly->gpu_module128, 
-				"stage1_core_deg6_128.ptx"))
-		break;
-	}
+	CUDA_TRY(cuModuleLoad(&poly->gpu_module48, 
+				"stage1_core_48.ptx"))
+	CUDA_TRY(cuModuleLoad(&poly->gpu_module64, 
+				"stage1_core_64.ptx"))
 #endif
 
 }
@@ -160,6 +130,73 @@ poly_search_free(poly_search_t *poly)
 #ifdef HAVE_CUDA
 	CUDA_TRY(cuCtxDestroy(poly->gpu_context)) 
 #endif
+}
+
+/*------------------------------------------------------------------------*/
+void
+handle_collision(poly_search_t *poly, uint32 which_poly,
+			uint32 p1, uint32 p2, uint32 special_q,
+			uint64 special_q_root, uint128 res)
+{
+	curr_poly_t *c = poly->batch + which_poly;
+
+	/* p1, p2, and special_q should always be pairwise coprime
+	 * when we get here, but let's be defensive and check anyway. */
+	if (mp_gcd_1(special_q, p1) != 1 ||
+	    mp_gcd_1(special_q, p2) != 1 ||
+	    mp_gcd_1(p1, p2) != 1)
+		return;
+
+	mpz_set_ui(poly->p, (unsigned long)p1);
+	mpz_mul_ui(poly->p, poly->p, (unsigned long)p2);
+	mpz_mul_ui(poly->p, poly->p, (unsigned long)special_q);
+
+	mpz_gcd(poly->tmp3, poly->p, c->high_coeff);
+	if (mpz_cmp_ui(poly->tmp3, 1))
+		return;
+
+	uint64_2gmp(special_q_root, poly->tmp1);
+	mpz_import(poly->tmp2, 4, -1, sizeof(uint32), 0, 0, &res);
+	mpz_set_ui(poly->tmp3, (unsigned long)special_q);
+
+	mpz_mul(poly->tmp3, poly->tmp3, poly->tmp3);
+	mpz_addmul(poly->tmp1, poly->tmp2, poly->tmp3);
+	mpz_sub(poly->tmp1, poly->tmp1, c->mp_sieve_size);
+	mpz_add(poly->m0, c->trans_m0, poly->tmp1);
+
+	/* check */
+	mpz_pow_ui(poly->tmp1, poly->m0, (mp_limb_t)poly->degree);
+	mpz_mul(poly->tmp2, poly->p, poly->p);
+	mpz_sub(poly->tmp1, c->trans_N, poly->tmp1);
+	mpz_tdiv_r(poly->tmp3, poly->tmp1, poly->tmp2);
+	if (mpz_cmp_ui(poly->tmp3, (mp_limb_t)0)) {
+		gmp_printf("poly %u %u %u %u %Zd\n",
+				which_poly, special_q, p1, p2, poly->m0);
+		printf("crap\n");
+		return;
+	}
+
+	mpz_mul_ui(poly->tmp1, c->high_coeff, (mp_limb_t)poly->degree);
+	mpz_tdiv_qr(poly->m0, poly->tmp2, poly->m0, poly->tmp1);
+	mpz_invert(poly->tmp3, poly->tmp1, poly->p);
+
+	mpz_sub(poly->tmp4, poly->tmp3, poly->p);
+	if (mpz_cmpabs(poly->tmp3, poly->tmp4) < 0)
+		mpz_set(poly->tmp4, poly->tmp3);
+
+	mpz_sub(poly->tmp5, poly->tmp2, poly->tmp1);
+	if (mpz_cmpabs(poly->tmp2, poly->tmp5) > 0)
+		mpz_add_ui(poly->m0, poly->m0, (mp_limb_t)1);
+	else
+		mpz_set(poly->tmp5, poly->tmp2);
+
+	mpz_addmul(poly->m0, poly->tmp4, poly->tmp5);
+
+	gmp_printf("poly %2u %u %u %u %Zd\n",
+			which_poly, special_q, p1, p2, poly->m0);
+
+	poly->callback(c->high_coeff, poly->p, poly->m0,
+			c->coeff_max, poly->callback_data);
 }
 
 /*------------------------------------------------------------------------*/
@@ -208,7 +245,11 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly,
 	uint32 digits = mpz_sizeinbase(poly->N, 10);
 	double start_time = get_cpu_time();
 	uint32 deadline_per_coeff = 800;
-	uint32 batch_size = (poly->degree == 5) ? POLY_BATCH_SIZE : 1;
+#ifdef HAVE_CUDA
+	uint32 batch_size = POLY_BATCH_SIZE;
+#else
+	uint32 batch_size = 1;
+#endif
 
 	if (digits <= 100)
 		deadline_per_coeff = 5;

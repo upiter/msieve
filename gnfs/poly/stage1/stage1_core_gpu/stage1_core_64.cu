@@ -12,27 +12,25 @@ benefit from your work.
 $Id$
 --------------------------------------------------------------------*/
 
-#include "stage1_core_deg5_128.h"
+#include "stage1_core.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #if __CUDA_ARCH__ >= 200
-#define SHARED_BATCH_SIZE 74
+#define SHARED_BATCH_SIZE 148
 #else
-#define SHARED_BATCH_SIZE 24
+#define SHARED_BATCH_SIZE 48
 #endif
 
 typedef struct {
-	uint64 p[SHARED_BATCH_SIZE];
-	uint64 lattice_size[SHARED_BATCH_SIZE];
-	uint32 roots[4 * POLY_BATCH_SIZE][SHARED_BATCH_SIZE];
+	uint32 p[SHARED_BATCH_SIZE];
+	uint32 lattice_size[SHARED_BATCH_SIZE];
+	uint64 roots[POLY_BATCH_SIZE][SHARED_BATCH_SIZE];
 } p_soa_shared_t;
 
 __shared__ p_soa_shared_t pbatch_cache;
-
-__constant__ uint128 two = {{2, 0, 0, 0}};
 
 /*------------------------------------------------------------------------*/
 /* note that num_q must be a multiple of the block size
@@ -56,14 +54,13 @@ sieve_kernel(p_soa_t *pbatch,
 	found_array[my_threadid].p = 0;
 
 	for (i = my_threadid; i < num_q; i += num_threads) {
-		uint32 q2_w, p_done = 0;
-		uint64 q;
-		uint128 q2, q2_r;
+		uint32 q, q2_w, p_done = 0;
+		uint64 q2, q2_r;
 
 		q = qbatch->p[i];
-		q2 = wide_sqr64(q);
-		q2_w = montmul32_w(q2.w[0]);
-		q2_r = montmul128_r(q2, q2_w);
+		q2 = wide_sqr32(q);
+		q2_w = montmul32_w((uint32)q2);
+		q2_r = montmul64_r(q2, q2_w);
 
 		while (p_done < num_p) {
 
@@ -79,76 +76,52 @@ sieve_kernel(p_soa_t *pbatch,
 				pbatch_cache.lattice_size[j] = 
 					pbatch->lattice_size[p_done + j];
 
-				for (k = 0; k < 4 * num_roots; k += 4) {
+				for (k = 0; k < num_roots; k++) {
 					pbatch_cache.roots[k][j] = 
 						pbatch->roots[k][p_done + j];
-					pbatch_cache.roots[k+1][j] = 
-						pbatch->roots[k+1][p_done + j];
-					pbatch_cache.roots[k+2][j] = 
-						pbatch->roots[k+2][p_done + j];
-					pbatch_cache.roots[k+3][j] = 
-						pbatch->roots[k+3][p_done + j];
 				}
 			}
 
 			__syncthreads();
 
 			for (j = 0; j < curr_num_p; j++) {
-				uint32 prefetch0 = qbatch->roots[0][i];
-				uint32 prefetch1 = qbatch->roots[1][i];
-				uint32 prefetch2 = qbatch->roots[2][i];
-				uint32 prefetch3 = qbatch->roots[3][i];
+				uint64 prefetch = qbatch->roots[0][i];
+				uint32 p = pbatch_cache.p[j];
+				uint64 p2 = wide_sqr32(p);
+				uint32 pinvmodq = modinv32(p, q);
 
-				uint64 p = pbatch_cache.p[j];
-				uint128 p2 = wide_sqr64(p);
-				uint64 pinvmodq = modinv64(p, q);
-
-				uint64 lattice_size = 
+				uint32 lattice_size = 
 						pbatch_cache.lattice_size[j];
-				uint128 pinv, tmp;
-				uint128 test1;
+				uint64 pinv, tmp;
 
-				tmp = wide_sqr64(pinvmodq);
-				tmp = montmul128(tmp, q2_r, q2, q2_w);
-				pinv = montmul128(p2, tmp, q2, q2_w);
-				pinv = modsub128(two, pinv, q2);
-				pinv = montmul128(pinv, tmp, q2, q2_w);
-				pinv = montmul128(pinv, q2_r, q2, q2_w);
+				tmp = wide_sqr32(pinvmodq);
+				tmp = montmul64(tmp, q2_r, q2, q2_w);
+				pinv = montmul64(p2, tmp, q2, q2_w);
+				pinv = modsub64((uint64)2, pinv, q2);
+				pinv = montmul64(pinv, tmp, q2, q2_w);
+				pinv = montmul64(pinv, q2_r, q2, q2_w);
 
-				test1.w[0] = (uint32)lattice_size;
-				test1.w[1] = (uint32)(lattice_size >> 32);
-				test1.w[2] = 0;
-				test1.w[3] = 0;
+				for (k = 0; k < num_roots; k++) {
 
-				for (k = 0; k < 4 * num_roots; k += 4) {
+					uint64 qroot;
+					uint64 proot;
+					uint64 res;
 
-					uint128 proot, qroot, res;
+					qroot = prefetch;
+					prefetch = qbatch->roots[k+1][i];
+					proot = pbatch_cache.roots[k][j];
+					res = montmul64(pinv, 
+							modsub64(qroot, proot,
+							q2), q2, q2_w);
 
-					qroot.w[0] = prefetch0;
-					qroot.w[1] = prefetch1;
-					qroot.w[2] = prefetch2;
-					qroot.w[3] = prefetch3;
-
-					prefetch0 = qbatch->roots[k+4][i];
-					prefetch1 = qbatch->roots[k+5][i];
-					prefetch2 = qbatch->roots[k+6][i];
-					prefetch3 = qbatch->roots[k+7][i];
-
-					proot.w[0] = pbatch_cache.roots[k][j];
-					proot.w[1] = pbatch_cache.roots[k+1][j];
-					proot.w[2] = pbatch_cache.roots[k+2][j];
-					proot.w[3] = pbatch_cache.roots[k+3][j];
-
-					res = montmul128(pinv,
-							modsub128(qroot, proot,
-								q2), q2, q2_w);
-
-					if (cmp128(res, test1) < 0) {
+					if (res < lattice_size &&
+							qroot != 0 &&
+							proot != 0) {
 						found_t *f = found_array + 
 								my_threadid;
 						f->p = p;
 						f->q = q;
-						f->which_poly = k / 4;
+						f->k = k;
 						f->offset = res;
 						f->proot = proot;
 					}

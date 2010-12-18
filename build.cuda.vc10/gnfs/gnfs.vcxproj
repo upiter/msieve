@@ -168,48 +168,7 @@
     <ClCompile Include="..\..\gnfs\ffpoly.c" />
     <ClCompile Include="..\..\gnfs\gf2.c" />
     <ClCompile Include="..\..\gnfs\gnfs.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg46_64.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg5_128.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg5_64.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg5_96.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg6_128.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg6_96.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg46_64.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg5_128.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg5_64.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg5_96.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg6_128.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_sieve_deg6_96.c" />
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_line.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_x.c" />
@@ -237,13 +196,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\gnfs\filter\filter.h" />
-    <ClInclude Include="..\..\gnfs\poly\stage1\stage1_core\cpu_intrinsics.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="..\..\gnfs\poly\stage1\stage1_core_gpu\cuda_intrinsics.h" />
+    <ClInclude Include="..\..\gnfs\poly\stage1\cpu_intrinsics.h" />
     <ClInclude Include="..\..\gnfs\sieve\sieve.h" />
     <ClInclude Include="..\..\include\ap.h" />
     <ClInclude Include="..\..\include\batch_factor.h" />

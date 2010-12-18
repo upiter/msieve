@@ -139,12 +139,7 @@
     <ClCompile Include="..\..\gnfs\ffpoly.c" />
     <ClCompile Include="..\..\gnfs\gf2.c" />
     <ClCompile Include="..\..\gnfs\gnfs.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg46_64.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg5_128.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg5_64.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg5_96.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg6_128.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_core\stage1_sieve_deg6_96.c" />
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_cpu.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_line.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_x.c" />
@@ -172,7 +167,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\gnfs\filter\filter.h" />
-    <ClInclude Include="..\..\gnfs\poly\stage1\stage1_core\cpu_intrinsics.h" />
     <ClInclude Include="..\..\gnfs\sieve\sieve.h" />
     <ClInclude Include="..\..\include\batch_factor.h" />
     <ClInclude Include="..\..\include\common.h" />

@@ -1,4 +1,11 @@
 Version 1.48:
+	- Performed a massive overhaul of the stage 1 NFS polynomial
+		selection, with a huge amount of help from Jayson King.
+		Once this is tuned a little better, polynomial selection
+		should become massively faster, especially on CPUs.
+		The GPU code is much simpler and more flexible now too
+	- Patches from Brian Gladman: update the MSVC projects for
+		the CUDA 3.2 toolkit
 	- Added a fast MPI parallel all-against-all xor implementation
 		courtesy of Ilya Popovyan
 	- Added more cache size detection for Intel processors
