@@ -228,12 +228,17 @@ handle_collision(poly_search_t *poly, uint32 which_poly,
 /* main search routines */
 
 typedef struct {
-	uint32 bits; /* in leading rational coeff */
+	uint32 bits; /* used to interpolate into table */
 	double p_scale;
-	uint32 max_diverge;
 	uint32 num_pieces; /* for randomization */
+
+#ifdef HAVE_CUDA
+	uint32 max_diverge;
 	uint32 special_q_min;
 	uint32 special_q_max;
+#else
+	double num_blocks;
+#endif
 } sieve_fb_param_t;
 
 void sieve_lattice(msieve_obj *obj, poly_search_t *poly, 

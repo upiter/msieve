@@ -418,7 +418,7 @@ sieve_lattice_cpu(msieve_obj *obj, lattice_fb_t *L,
 			p_min, p_max);
 
 	sieve_fb_init(&sieve_p, L->poly, 
-			0, 0, /* prime p */
+			100, 5000,
 			1, degree,
 		       	0);
 

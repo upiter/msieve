@@ -19,20 +19,20 @@ $Id$
 static const sieve_fb_param_t sieve_fb_params[] = {
 
 #ifdef HAVE_CUDA
-	{ 40, 1.5, 100,    1,          1,          1},
-	{ 48, 1.3,  25,    1,          1,       1500},
-	{ 56, 1.2,  10,   25,       1000,     250000},
-	{ 64, 1.2,   5,  100,     150000,   15000000},
-	{ 72, 1.1,   5,  500,   10000000,  500000000},
-	{ 80, 1.1,   5, 2500,  250000000, 2500000000},
+	{ 40, 1.5,    1, 100,         1,          1},
+	{ 48, 1.3,    1,  25,         1,       1500},
+	{ 56, 1.2,   25,  10,      1000,     250000},
+	{ 64, 1.2,  100,   5,    150000,   15000000},
+	{ 72, 1.1,  500,   5,  10000000,  500000000},
+	{ 80, 1.1, 2500,   5, 250000000, 2500000000},
 #else
-	{ 32, 2.0,   0,    1,          1,          1},
-	{ 40, 2.0,   0,    1,          1,       3500},
-	{ 48, 2.0,   0,    1,       2500,      75000},
-	{ 56, 1.7,   0,   25,     250000,    1500000},
-	{ 64, 1.5,   0,  100,    5000000,   25000000},
-	{ 72, 1.3,   0,  500,   75000000,  350000000},
-	{ 80, 1.2,   0, 2500, 1000000000, 2500000000},
+	{ 40, 2.0,    1,   10},
+	{ 48, 2.0,    1,   20},
+	{ 56, 1.7,    1,   80},
+	{ 64, 1.5,    1,  200},
+	{ 72, 1.3,    1,  200},
+	{ 80, 1.2,    1,  200},
+	{ 88, 1.1,    1,  200},
 #endif
 };
 
@@ -55,12 +55,14 @@ get_poly_params(double bits, sieve_fb_param_t *params)
 
 	max_bits = sieve_fb_params[NUM_SIEVE_FB_PARAMS - 1].bits;
 	if (bits >= max_bits) {
+#ifdef HAVE_CUDA
 		if (bits > max_bits + 5) {
 			printf("error: no factor base parameters for "
 				"%.0lf bit leading rational "
 				"coefficient\n", bits + 0.5);
 			exit (-1);
 		}
+#endif
 		*params = sieve_fb_params[NUM_SIEVE_FB_PARAMS - 1];
 
 		return;
@@ -80,15 +82,20 @@ get_poly_params(double bits, sieve_fb_param_t *params)
 	params->bits = bits;
 	params->p_scale = (low->p_scale * k +
 				high->p_scale * j) / dist;
-	params->max_diverge = (low->max_diverge * k +
-				high->max_diverge * j) / dist;
-
 	params->num_pieces = exp((log(low->num_pieces) * k +
 					log(high->num_pieces) * j) / dist);
+
+#ifdef HAVE_CUDA
+	params->max_diverge = (low->max_diverge * k +
+				high->max_diverge * j) / dist;
 	params->special_q_min = exp((log(low->special_q_min) * k +
 					log(high->special_q_min) * j) / dist);
 	params->special_q_max = exp((log(low->special_q_max) * k +
 					log(high->special_q_max) * j) / dist);
+#else
+	params->num_blocks = (low->num_blocks * k +
+				high->num_blocks * j) / dist;
+#endif
 }
 
 /*------------------------------------------------------------------------*/
@@ -104,15 +111,42 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	curr_poly_t *middle_poly = poly->batch + poly->num_poly / 2;
 	curr_poly_t *last_poly = poly->batch + poly->num_poly - 1;
 
+	printf("p = %.2lf bits, sieve = %.2lf bits\n",
+			log(middle_poly->p_size_max) / M_LN2,
+			log(middle_poly->sieve_size) / M_LN2);
+
+#ifdef HAVE_CUDA
+	/* the GPU code doesn't care how large the sieve 
+	   size is, so favor smaller special-q and try 
+	   to make the range of other rational factors large */
+
 	bits = log(middle_poly->p_size_max) / M_LN2;
-	printf("p = %.2lf sieve = %.2lf bits\n",
-			bits, log(middle_poly->sieve_size) / M_LN2);
-
 	get_poly_params(bits, &params);
-
-	num_pieces = params.num_pieces;
 	special_q_min = params.special_q_min;
 	special_q_max = params.special_q_max;
+#else
+	/* the CPU code is different; its runtime is
+	   directly proportional to the sieve size. So 
+	   choose the special-q size to fix the number 
+	   of times the CPU hashtable code will run.
+	   The parametrization is chosen to favor larger
+	   special q, adjusted implictly for the polynomial 
+	   degree */
+
+	bits = log(middle_poly->sieve_size) / M_LN2;
+	get_poly_params(bits, &params);
+	special_q_min = MIN((uint32)(-1), 
+				middle_poly->sieve_size / 
+				(middle_poly->p_size_max * 
+				 params.num_blocks));
+	special_q_min = MAX(special_q_min, 1);
+	if (poly->degree != 5)
+		special_q_min *= 5;
+			
+	special_q_max = special_q_min * params.p_scale;
+#endif
+
+	num_pieces = params.num_pieces;
 
 	sieve_fb_init(&sieve_special_q, poly,
 			5, MIN(10000, special_q_max),
@@ -127,7 +161,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		   poly->batch[0].high_coeff, last_poly->high_coeff,
 		   special_q_min, special_q_max);
 
-	if (num_pieces > 1) { /* randomize special_q */
+	if (num_pieces > 1) { /* randomize the special_q range */
 		double piece_ratio = pow((double)special_q_max / special_q_min,
 					 (double)1 / num_pieces);
 		uint32 piece = get_rand(&obj->seed1,
