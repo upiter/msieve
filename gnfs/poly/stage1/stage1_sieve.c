@@ -26,13 +26,14 @@ static const sieve_fb_param_t sieve_fb_params[] = {
 	{ 72, 1.1,  500,   5,  10000000,  500000000},
 	{ 80, 1.1, 2500,   5, 250000000, 2500000000},
 #else
-	{ 40, 2.0,    1,   10},
-	{ 48, 2.0,    1,   20},
-	{ 56, 1.7,    1,   80},
-	{ 64, 1.5,    1,  200},
-	{ 72, 1.3,    1,  200},
-	{ 80, 1.2,    1,  200},
-	{ 88, 1.1,    1,  200},
+	{ 40, 2.0,    1,  10},
+	{ 48, 2.0,    1,  20},
+	{ 56, 1.7,    1,  80},
+	{ 64, 1.5,    1, 200},
+	{ 72, 1.3,    1, 100},
+	{ 80, 1.2,    1,  50},
+	{ 88, 1.1,    1,  20},
+	{ 96, 1.1,    1,  20},
 #endif
 };
 
@@ -130,20 +131,20 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	   choose the special-q size to fix the number 
 	   of times the CPU hashtable code will run.
 	   The parametrization is chosen to favor larger
-	   special q, adjusted implictly for the polynomial 
-	   degree */
+	   special q for larger inputs, adjusted implictly 
+	   for the polynomial degree */
 
 	bits = log(middle_poly->sieve_size) / M_LN2;
 	get_poly_params(bits, &params);
-	special_q_min = MIN((uint32)(-1), 
+	special_q_max = MIN((uint32)(-1), 
 				middle_poly->sieve_size / 
 				(middle_poly->p_size_max * 
 				 params.num_blocks));
-	special_q_min = MAX(special_q_min, 1);
-	if (poly->degree != 5)
-		special_q_min *= 5;
+	special_q_max = MAX(1, special_q_max);
+	if (poly->degree != 5 && special_q_max < (uint32)(-1) / 5)
+		special_q_max *= 5;
 			
-	special_q_max = special_q_min * params.p_scale;
+	special_q_min = MAX(1, special_q_max / params.p_scale);
 #endif
 
 	num_pieces = params.num_pieces;
