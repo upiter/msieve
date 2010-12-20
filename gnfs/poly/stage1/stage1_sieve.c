@@ -177,6 +177,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	lattice_fb_t L;
 	sieve_fb_t sieve_special_q;
 	uint32 special_q_min, special_q_max;
+	uint32 special_q_fb_max;
 	uint32 num_pieces;
 	sieve_fb_param_t params;
 	double bits;
@@ -196,6 +197,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	get_poly_params(bits, &params);
 	special_q_min = params.special_q_min;
 	special_q_max = params.special_q_max;
+	special_q_fb_max = 10000;
 	num_pieces = params.num_pieces;
 #else
 	/* the CPU code is different; its runtime is
@@ -216,13 +218,16 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	special_q_max = MAX(1, special_q_max);
 	if (poly->degree != 5 && special_q_max < (uint32)(-1) / 5)
 		special_q_max *= 5;
-			
+	special_q_max = MIN(special_q_max,
+				middle_poly->p_size_max / 25e6);
 	special_q_min = MAX(1, special_q_max / 2);
+	special_q_fb_max = MIN(100000,
+				sqrt(middle_poly->p_size_max / special_q_max));
 	num_pieces = 1;
 #endif
 
 	sieve_fb_init(&sieve_special_q, poly,
-			5, MIN(10000, special_q_max),
+			5, MIN(special_q_fb_max, special_q_max),
 			1, poly->degree,
 			1);
 
@@ -272,7 +277,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 
 		special_q_min = MAX(special_q_max2 + 1, MIN_SPECIAL_Q);
 
-		if (quit || special_q_min > special_q_max)
+		if (quit || special_q_min >= special_q_max)
 			break;
 	}
 
