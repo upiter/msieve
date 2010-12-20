@@ -230,9 +230,9 @@ handle_collision(poly_search_t *poly, uint32 which_poly,
 typedef struct {
 	uint32 bits; /* used to interpolate into table */
 	double p_scale;
-	uint32 num_pieces; /* for randomization */
 
 #ifdef HAVE_CUDA
+	uint32 num_pieces; /* for randomization */
 	uint32 max_diverge;
 	uint32 special_q_min;
 	uint32 special_q_max;

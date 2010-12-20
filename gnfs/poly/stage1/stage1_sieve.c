@@ -26,19 +26,86 @@ static const sieve_fb_param_t sieve_fb_params[] = {
 	{ 72, 1.1,  500,   5,  10000000,  500000000},
 	{ 80, 1.1, 2500,   5, 250000000, 2500000000},
 #else
-	{ 40, 2.0,    1,  10},
-	{ 48, 2.0,    1,  20},
-	{ 56, 1.7,    1,  80},
-	{ 64, 1.5,    1, 200},
-	{ 72, 1.3,    1, 100},
-	{ 80, 1.2,    1,  50},
-	{ 88, 1.1,    1,  20},
-	{ 96, 1.1,    1,  20},
+	{ 40, 2.0,   10},
+	{ 48, 2.0,   20},
+	{ 56, 1.7,   80},
+	{ 64, 1.5,  200},
+	{ 72, 1.3,  100},
+	{ 80, 1.2,   50},
+	{ 88, 1.1,   20},
+	{ 96, 1.1,   20},
 #endif
 };
 
 #define NUM_SIEVE_FB_PARAMS (sizeof(sieve_fb_params) / \
 				sizeof(sieve_fb_params[0]))
+
+/*------------------------------------------------------------------------*/
+void
+handle_collision(poly_search_t *poly, uint32 which_poly,
+			uint32 p1, uint32 p2, uint32 special_q,
+			uint64 special_q_root, uint128 res)
+{
+	curr_poly_t *c = poly->batch + which_poly;
+
+	/* p1, p2, and special_q should always be pairwise coprime
+	 * when we get here, but let's be defensive and check anyway. */
+	if (mp_gcd_1(special_q, p1) != 1 ||
+	    mp_gcd_1(special_q, p2) != 1 ||
+	    mp_gcd_1(p1, p2) != 1)
+		return;
+
+	mpz_set_ui(poly->p, (unsigned long)p1);
+	mpz_mul_ui(poly->p, poly->p, (unsigned long)p2);
+	mpz_mul_ui(poly->p, poly->p, (unsigned long)special_q);
+
+	mpz_gcd(poly->tmp3, poly->p, c->high_coeff);
+	if (mpz_cmp_ui(poly->tmp3, 1))
+		return;
+
+	uint64_2gmp(special_q_root, poly->tmp1);
+	mpz_import(poly->tmp2, 4, -1, sizeof(uint32), 0, 0, &res);
+	mpz_set_ui(poly->tmp3, (unsigned long)special_q);
+
+	mpz_mul(poly->tmp3, poly->tmp3, poly->tmp3);
+	mpz_addmul(poly->tmp1, poly->tmp2, poly->tmp3);
+	mpz_sub(poly->tmp1, poly->tmp1, c->mp_sieve_size);
+	mpz_add(poly->m0, c->trans_m0, poly->tmp1);
+
+	/* check */
+	mpz_pow_ui(poly->tmp1, poly->m0, (mp_limb_t)poly->degree);
+	mpz_mul(poly->tmp2, poly->p, poly->p);
+	mpz_sub(poly->tmp1, c->trans_N, poly->tmp1);
+	mpz_tdiv_r(poly->tmp3, poly->tmp1, poly->tmp2);
+	if (mpz_cmp_ui(poly->tmp3, (mp_limb_t)0)) {
+		gmp_printf("poly %u %u %u %u %Zd\n",
+				which_poly, special_q, p1, p2, poly->m0);
+		printf("crap\n");
+		return;
+	}
+
+	mpz_mul_ui(poly->tmp1, c->high_coeff, (mp_limb_t)poly->degree);
+	mpz_tdiv_qr(poly->m0, poly->tmp2, poly->m0, poly->tmp1);
+	mpz_invert(poly->tmp3, poly->tmp1, poly->p);
+
+	mpz_sub(poly->tmp4, poly->tmp3, poly->p);
+	if (mpz_cmpabs(poly->tmp3, poly->tmp4) < 0)
+		mpz_set(poly->tmp4, poly->tmp3);
+
+	mpz_sub(poly->tmp5, poly->tmp2, poly->tmp1);
+	if (mpz_cmpabs(poly->tmp2, poly->tmp5) > 0)
+		mpz_add_ui(poly->m0, poly->m0, (mp_limb_t)1);
+	else
+		mpz_set(poly->tmp5, poly->tmp2);
+
+	mpz_addmul(poly->m0, poly->tmp4, poly->tmp5);
+
+	gmp_printf("poly %2u %u %u %u %Zd\n",
+			which_poly, special_q, p1, p2, poly->m0);
+
+	poly->callback(c->high_coeff, poly->p, poly->m0,
+			c->coeff_max, poly->callback_data);
+}
 
 /*------------------------------------------------------------------------*/
 static void
@@ -83,10 +150,10 @@ get_poly_params(double bits, sieve_fb_param_t *params)
 	params->bits = bits;
 	params->p_scale = (low->p_scale * k +
 				high->p_scale * j) / dist;
-	params->num_pieces = exp((log(low->num_pieces) * k +
-					log(high->num_pieces) * j) / dist);
 
 #ifdef HAVE_CUDA
+	params->num_pieces = exp((log(low->num_pieces) * k +
+					log(high->num_pieces) * j) / dist);
 	params->max_diverge = (low->max_diverge * k +
 				high->max_diverge * j) / dist;
 	params->special_q_min = exp((log(low->special_q_min) * k +
@@ -125,6 +192,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	get_poly_params(bits, &params);
 	special_q_min = params.special_q_min;
 	special_q_max = params.special_q_max;
+	num_pieces = params.num_pieces;
 #else
 	/* the CPU code is different; its runtime is
 	   directly proportional to the sieve size. So 
@@ -144,10 +212,9 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	if (poly->degree != 5 && special_q_max < (uint32)(-1) / 5)
 		special_q_max *= 5;
 			
-	special_q_min = MAX(1, special_q_max / params.p_scale);
+	special_q_min = MAX(1, special_q_max / 2);
+	num_pieces = 1;
 #endif
-
-	num_pieces = params.num_pieces;
 
 	sieve_fb_init(&sieve_special_q, poly,
 			5, MIN(10000, special_q_max),
@@ -157,10 +224,6 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	L.poly = poly;
 	L.start_time = time(NULL);
 	L.deadline = deadline;
-
-	gmp_printf("coeff %Zd-%Zd specialq %u - %u\n",
-		   poly->batch[0].high_coeff, last_poly->high_coeff,
-		   special_q_min, special_q_max);
 
 	if (num_pieces > 1) { /* randomize the special_q range */
 		double piece_ratio = pow((double)special_q_max / special_q_min,
@@ -172,6 +235,15 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		special_q_max = special_q_min * piece_ratio;
 	}
 
+	if (special_q_max < MIN_SPECIAL_Q)
+		special_q_min = special_q_max = 1;
+	else if (special_q_min > 1)
+		special_q_min = MAX(special_q_min, MIN_SPECIAL_Q);
+
+	gmp_printf("coeff %Zd-%Zd specialq %u - %u\n",
+		   poly->batch[0].high_coeff, last_poly->high_coeff,
+		   special_q_min, special_q_max);
+
 	while (1) {
 		uint32 quit;
 		uint32 special_q_min2, special_q_max2;
@@ -180,12 +252,9 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 			special_q_min2 = special_q_max2 = 1;
 		}
 		else {
-			special_q_min2 = MAX(special_q_min, MIN_SPECIAL_Q);
-			if (special_q_min2 > special_q_max)
-				break;
-			else
-				special_q_max2 = MIN(special_q_max,
-					special_q_min2 * params.p_scale);
+			special_q_min2 = special_q_min;
+			special_q_max2 = MIN(special_q_min * params.p_scale,
+					     special_q_max);
 		}
 
 #ifdef HAVE_CUDA
@@ -196,10 +265,10 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 				special_q_min2, special_q_max2);
 #endif
 
-		if (quit)
-			break;
+		special_q_min = MAX(special_q_max2 + 1, MIN_SPECIAL_Q);
 
-		special_q_min = special_q_max2 + 1;
+		if (quit || special_q_min > special_q_max)
+			break;
 	}
 
 	sieve_fb_free(&sieve_special_q);
