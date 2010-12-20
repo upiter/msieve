@@ -19,6 +19,10 @@ $Id$
 static const sieve_fb_param_t sieve_fb_params[] = {
 
 #ifdef HAVE_CUDA
+	/* for most input sizes, parameters are chosen
+	   in favor of using the 48bit GPU core as
+	   much as possible. Only very large inputs
+	   use the 64bit core. */
 	{ 40, 1.5,    1, 100,         1,          1},
 	{ 48, 1.3,    1,  25,         1,       1500},
 	{ 56, 1.2,   25,  10,      1000,     250000},
@@ -205,6 +209,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	bits = log(middle_poly->sieve_size) / M_LN2;
 	get_poly_params(bits, &params);
 	special_q_max = MIN((uint32)(-1), 
+				4 * params.p_scale * 
 				middle_poly->sieve_size / 
 				(middle_poly->p_size_max * 
 				 params.num_blocks));
