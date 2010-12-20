@@ -22,9 +22,9 @@ static const sieve_fb_param_t sieve_fb_params[] = {
 	/* for most input sizes, parameters are chosen
 	   in favor of using the 48bit GPU core as
 	   much as possible. Only very large inputs
-	   use the 64bit core. */
+	   must use the 64bit core. */
 	{ 40, 1.5,    1, 100,         1,          1},
-	{ 48, 1.3,    1,  25,         1,       1500},
+	{ 48, 1.3,    1,  25,         5,       1500},
 	{ 56, 1.2,   25,  10,      1000,     250000},
 	{ 64, 1.2,  100,   5,    150000,   15000000},
 	{ 72, 1.1,  500,   5,  10000000,  500000000},
@@ -275,10 +275,10 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 				special_q_min2, special_q_max2);
 #endif
 
-		special_q_min = MAX(special_q_max2 + 1, MIN_SPECIAL_Q);
-
-		if (quit || special_q_min >= special_q_max)
+		if (quit || special_q_max2 > special_q_max / params.p_scale)
 			break;
+
+		special_q_min = MAX(special_q_max2 + 1, MIN_SPECIAL_Q);
 	}
 
 	sieve_fb_free(&sieve_special_q);
