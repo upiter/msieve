@@ -195,6 +195,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 
 	bits = log(middle_poly->p_size_max) / M_LN2;
 	get_poly_params(bits, &params);
+
 	special_q_min = params.special_q_min;
 	special_q_max = params.special_q_max;
 	special_q_fb_max = 10000;
@@ -210,17 +211,23 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 
 	bits = log(middle_poly->sieve_size) / M_LN2;
 	get_poly_params(bits, &params);
+
 	special_q_max = MIN((uint32)(-1), 
-				4 * params.p_scale * 
-				middle_poly->sieve_size / 
+				middle_poly->p_size_max / 4e6);
+	special_q_max = MAX(1, special_q_max);
+
+	special_q_min = MIN(special_q_max / 2,
+				params.p_scale * 
+				(poly->degree != 5 ? 5 : 1) * 
+				2 * middle_poly->sieve_size / 
 				(middle_poly->p_size_max * 
 				 params.num_blocks));
-	special_q_max = MAX(1, special_q_max);
-	if (poly->degree != 5 && special_q_max < (uint32)(-1) / 5)
-		special_q_max *= 5;
-	special_q_max = MIN(special_q_max,
-				middle_poly->p_size_max / 25e6);
-	special_q_min = MAX(1, special_q_max / 2);
+	special_q_min = MAX(special_q_min,
+				middle_poly->p_size_max * 
+				params.p_scale * params.p_scale / 
+				(uint64)(-1));
+	special_q_min = MAX(1, special_q_min);
+
 	special_q_fb_max = MIN(100000,
 				sqrt(middle_poly->p_size_max / special_q_max));
 	num_pieces = 1;
