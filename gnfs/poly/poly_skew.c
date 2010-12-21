@@ -294,7 +294,7 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 	FILE *stage1_outfile = NULL;
 	uint32 do_both_stages = 0;
 	double digits;
-	double coeff_scale = 30.0;
+	double coeff_scale = 10.0;
 
 	if ((obj->flags & MSIEVE_FLAG_NFS_POLY1) &&
 	    (obj->flags & MSIEVE_FLAG_NFS_POLY2))
