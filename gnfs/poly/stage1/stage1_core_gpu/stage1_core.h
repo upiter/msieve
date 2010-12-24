@@ -44,7 +44,7 @@ typedef struct {
 
 typedef struct {
 	uint32 p[P_SOA_BATCH_SIZE];
-	uint32 lattice_size[P_SOA_BATCH_SIZE];
+	uint64 lattice_size[P_SOA_BATCH_SIZE];
 	uint64 roots[POLY_BATCH_SIZE][P_SOA_BATCH_SIZE];
 } p_soa_t;
 

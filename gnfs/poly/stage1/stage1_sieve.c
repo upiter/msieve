@@ -127,14 +127,6 @@ get_poly_params(double bits, sieve_fb_param_t *params)
 
 	max_bits = sieve_fb_params[NUM_SIEVE_FB_PARAMS - 1].bits;
 	if (bits >= max_bits) {
-#ifdef HAVE_CUDA
-		if (bits > max_bits + 5) {
-			printf("error: no factor base parameters for "
-				"%.0lf bit leading rational "
-				"coefficient\n", bits + 0.5);
-			exit (-1);
-		}
-#endif
 		*params = sieve_fb_params[NUM_SIEVE_FB_PARAMS - 1];
 
 		return;
@@ -222,10 +214,6 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 				2 * middle_poly->sieve_size / 
 				(middle_poly->p_size_max * 
 				 params.num_blocks));
-	special_q_min = MAX(special_q_min,
-				middle_poly->p_size_max * 
-				params.p_scale * params.p_scale / 
-				(uint64)(-1));
 	special_q_min = MAX(1, special_q_min);
 
 	special_q_fb_max = MIN(100000,

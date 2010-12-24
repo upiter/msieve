@@ -409,8 +409,8 @@ sieve_lattice_cpu(msieve_obj *obj, lattice_fb_t *L,
 	double p_size_max = L->poly->batch[0].p_size_max;
 	uint32 degree = L->poly->degree;
 
-	p_min = sqrt(p_size_max / special_q_max);
-	p_max = p_min * params->p_scale;
+	p_max = MIN((uint32)(-1), sqrt(p_size_max / special_q_min));
+	p_min = p_max / params->p_scale;
 
 	gmp_printf("coeff %Zd specialq %u - %u other %u - %u\n",
 			L->poly->batch[0].high_coeff,

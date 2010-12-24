@@ -30,7 +30,7 @@ typedef struct {
 	uint32 *mont_w;
 	uint64 *mont_r;
 	uint64 *p2;
-	uint32 *lattice_size;
+	uint64 *lattice_size;
 	uint64 *roots[POLY_BATCH_SIZE];
 } p_soa_var_t;
 
@@ -45,7 +45,7 @@ p_soa_var_init(p_soa_var_t *soa, uint32 batch_size)
 	soa->mont_w = (uint32 *)xmalloc(batch_size * sizeof(uint32));
 	soa->mont_r = (uint64 *)xmalloc(batch_size * sizeof(uint64));
 	soa->p2 = (uint64 *)xmalloc(batch_size * sizeof(uint64));
-	soa->lattice_size = (uint32 *)xmalloc(batch_size * sizeof(uint32));
+	soa->lattice_size = (uint64 *)xmalloc(batch_size * sizeof(uint64));
 	for (i = 0; i < POLY_BATCH_SIZE; i++) {
 		soa->roots[i] = (uint64 *)xmalloc(batch_size * sizeof(uint64));
 	}
@@ -300,7 +300,7 @@ sieve_lattice_batch(msieve_obj *obj, lattice_fb_t *L,
 		trans_p_array->num_p = orig_p_array->num_p;
 		trans_q_array->num_p = orig_q_array->num_p;
 		for (i = 0; i < trans_p_array->num_p; i++)
-			trans_p_array->lattice_size[i] = MIN((uint32)(-1),
+			trans_p_array->lattice_size[i] = MIN((uint64)(-1),
 				(2 * L->poly->batch[len/2].sieve_size /
 					orig_p_array->p2[i]));
 		break;
@@ -315,7 +315,7 @@ sieve_lattice_batch(msieve_obj *obj, lattice_fb_t *L,
 		if (!batch_size)
 			return 0;
 		for (i = 0; i < trans_p_array->num_p; i++)
-			trans_p_array->lattice_size[i] = MIN((uint32)(-1),
+			trans_p_array->lattice_size[i] = MIN((uint64)(-1),
 				(2 * L->poly->batch[len/2].sieve_size /
 					(special_q_array->p2[which_root] *
 						(double)trans_p_array->p2[i])));
@@ -330,7 +330,7 @@ sieve_lattice_batch(msieve_obj *obj, lattice_fb_t *L,
 		if (!batch_size)
 			return 0;
 		for (i = 0; i < trans_p_array->num_p; i++)
-			trans_p_array->lattice_size[i] = MIN((uint32)(-1),
+			trans_p_array->lattice_size[i] = MIN((uint64)(-1),
 				(2 * L->poly->batch[which_root].sieve_size /
 					(special_q_array->p2[start] *
 						(double)trans_p_array->p2[i])));
@@ -418,7 +418,7 @@ sieve_lattice_batch(msieve_obj *obj, lattice_fb_t *L,
 				curr_num_p * sizeof(uint32));
 			memcpy(p_marshall->lattice_size, 
 				trans_p_array->lattice_size + num_p_done,
-				curr_num_p * sizeof(uint32));
+				curr_num_p * sizeof(uint64));
 
 			for (i = 0; i < batch_size; i++) {
 				memcpy(p_marshall->roots[i],
@@ -676,8 +676,9 @@ sieve_lattice_gpu(msieve_obj *obj, lattice_fb_t *L,
 			1, max_roots,
 			0);
 
-	large_p_min = sqrt(middle_poly->p_size_max / special_q_max);
-	large_p_max = MIN(MAX_P, large_p_min * params->p_scale);
+	large_p_max = MIN(sqrt(middle_poly->p_size_max / special_q_min),
+				MAX_P);
+	large_p_min = large_p_max / params->p_scale;
 
 	small_p_max = large_p_min - 1;
 	small_p_min = small_p_max / params->p_scale;

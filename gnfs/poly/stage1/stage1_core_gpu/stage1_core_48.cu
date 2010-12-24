@@ -27,7 +27,7 @@ extern "C" {
 
 typedef struct {
 	uint32 p[SHARED_BATCH_SIZE];
-	uint32 lattice_size[SHARED_BATCH_SIZE];
+	uint64 lattice_size[SHARED_BATCH_SIZE];
 	uint64 roots[POLY_BATCH_SIZE][SHARED_BATCH_SIZE];
 } p_soa_shared_t;
 
@@ -91,7 +91,7 @@ sieve_kernel(p_soa_t *pbatch,
 				uint64 p2 = wide_sqr32(p);
 				uint32 pinvmodq = modinv32(p, q);
 
-				uint32 lattice_size = 
+				uint64 lattice_size = 
 						pbatch_cache.lattice_size[j];
 				uint64 pinv, tmp;
 
