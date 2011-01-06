@@ -11,8 +11,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CUDA_Build_Rule Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_core_deg5_48.cu">
+    <CudaCompile Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_core_48.cu">
       <Filter>Source Files</Filter>
-    </CUDA_Build_Rule>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\_main.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
