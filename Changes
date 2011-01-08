@@ -4,14 +4,16 @@ Version 1.48:
 		Once this is tuned a little better, polynomial selection
 		should become massively faster, especially on CPUs.
 		The GPU code is much simpler and more flexible now too
-	- Patches from Brian Gladman: update the MSVC projects for
-		the CUDA 3.2 toolkit
 	- Added a fast MPI parallel all-against-all xor implementation
 		courtesy of Ilya Popovyan
 	- Added more cache size detection for Intel processors
 	- Added a fix to prevent potential overflow in the hashtable code
 	- Increased the maximum input size to 1024 bits
-
+	- Changes from Brian Gladman:
+	   - Corrected a bug in Windows win32 inline assembler code 
+	   - Removed the unmaintained Visual Studioo 2008 build projects
+	   - Updated Visual Studio 2010 CUDA build for NVIDIA Parallel
+	       Nsight 1.5 and the CUDA 3.2 toolkit
 
 Version 1.47: 9/18/10
 	- Fixed several bugs in the linear algebra (thanks Serge
