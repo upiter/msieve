@@ -78,17 +78,11 @@ p_packed_next(p_packed_t *curr)
 }
 
 static void 
-store_p_packed(uint32 p, uint32 num_roots, uint32 which_poly,
-		mpz_t *roots, void *extra)
+store_p_packed(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 {
 	uint32 i;
 	p_packed_var_t *s = (p_packed_var_t *)extra;
 	p_packed_t *curr;
-
-	if (which_poly != 0) {
-		printf("error: polynomial batches not supported\n");
-		exit(-1);
-	}
 
 	if ((p_packed_t *)((uint64 *)s->curr + s->p_size) + 1 >=
 			s->packed_array + s->p_size_alloc ) {
@@ -106,7 +100,7 @@ store_p_packed(uint32 p, uint32 num_roots, uint32 which_poly,
 	curr->pad = 0;
 	curr->num_roots = num_roots;
 	for (i = 0; i < num_roots; i++)
-		curr->roots[i].start_offset = gmp2uint64(roots[i]);
+		curr->roots[i].start_offset = roots[i];
 	curr->p2 = (uint64)p * p;
 	curr->mont_w = montmul32_w((uint32)curr->p2);
 	curr->mont_r = montmul64_r(curr->p2);
@@ -130,12 +124,19 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 	p_packed_t *tmp;
 	uint32 num_entries = hash_array->num_p;
 	uint64 special_q2 = (uint64)special_q * special_q;
-	uint64 sieve_size = MIN((uint64)(-1),
-				2 * L->poly->batch[0].sieve_size / special_q2);
+	uint64 sieve_size;
 	uint64 sieve_start = 0;
 	uint32 num_blocks = 0;
 	time_t curr_time;
 	double elapsed;
+
+	if (2 * L->poly->sieve_size / special_q2 > (uint64)(-1)) {
+		printf("error: sieve size too large "
+			"in handle_special_q\n");
+		return 0;
+	}
+
+	sieve_size = 2 * L->poly->sieve_size / special_q2;
 
 	tmp = hash_array->packed_array;
 
@@ -190,7 +191,7 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 			for (j = 0; j < num_roots; j++) {
 				uint64 offset = tmp->roots[j].offset;
 
-				if (offset < sieve_end) {
+				if (offset < sieve_end && offset > sieve_start) {
 					hash_entry_t *hit;
 					hash_entry_t curr_entry;
 					uint32 already_seen = 0;
@@ -209,7 +210,7 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 						res.w[2] = 0;
 						res.w[3] = 0;
 
-						handle_collision(L->poly, 0,
+						handle_collision(L->poly,
 								hit->p, tmp->p, 
 								special_q,
 								special_q_root,
@@ -303,10 +304,11 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 					hash_array.num_roots);
 #endif
 	/* handle trivial lattice */
-	if (special_q_min == 1 && special_q_max == 1) {
+	if (special_q_min == 1) {
 		quit = handle_special_q(obj, &hashtable, &hash_array,
 				L, 1, 0, block_size, NULL);
-		goto finished;
+		if (quit || special_q_max == 1)
+			goto finished;
 	}
 
 	invtable = (uint64 *)xmalloc(num_p * SPECIALQ_BATCH_SIZE * 
@@ -333,7 +335,7 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		num_q = specialq_array.num_p;
 		if (num_q == 0)
 			break;
-#if 1
+#if 0
 		printf("special q: %u entries, %u roots\n", num_q, 
 					specialq_array.num_roots);
 #endif
@@ -368,14 +370,13 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		for (i = 0; i < num_q; i++) {
 
 			for (j = 0; j < qptr->num_roots; j++) {
-				if (handle_special_q(obj,
+				quit = handle_special_q(obj,
 						&hashtable, &hash_array,
 						L, qptr->p, 
 						qptr->roots[j].start_offset,
-						block_size, invtmp)) {
-					quit = 1;
+						block_size, invtmp);
+				if (quit)
 					goto finished;
-				}
 			}
 
 			qptr = p_packed_next(qptr);
@@ -399,21 +400,27 @@ finished:
 /*------------------------------------------------------------------------*/
 uint32 
 sieve_lattice_cpu(msieve_obj *obj, lattice_fb_t *L, 
-		sieve_fb_param_t *params,
 		sieve_fb_t *sieve_special_q,
 		uint32 special_q_min, uint32 special_q_max)
 {
 	uint32 quit;
 	sieve_fb_t sieve_p;
 	uint32 p_min, p_max;
-	double p_size_max = L->poly->batch[0].p_size_max;
 	uint32 degree = L->poly->degree;
+	double p_size_max = L->poly->p_size_max;
 
-	p_max = MIN((uint32)(-1), sqrt(p_size_max / special_q_min));
-	p_min = p_max / params->p_scale;
+	p_size_max /= special_q_max;
+	if ((uint32)sqrt(p_size_max * P_SCALE) > (uint32)(-1)) {
+		printf("error: invalid parameters for rational coefficient "
+			"in sieve_lattice_cpu()\n");
+		return 0;
+	}
+
+	p_max = sqrt(p_size_max * P_SCALE);
+	p_min = p_max / P_SCALE;
 
 	gmp_printf("coeff %Zd specialq %u - %u other %u - %u\n",
-			L->poly->batch[0].high_coeff,
+			L->poly->high_coeff,
 			special_q_min, special_q_max,
 			p_min, p_max);
 

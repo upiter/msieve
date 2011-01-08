@@ -40,6 +40,7 @@ static const poly_param_t prebuilt_params_deg4[] = {
 	{ 95, 1.00E+016, 1.00E+015, 1.50E-008},
 	{100, 3.10E+017, 4.00E+015, 8.30E-009},
 	{105, 1.00E+018, 1.00E+016, 4.00E-009},
+	{110, 3.00E+018, 4.00E+016, 1.20E-009},
 };
 
 static const poly_param_t prebuilt_params_deg5[] = {
@@ -493,13 +494,13 @@ void find_poly_skew(msieve_obj *obj, mp_t *n,
 
 	uint32 bits = mp_bits(n);
 
-	if (bits < 336) {		/* <= 102 digits */
+	if (bits < 363) {		/* <= 110 digits */
 		find_poly_core(obj, n, config, 4, deadline);
 	}
-	else if (bits < 661) {		/* 102-200 digits */
+	else if (bits < 726) {		/* 110-220 digits */
 		find_poly_core(obj, n, config, 5, deadline);
 	}
-	else {				/* 200+ digits */
+	else {				/* 220+ digits */
 		find_poly_core(obj, n, config, 6, deadline);
 	}
 }

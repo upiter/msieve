@@ -113,7 +113,10 @@
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve.c">
       <Filter>Source Files\poly\Stage1</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu.c">
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu_nosq.c">
+      <Filter>Source Files\poly\Stage1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu_sq.c">
       <Filter>Source Files\poly\Stage1</Filter>
     </ClCompile>
   </ItemGroup>
@@ -181,24 +184,6 @@
     <ClInclude Include="..\..\gnfs\poly\stage1\stage1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\gnfs\poly\stage1_gpu\stage1_core_deg46_64.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gnfs\poly\stage1_gpu\stage1_core_deg5_128.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gnfs\poly\stage1_gpu\stage1_core_deg5_64.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gnfs\poly\stage1_gpu\stage1_core_deg5_96.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gnfs\poly\stage1_gpu\stage1_core_deg6_128.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gnfs\poly\stage1_gpu\stage1_core_deg6_96.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\gnfs\poly\stage2\stage2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -207,6 +192,12 @@
     </ClInclude>
     <ClInclude Include="..\..\gnfs\poly\stage1\cpu_intrinsics.h">
       <Filter>Source Files\poly\Stage1</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_core_nosq.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_core_sq.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

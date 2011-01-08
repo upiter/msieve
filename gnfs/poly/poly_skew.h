@@ -41,7 +41,7 @@ void poly_stage1_init(poly_stage1_t *data,
 			stage1_callback_t callback,
 			void *callback_data);
 void poly_stage1_free(poly_stage1_t *data);
-uint32 poly_stage1_run(msieve_obj *obj, poly_stage1_t *data);
+void poly_stage1_run(msieve_obj *obj, poly_stage1_t *data);
 
 
 typedef void (*stage2_callback_t)(void *extra, uint32 deg,
