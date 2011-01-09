@@ -22,7 +22,6 @@ extern "C" {
 	/* Lightweight factoring API */
 
 #include <util.h>
-#include <mp.h>
 
 #ifdef HAVE_MPI
 #include <mpi.h>
@@ -152,8 +151,7 @@ typedef struct {
 
 	uint32 which_gpu;         /* ordinal ID of GPU to use */
 
-	char mp_sprintf_buf[32 * MAX_MP_WORDS+1]; /* scratch space for 
-						printing big integers */
+	char *mp_sprintf_buf;    /* scratch space for printing big integers */
 } msieve_obj;
 
 msieve_obj * msieve_obj_new(char *input_integer,

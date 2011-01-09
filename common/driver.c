@@ -27,9 +27,6 @@ msieve_obj * msieve_obj_new(char *input_integer, uint32 flags,
 
 	msieve_obj *obj = (msieve_obj *)xcalloc((size_t)1, sizeof(msieve_obj));
 
-	if (obj == NULL)
-		return obj;
-	
 	obj->input = input_integer;
 	obj->flags = flags;
 	obj->seed1 = seed1;
@@ -49,6 +46,7 @@ msieve_obj * msieve_obj_new(char *input_integer, uint32 flags,
 	obj->nfs_fbfile_name = MSIEVE_DEFAULT_NFS_FBFILE;
 	if (nfs_fbfile_name)
 		obj->nfs_fbfile_name = nfs_fbfile_name;
+	obj->mp_sprintf_buf = (char *)xmalloc(32 * MAX_MP_WORDS + 1);
 	savefile_init(&obj->savefile, savefile_name);
 	
 	return obj;
@@ -68,6 +66,7 @@ msieve_obj * msieve_obj_free(msieve_obj *obj) {
 	}
 
 	savefile_free(&obj->savefile);
+	free(obj->mp_sprintf_buf);
 	free(obj);
 	return NULL;
 }
