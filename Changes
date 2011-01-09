@@ -1,3 +1,5 @@
+Version 1.49:
+
 Version 1.48:
 	- Performed a massive overhaul of the stage 1 NFS polynomial
 		selection, with a huge amount of help from Jayson King.
