@@ -140,11 +140,13 @@
     <ClCompile Include="..\..\gnfs\gf2.c" />
     <ClCompile Include="..\..\gnfs\gnfs.c" />
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_cpu.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_line.c" />
+    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg45_x.c" />
+    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg45_xy.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_x.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_xy.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_xyz.c" />
+    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_line.c" />
+    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_util.c" />
     <ClCompile Include="..\..\gnfs\relation.c" />
     <ClCompile Include="..\..\gnfs\filter\duplicate.c" />
     <ClCompile Include="..\..\gnfs\filter\filter.c" />

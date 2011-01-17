@@ -66,7 +66,7 @@ make_heap(line_score_t *h, uint32 size) {
 }
 
 static void
-save_rotation(line_score_heap_t *heap, uint32 x_off, uint32 score)
+save_line_score(line_score_heap_t *heap, uint32 x_off, uint32 score)
 {
 	line_score_t *h = heap->entries;
 
@@ -362,7 +362,7 @@ root_sieve_line(root_sieve_t *rs)
 			uint32 score = block[j];
 			if (score >= worst_score) {
 
-				save_rotation(&line_heap, 
+				save_line_score(&line_heap, 
 						DEFAULT_BLOCK_SIZE * i + j,
 						score);
 
@@ -383,6 +383,9 @@ root_sieve_line(root_sieve_t *rs)
 		dpoly_t apoly = rs->apoly;
 		double size_score, best_skew, best_xlate;
 
+		if (alpha > ROOT_SCORE_COARSE_MIN)
+			continue;
+
 		mpz_add(rs->curr_x, x->x_base, x->resclass);
 		mpz_addmul_ui(rs->curr_x, x->mp_lattice_size, entry->x_off);
 
@@ -397,7 +400,7 @@ root_sieve_line(root_sieve_t *rs)
 
 		size_score = optimize_basic(&apoly, &best_skew, &best_xlate);
 
-		save_mp_rotation(&rs->root_heap, rs->curr_x, rs->curr_y, 
+		save_rotation(&rs->root_heap, rs->curr_x, rs->curr_y, 
 				rs->curr_z, log(size_score) + alpha);
 	}
 }

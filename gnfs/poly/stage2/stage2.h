@@ -71,6 +71,7 @@ double optimize_basic(dpoly_t *apoly, double *best_skewness,
 #define MAX_SIEVE_PRIME 100
 #define ROOT_HEAP_SIZE 200
 #define LOG_SCALE_FACTOR 1000
+#define ROOT_SCORE_COARSE_MIN (-4.0)
 
 typedef struct {
 	uint16 resclass;
@@ -97,34 +98,20 @@ typedef struct {
 } sieve_prime_t;
 
 typedef struct {
-	int64 x;
-	int32 y;
-	uint16 score;
-} rotation_t;
-
-typedef struct {
 	mpz_t x;
 	mpz_t y;
 	int64 z;
 	double score;
-} mp_rotation_t;
+} rotation_t;
 
 typedef struct {
 	uint32 num_entries;
 	uint32 max_entries;
-
 	rotation_t *entries;
-	mp_rotation_t *mp_entries;
-
-	rotation_t cutoffs[2];
-	uint32 default_cutoff;
 	void *extra;
-
-	mpz_t x;
-	mpz_t y;
 } root_heap_t;
 
-/* definitions for degree 6 root sieve */
+/* definitions for root sieve */
 
 #define MAX_CRT_FACTORS 10
 
@@ -148,7 +135,7 @@ typedef struct {
 void compute_lattices(hit_t *hitlist, uint32 num_lattice_primes,
 			lattice_t *lattices, uint64 lattice_size,
 			uint32 num_lattices, uint32 dim);
-void compute_line_size_deg6(double max_norm, dpoly_t *apoly,
+void compute_line_size(double max_norm, dpoly_t *apoly,
 		  double dbl_p, double dbl_d, double direction[3],
 		  double last_line_min_in, double last_line_max_in,
 		  double *line_min, double *line_max);
@@ -180,20 +167,27 @@ typedef struct {
 	sieve_prime_t lattice_primes[MAX_CRT_FACTORS];
 	uint32 num_lattice_primes;
 
-	dpoly_t apoly;
-
-	uint16 curr_score;
-
 	mpz_t y_base;
 	uint32 y_blocks;
 
 	mpz_t mp_lattice_size;
 	double dbl_lattice_size;
+
+	/* degree 6 only */
+	uint16 curr_score;
+	dpoly_t apoly;
 	mpz_t crt0;
 	mpz_t crt1;
 	mpz_t resclass_x;
 	mpz_t resclass_y;
 	mpz_t tmp1, tmp2, tmp3, tmp4;
+
+	/* degree 4 and 5 only */
+	uint32 num_lattices;
+	lattice_t *lattices;
+	double *x_line_min;
+	double *x_line_max;
+
 } sieve_xy_t;
 
 void sieve_xy_alloc(sieve_xy_t *xy);
@@ -245,8 +239,6 @@ typedef struct {
 	double max_norm;
 
 	root_heap_t root_heap;
-	root_heap_t lattice_heap;
-	root_heap_t tmp_lattice_heap;
 
 	sieve_xyz_t xyzdata;
 	sieve_xy_t xydata;
@@ -261,13 +253,13 @@ void root_sieve_free(root_sieve_t *rs);
 void root_sieve_run(poly_stage2_t *data, double curr_norm,
 				double alpha_proj);
 
-void root_sieve_run_deg6(poly_stage2_t *data, double curr_norm,
-				double alpha_proj);
-void sieve_xyz_run(root_sieve_t *rs);
-void sieve_xy_run(root_sieve_t *rs);
-void sieve_x_run(root_sieve_t *rs);
+void sieve_xyz_run_deg6(root_sieve_t *rs);
+void sieve_xy_run_deg45(root_sieve_t *rs, uint32 degree);
+void sieve_xy_run_deg6(root_sieve_t *rs);
+void sieve_x_run_deg45(root_sieve_t *rs);
+void sieve_x_run_deg6(root_sieve_t *rs);
 void root_sieve_line(root_sieve_t *rs);
-void save_mp_rotation(root_heap_t *heap, mpz_t x, mpz_t y,
+void save_rotation(root_heap_t *heap, mpz_t x, mpz_t y,
 		int64 z, float score);
 
 /*-------------------------------------------------------------------------*/

@@ -490,38 +490,6 @@ find_hits(root_sieve_t *rs, xydata_t *xydata,
 }
 
 /*-------------------------------------------------------------------------*/
-void
-sieve_xy_alloc(sieve_xy_t *xy)
-{
-	mpz_init(xy->y_base);
-	mpz_init(xy->mp_lattice_size);
-	mpz_init(xy->resclass_x);
-	mpz_init(xy->resclass_y);
-	mpz_init(xy->crt0);
-	mpz_init(xy->crt1);
-	mpz_init(xy->tmp1);
-	mpz_init(xy->tmp2);
-	mpz_init(xy->tmp3);
-	mpz_init(xy->tmp4);
-}
-
-/*-------------------------------------------------------------------------*/
-void
-sieve_xy_free(sieve_xy_t *xy)
-{
-	mpz_clear(xy->y_base);
-	mpz_clear(xy->mp_lattice_size);
-	mpz_clear(xy->resclass_x);
-	mpz_clear(xy->resclass_y);
-	mpz_clear(xy->crt0);
-	mpz_clear(xy->crt1);
-	mpz_clear(xy->tmp1);
-	mpz_clear(xy->tmp2);
-	mpz_clear(xy->tmp3);
-	mpz_clear(xy->tmp4);
-}
-
-/*-------------------------------------------------------------------------*/
 static int 
 compare_planes(const void *x, const void *y)
 {
@@ -531,7 +499,7 @@ compare_planes(const void *x, const void *y)
 }
 
 void
-sieve_xy_run(root_sieve_t *rs)
+sieve_xy_run_deg6(root_sieve_t *rs)
 {
 	uint32 i;
 
@@ -551,7 +519,7 @@ sieve_xy_run(root_sieve_t *rs)
 	uint64 inv_xy;
 	uint64 inv_xyz;
 
-	compute_line_size_deg6(rs->max_norm, &rs->apoly,
+	compute_line_size(rs->max_norm, &rs->apoly,
 			rs->dbl_p, rs->dbl_d, direction,
 			-10000, 10000, &line_min, &line_max);
 	if (line_min > line_max)
@@ -638,6 +606,6 @@ sieve_xy_run(root_sieve_t *rs)
 		xy->curr_score = lattice_xyz->score + lattice_xy->score;
 		rs->curr_z = z_base + lattice_xyz->z; 
 
-		sieve_x_run(rs);
+		sieve_x_run_deg6(rs);
 	}
 }

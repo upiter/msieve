@@ -26,10 +26,10 @@ $Id$
 }
 
 void
-compute_line_size_deg6(double max_norm, dpoly_t *apoly,
-		  double dbl_p, double dbl_d, double direction[3],
-		  double last_line_min_in, double last_line_max_in,
-		  double *line_min, double *line_max)
+compute_line_size(double max_norm, dpoly_t *apoly,
+	  double dbl_p, double dbl_d, double direction[3],
+	  double last_line_min_in, double last_line_max_in,
+	  double *line_min, double *line_max)
 {
 	double v0;
 	double new_xlate, new_skewness;
@@ -214,105 +214,3 @@ compute_lattices(hit_t *hitlist, uint32 num_lattice_primes,
 	}
 }
 
-/*-------------------------------------------------------------------------*/
-/* boilerplate code for managing heaps */
-
-#define HEAP_SWAP(a,b) { tmp = a; a = b; b = tmp; }
-#define HEAP_PARENT(i)  (((i)-1) >> 1)
-#define HEAP_LEFT(i)    (2 * (i) + 1)
-#define HEAP_RIGHT(i)   (2 * (i) + 2)
-
-static void
-heapify(mp_rotation_t *h, uint32 index, uint32 size) {
-
-	uint32 c;
-	mp_rotation_t tmp;
-	for (c = HEAP_LEFT(index); c < (size-1); 
-			index = c, c = HEAP_LEFT(index)) {
-
-		if (h[c].score < h[c+1].score)
-			c++;
-
-		if (h[index].score < h[c].score) {
-			HEAP_SWAP(h[index], h[c]);
-		}
-		else {
-			return;
-		}
-	}
-	if (c == (size-1) && h[index].score < h[c].score) {
-		HEAP_SWAP(h[index], h[c]);
-	}
-}
-
-static void
-make_heap(mp_rotation_t *h, uint32 size) {
-
-	int32 i;
-	for (i = HEAP_PARENT(size); i >= 0; i--)
-		heapify(h, (uint32)i, size);
-}
-
-void
-save_mp_rotation(root_heap_t *heap, mpz_t x, mpz_t y,
-		int64 z, float score)
-{
-	mp_rotation_t *h = heap->mp_entries;
-
-	if (heap->num_entries <= heap->max_entries - 1) {
-		mp_rotation_t *r = h + heap->num_entries++;
-		mpz_set(r->x, x);
-		mpz_set(r->y, y);
-		r->z = z;
-		r->score = score;
-		if (heap->num_entries == heap->max_entries)
-			make_heap(h, heap->max_entries);
-	}
-	else if (h->score > score) {
-		mpz_set(h->x, x);
-		mpz_set(h->y, y);
-		h->z = z;
-		h->score = score;
-		heapify(h, 0, heap->max_entries);
-	}
-}
-
-/*-------------------------------------------------------------------------*/
-static const double size_bound[] = {1.05, 1.5, 4.0, 50.0, 100.0};
-#define NUM_BOUNDS (sizeof(size_bound) / sizeof(size_bound[0]))
-
-void
-root_sieve_run_deg6(poly_stage2_t *data, double curr_norm,
-			double alpha_proj)
-{
-	uint32 i;
-	stage2_curr_data_t *s = (stage2_curr_data_t *)data->internal;
-	root_sieve_t *rs = &s->root_sieve;
-	curr_poly_t *c = &s->curr_poly;
-
-	rs->root_heap.extra = data; /* FIXME */
-	rs->root_heap.num_entries = 0;
-	rs->dbl_p = mpz_get_d(c->gmp_p);
-	rs->dbl_d = mpz_get_d(c->gmp_d);
-	rs->apoly.degree = data->degree;
-	for (i = 0; i <= data->degree; i++)
-		rs->apoly.coeff[i] = mpz_get_d(c->gmp_a[i]);
-
-	for (i = 0; i < NUM_BOUNDS; i++) {
-		double bound = MIN(size_bound[i] * curr_norm,
-						data->max_norm);
-
-		rs->max_norm = exp(-alpha_proj) * bound;
-
-		sieve_xyz_run(rs);
-
-		if (bound == data->max_norm)
-			break;
-	}
-
-	for (i = 0; i < rs->root_heap.num_entries; i++) {
-		mp_rotation_t *r = rs->root_heap.mp_entries + i;
-
-		optimize_final(r->x, r->y, r->z, data);
-	}
-}
