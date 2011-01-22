@@ -27,7 +27,7 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	uint32 special_q_min, special_q_max;
 	uint32 num_pieces;
 #ifndef HAVE_CUDA
-	uint32 max_blocks;
+	uint32 max_hash_iters;
 	double tmp;
 #endif
 
@@ -104,17 +104,17 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	   for the polynomial degree */
 
 	if (degree < 5)
-		max_blocks = 1000;
+		max_hash_iters = 1000;
 	else
-		max_blocks = 50;
+		max_hash_iters = 50;
 
 #define SPECIAL_Q_SCALE 5
 	tmp = 2 * coeff_max * coeff_max / skewness_min
-		/ m0 / degree / max_blocks;
+		/ m0 / degree / max_hash_iters;
 	tmp = MAX(tmp, coeff_max / skewness_min /
 			((double)((uint32)1 << 27) *
 				 ((uint32)1 << 27) /
-				 max_blocks));
+				 max_hash_iters));
 	tmp *= P_SCALE * P_SCALE;
 	special_q_min = MIN((uint32)(-1) / SPECIAL_Q_SCALE, tmp);
 	if (special_q_min > 1) {
