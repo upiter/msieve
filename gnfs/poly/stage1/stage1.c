@@ -133,7 +133,7 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 			/ 110000;
 	num_pieces = MIN(num_pieces,
 				sqrt(p_size_max / special_q_max) /
-				(log(sqrt(p_size_max / special_q_max)) - 1) /
+				(log(p_size_max / special_q_max) / 2 - 1) /
 				(P_SCALE / (P_SCALE - 1)) /
 				10);
 
