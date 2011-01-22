@@ -92,6 +92,7 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	num_pieces = (special_q_max - special_q_min)
 			/ (log(special_q_max) - 1)
 			/ 1000;
+	num_pieces = MIN(num_pieces, 2000);
 
 #else
 	/* the CPU code is different; its runtime is
@@ -111,8 +112,8 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	tmp = 2 * coeff_max * coeff_max / skewness_min
 		/ m0 / degree / max_blocks;
 	tmp = MAX(tmp, coeff_max / skewness_min /
-			((double)((uint32)1 << 29) *
-				 ((uint32)1 << 29) /
+			((double)((uint32)1 << 27) *
+				 ((uint32)1 << 27) /
 				 max_blocks));
 	tmp *= P_SCALE * P_SCALE;
 	special_q_min = MIN((uint32)(-1) / SPECIAL_Q_SCALE, tmp);
@@ -129,12 +130,15 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 
 	num_pieces = (special_q_max - special_q_min)
 			/ (log(special_q_max) - 1)
-			/ pow(log(p_size_max / special_q_max), 2.)
-			/ 200;
+			/ 110000;
+	num_pieces = MIN(num_pieces,
+				sqrt(p_size_max / special_q_max) /
+				(log(sqrt(p_size_max / special_q_max)) - 1) /
+				(P_SCALE / (P_SCALE - 1)) /
+				10);
 
 #endif
 
-	num_pieces = MIN(num_pieces, 2000);
 	if (num_pieces > 1) { /* randomize the special_q range */
 
 		double piece_ratio = pow((double)special_q_max / special_q_min,
