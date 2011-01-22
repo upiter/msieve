@@ -365,9 +365,11 @@ void read_matrix(msieve_obj *obj,
 	la_col_t *cols;
 	char buf[256];
 	FILE *matrix_fp;
-	uint32 num_static_rows = 0;
 	uint32 read_submatrix = (start_row_out != NULL &&
 				start_col_out != NULL);
+#ifdef HAVE_MPI
+	uint32 num_static_rows = 0;
+#endif
 
 	if (read_submatrix && colperm != NULL) {
 		logprintf(obj, "error: cannot read submatrix with permute\n");
