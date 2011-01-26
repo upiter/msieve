@@ -265,10 +265,12 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	mpz_mul_ui(poly->high_coeff, poly->high_coeff, 
 			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 
-	while (mpz_cmp(poly->high_coeff, poly->gmp_high_coeff_end) < 0) {
-
+	while(1) {
 		mpz_add_ui(poly->high_coeff, poly->high_coeff,
 				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+
+		if (mpz_cmp(poly->high_coeff, poly->gmp_high_coeff_end) > 0)
+			break;
 
 		mpz_divexact_ui(poly->tmp1, poly->high_coeff, 
 					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
