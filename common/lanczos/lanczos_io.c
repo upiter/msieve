@@ -105,7 +105,7 @@ static void find_submatrix_bounds(msieve_obj *obj, uint32 *ncols,
 	mat_block_t next_mat_block;
 	char buf[256];
 	FILE *matrix_idx_fp;
-	uint32 num_mpi_procs;
+	uint32 max_grid_cols;
 
 	sprintf(buf, "%s.mat.idx", obj->savefile.name);
 	matrix_idx_fp = fopen(buf, "rb");
@@ -114,10 +114,10 @@ static void find_submatrix_bounds(msieve_obj *obj, uint32 *ncols,
 		exit(-1);
 	}
 
-	fread(&num_mpi_procs, sizeof(uint32), (size_t)1, matrix_idx_fp);
-	if (num_mpi_procs < obj->mpi_size) {
-		logprintf(obj, "error: matrix expects MPI procs <= %u\n",
-				num_mpi_procs);
+	fread(&max_grid_cols, sizeof(uint32), (size_t)1, matrix_idx_fp);
+	if (max_grid_cols < obj->mpi_ncols) {
+		logprintf(obj, "error: matrix expects MPI cols <= %u\n",
+				max_grid_cols);
 		exit(-1);
 	}
 
