@@ -81,8 +81,12 @@ void nfs_write_lp_file(msieve_obj *obj, factor_base_t *fb,
 			continue;
 		}
 
+		curr_relation++;
+		if (max_relations && curr_relation >= max_relations)
+			break;
+
 		if (have_skip_list) {
-			if (++curr_relation == next_relation) {
+			if (curr_relation == next_relation) {
 				fread(&next_relation, sizeof(uint32), 
 						(size_t)1, relation_fp);
 				savefile_read_line(buf, sizeof(buf), savefile);
@@ -90,16 +94,13 @@ void nfs_write_lp_file(msieve_obj *obj, factor_base_t *fb,
 			}
 		}
 		else {
-			if (++curr_relation < next_relation) {
+			if (curr_relation < next_relation) {
 				savefile_read_line(buf, sizeof(buf), savefile);
 				continue;
 			}
 			fread(&next_relation, sizeof(uint32), 
 					(size_t)1, relation_fp);
 		}
-
-		if (max_relations && curr_relation > max_relations)
-			break;
 
 		/* read it in */
 

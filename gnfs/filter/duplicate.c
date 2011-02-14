@@ -464,20 +464,24 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 	logprintf(obj, "found %u hash collisions in %u relations\n", 
 				num_collisions, num_relations);
 
-	/* cancel out any free relations that are 
-	   already present in the dataset, then add
-	   free relations that remain */
+	if (max_relations == 0 || max_relations > curr_relation + 1) {
 
-	for (i = 0; i < num_free_relations; i++) {
-		uint32 p = free_relations[i];
+		/* cancel out any free relations that are 
+		   already present in the dataset, then add
+		   free relations that remain */
 
-		if (p < FREE_RELATION_LIMIT) {
-			p = p / 2;
-			free_relation_bits[p / 8] &= ~hashmask[p % 8];
+		for (i = 0; i < num_free_relations; i++) {
+			uint32 p = free_relations[i];
+
+			if (p < FREE_RELATION_LIMIT) {
+				p = p / 2;
+				free_relation_bits[p / 8] &= ~hashmask[p % 8];
+			}
 		}
+		num_relations += add_free_relations(obj, fb,
+					free_relation_bits);
 	}
 	free(free_relations);
-	num_relations += add_free_relations(obj, fb, free_relation_bits);
 	free(free_relation_bits);
 
 	if (num_collisions == 0) {
