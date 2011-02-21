@@ -4,6 +4,8 @@ Version 1.49:
 		hugely faster for very large problems
 	- Fixed an erroneous error check in the MPI code (thanks
 		Ilya Popovyan)
+	- Fixed an MPI race condition in the Lanczos restart code
+		(thanks Jeff Gilchrist)
 
 Version 1.48:
 	- Performed a massive overhaul of the stage 1 NFS polynomial

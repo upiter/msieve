@@ -628,7 +628,7 @@ static void read_lanczos_state(msieve_obj *obj,
 #ifdef HAVE_MPI
 	/* push the full-size vectors to the top grid row */
 
-	if (obj->mpi_ncols > 1) {
+	if (obj->mpi_ncols > 1 && obj->mpi_la_row_rank == 0) {
 		MPI_TRY(MPI_Scatterv(x, packed_matrix->col_counts,
 				packed_matrix->col_offsets,
 				MPI_LONG_LONG, x, n, MPI_LONG_LONG, 0, 
