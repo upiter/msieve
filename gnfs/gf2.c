@@ -581,6 +581,16 @@ void nfs_solve_linear_system(msieve_obj *obj, mp_t *n) {
 
 #ifdef HAVE_MPI
 
+	/* do not allow the square root to run if the
+	   LA is running on a grid; this is a side-effect
+	   of the LA not cleaning up very gracefully */
+
+	if (obj->mpi_size > 1 && (obj->flags & MSIEVE_FLAG_NFS_SQRT)) {
+		printf("error: square root is incompatible with "
+			"multiple MPI processes\n");
+		exit(-1);
+	}
+
 	/* create the grid */
 
 	obj->mpi_nrows = grid_dims[0] = 1;
