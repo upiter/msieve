@@ -21,6 +21,9 @@ static uint32
 lift_root_32(uint32 n, uint32 r, uint32 old_power, 
 		uint32 p, uint32 d)
 {
+	/* given a r, a d_th root of n mod p, compute
+	   the corresponding root mod p^2 via Hensel lifting */
+
 	uint32 q;
 	uint32 p2 = old_power * p;
 	uint64 rsave = r;
@@ -52,6 +55,11 @@ sieve_fb_free(sieve_fb_t *s)
 static uint32
 get_prime_roots(poly_search_t *poly, uint32 p, uint32 *roots)
 {
+	/* find all the degree_th roots of the transformed 
+	   version of N modulo p. We abort if p has any factors
+	   in common with the leading algebraic coefficient
+	   of the candidate polynomial */
+
 	mp_poly_t tmp_poly;
 	mp_t *low_coeff;
 	uint32 high_coeff;
@@ -87,12 +95,17 @@ sieve_add_aprog(sieve_fb_t *s, poly_search_t *poly, uint32 p,
 	aprog_list_t *list = &s->aprog_data;
 	aprog_t *a;
 
+	/* p will be able to generate arithmetic progressions;
+	   add it to our list of them... */
+
 	if (list->num_aprogs == list->num_aprogs_alloc) {
 		list->num_aprogs_alloc *= 2;
 		list->aprogs = (aprog_t *)xrealloc(list->aprogs,
 						list->num_aprogs_alloc *
 						sizeof(aprog_t));
 	}
+
+	/* ...if trans_N has any roots mod p */
 
 	a = list->aprogs + list->num_aprogs;
 	a->p = p;
@@ -107,6 +120,8 @@ sieve_add_aprog(sieve_fb_t *s, poly_search_t *poly, uint32 p,
 	a->num_roots = num_roots;
 	for (i = 0; i < num_roots; i++)
 		a->roots[0][i] = roots[i];
+
+	/* add powers of p as well */
 
 	power = p;
 	a->power[0] = power;
@@ -189,6 +204,11 @@ sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 	s->num_roots_max = num_roots_max;
 	s->avail_algos = 0;
 
+	/* set up for finding arithmetic progressions where
+	   p is prime; do so if that's allowed and the range
+	   of such p is higher than what's already in the
+	   aprog list */
+
 	if (s->fb_only == 0 &&
 	    p_min < P_PRIME_LIMIT &&
 	    s->degree >= num_roots_min) {
@@ -231,6 +251,13 @@ sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 static void
 lift_roots(sieve_fb_t *s, poly_search_t *poly, uint32 p, uint32 num_roots)
 {
+	/* we have num_roots arithmetic progressions mod p;
+	   convert the progressions to be mod p^2, using
+	   Hensel lifting, and then move the origin of the 
+	   result trans_m0 units to the left.  This means we 
+	   can 'sieve' up to 2*poly->sieve_size units past 
+	   the new origin */
+
 	uint32 i;
 	unsigned long degree = s->degree;
 
@@ -269,6 +296,10 @@ lift_roots(sieve_fb_t *s, poly_search_t *poly, uint32 p, uint32 num_roots)
 static uint32
 get_enum_roots(sieve_fb_t *s, uint32 p)
 {
+	/* given a composite p and its factors p_i,
+	   combine the roots mod p_i into roots mod
+	   p using the Chinese Remainder Theorem */
+
 	uint32 i, j, i0, i1, i2, i3, i4, i5, i6;
 	aprog_t *aprogs = s->aprog_data.aprogs;
 	p_enum_t *p_enum = &s->p_enum;
@@ -284,17 +315,23 @@ get_enum_roots(sieve_fb_t *s, uint32 p)
 	for (i = 0; i < num_factors; i++) {
 		aprog_t *a = aprogs + factors[i];
 
+		/* p_i may be a power */
+
 		num_roots[i] = a->num_roots;
 		for (j = 0; j < num_roots[i]; j++)
 			roots[i][j] = a->roots[powers[i]][j];
 	}
 
-	if (num_factors == 1) {
+	if (num_factors == 1) { 
+		/* no CRT needed */
+
 		for (i = 0; i < num_roots[0]; i++)
 			s->roots[i] = roots[0][i];
 
 		return num_roots[0];
 	}
+
+	/* fill in auxiliary CRT quantities */
 
 	for (i = 0; i < num_factors; i++) {
 		aprog_t *a = aprogs + factors[i];
@@ -308,6 +345,11 @@ get_enum_roots(sieve_fb_t *s, uint32 p)
 #if MAX_P_FACTORS > 7
 #error "MAX_P_FACTORS exceeds 7"
 #endif
+	/* loop over all combinations of roots, changing one
+	   root at a time. The accumulator value in the innermost
+	   loop will exceed p by a few bits, so we need the
+	   accum array to have wide integers. */
+
 	i0 = i1 = i2 = i3 = i4 = i5 = i6 = i = 0;
 	switch (num_factors) {
 	case 7:
@@ -400,10 +442,15 @@ uint32
 sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 		root_callback callback, void *extra)
 {
+	/* main external interface */
+
 	uint32 i, p, num_roots;
 
 	while (1) {
 		if (s->avail_algos & ALGO_ENUM) {
+
+			/* first attempt to find a p by 
+			   combining smaller suitable p */
 
 			p = get_next_enum(s);
 
@@ -415,6 +462,8 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 			num_roots = get_enum_roots(s, p);
 		}
 		else if (s->avail_algos & ALGO_PRIME) {
+
+			/* then try to find a prime p */
 
 			uint32 roots[MAX_POLYSELECT_DEGREE];
 
@@ -438,6 +487,10 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 		else {
 			return P_SEARCH_DONE;
 		}
+
+		/* p found; generate all the arithmetic
+		   progressions it allows and postprocess the
+		   whole batch */
 
 		lift_roots(s, poly, p, num_roots);
 		callback(p, num_roots, s->roots, extra);

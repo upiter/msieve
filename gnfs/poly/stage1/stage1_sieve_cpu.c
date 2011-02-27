@@ -15,17 +15,64 @@ $Id$
 #include <stage1.h>
 #include <cpu_intrinsics.h>
 
+/* CPU collision search; this code looks for self-collisions
+   among arithmetic progressions, by finding k1 and k2 such that
+   for two arithmetic progressions r1+k*p1^2 and r2+k*p2^2 we
+   have
+
+      r1 + k1*p1^2 = r2+k2*p2^2
+
+   such that
+      - p1 and p2 are coprime and < 2^32
+      - the value where they coincide is of size smaller
+        than a fixed bound
+
+   This code uses a hashtable to find collisions across all the
+   p1 and p2 in the set simultaneously. The size of the range is
+   comparatively very large, and the algorithm as described above
+   is only efficient for pretty small problems. We cannot
+   practically fill up a sigle hashtable with all the possibilities
+   because for e.g. 512-bit GNFS the range on k1 and k2 is typically 
+   around 10^6 and the set has ~10^6 progressions. We can reduce the
+   memory use by breaking the hashtable into blocks of size > p_min
+   and filling each block individually, but that does not reduce the
+   actual work required.
+   
+   To scale up the idea, we further use a 'special-q' formulation 
+   where all the inputs to the hashtable are constrained to fall 
+   on a third arithmetic progression r3 + k*q^2 for some k. We choose 
+   a given q and for each of its roots run the complete hashtable search.
+   This is analogous to lattice sieving across the interval.
+   
+   This allows us to choose q so that the hashtable problem is of 
+   reasonable size but the collisions found are still over the 
+   original, impractically large range. 
+
+   A side effect of this is that the complete range must be < 2^96
+   in size, though this appears to be sufficient for very large
+   problems, e.g. 200-digit GNFS */
+
+
+/* one element of the hashtable. The table is keyed by the
+   offset ito the sieve interval, i.e. by the first field below.
+   We arbitrarily assume the offset will not exceed 2^64 and
+   choose special-q to force this */
+
 typedef struct {
 	uint64 offset;
 	uint32 p;
 } hash_entry_t;
+
+/* every progression keeps a running count of the current sieve
+   offset for each of its roots */
 
 typedef struct {
 	uint64 start_offset;
 	uint64 offset;
 } hash_list_t;
 
-/*------------------------------------------------------------------------*/
+/* structure for a single progression */
+
 typedef struct {
 	uint32 p;
 	uint32 num_roots;
@@ -38,6 +85,14 @@ typedef struct {
 
 #define P_PACKED_HEADER_WORDS 4
 
+/*------------------------------------------------------------------------*/
+
+/* structure for a collection of the above structures. The
+   storage is in compressed format, where unused roots in the
+   above are squeezed out. We only ever expect to iterate
+   linearly through the structure so this saves a great deal 
+   of memory. */
+
 typedef struct {
 	uint32 num_p;
 	uint32 num_roots;
@@ -46,6 +101,8 @@ typedef struct {
 	p_packed_t *curr;
 	p_packed_t *packed_array;
 } p_packed_var_t;
+
+/* list manipulation functions */
 
 static void 
 p_packed_init(p_packed_var_t *s)
@@ -80,6 +137,9 @@ p_packed_next(p_packed_t *curr)
 static void 
 store_p_packed(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 {
+	/* used to insert a new arithmetic progression and all its
+	   roots into the list */
+
 	uint32 i;
 	p_packed_var_t *s = (p_packed_var_t *)extra;
 	p_packed_t *curr;
@@ -102,9 +162,19 @@ store_p_packed(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 	for (i = 0; i < num_roots; i++)
 		curr->roots[i].start_offset = roots[i];
 	curr->p2 = (uint64)p * p;
+
+	/* set up Montgomery arithmetic */
+
 	curr->mont_w = montmul32_w((uint32)curr->p2);
 	curr->mont_r = montmul64_r(curr->p2);
 
+	/* point to the next structure to fill in. We have to
+	   be careful here because reallocating the array will cause
+	   memory to change out from under s->curr_p, and we cannot
+	   safely index into the new array because its entries are 
+	   stored in compressed format. Instead store the uint64
+	   offset where curr_p should go */
+	   
 	s->num_p++;
 	s->num_roots += num_roots;
 	s->curr = p_packed_next(s->curr);
@@ -119,6 +189,12 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 		uint32 special_q, uint64 special_q_root,
 		uint64 block_size, uint64 *inv_array)
 {
+	/* perform the hashtable search for a single special-q
+
+	   inv_array stores the modular inverse of q^2 mod p^2 for
+	   each progression p in hash_array, in Montgomery
+	   form */
+
 	uint32 i, j;
 	uint32 quit = 0;
 	p_packed_t *tmp;
@@ -141,6 +217,10 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 	tmp = hash_array->packed_array;
 
 	if (special_q == 1) {
+
+		/* without a special-q, hash_array is ready to go
+		   immediately */
+
 		for (i = 0; i < num_entries; i++) {
 			uint32 num_roots = tmp->num_roots;
 
@@ -152,11 +232,19 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 		}
 	}
 	else {
+		/* for each progression p */
+
 		for (i = 0; i < num_entries; i++) {
 			uint64 p2 = tmp->p2;
 			uint32 num_roots = tmp->num_roots;
 			uint32 p2_w = tmp->mont_w;
 			uint64 qinv = inv_array[i];
+
+			/* check if calling code determined that p and
+			   q have a factor in common. Skip p if so;
+			   actually we do this by pushing the starting
+			   offset all the way to the end of the sieve
+			   interval */
 
 			if (qinv == 0) {
 				for (j = 0; j < num_roots; j++)
@@ -164,6 +252,12 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 				tmp = p_packed_next(tmp);
 				continue;
 			}
+
+			/* for each root R mod p^2, we need the first
+			   value of R + k * p^2 that also falls on
+			   special_q_root + m * special_q^2. This is 
+			   a standard arithmetic problem, finding the
+			   union of two arithmetic progressions */
 
 			for (j = 0; j < num_roots; j++) {
 				uint64 proot = tmp->roots[j].start_offset;
@@ -176,6 +270,13 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 			tmp = p_packed_next(tmp);
 		}
 	}
+
+	/* sieve is ready to go; we proceed with the hashtable
+	   one block at a time. The block size is chosen to be
+	   the minimum value of p in hash_array, so that for each
+	   block a given root for a given p contributes at most
+	   one entry to the hashtable. The hashtable is refilled
+	   from scratch when the next block runs */
 
 	while (sieve_start < sieve_size) {
 		uint64 sieve_end = sieve_start + MIN(block_size,
@@ -203,6 +304,10 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 							NULL, &already_seen);
 
 					if (already_seen) {
+
+						/* collision found! Handle it
+						   in 'special q coordinates' */
+
 						uint128 res;
 
 						res.w[0] = (uint32)offset;
@@ -217,8 +322,15 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 							       	res);
 					}
 					else {
+						/* no hit; add p to the table
+						   at this offset */
+
 						hit->p = tmp->p;
 					}
+
+					/* compute the next offset 
+					   for root j */
+
 					tmp->roots[j].offset = offset + tmp->p2;
 				}
 			}
@@ -229,11 +341,15 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 		sieve_start = sieve_end;
 		num_blocks++;
 
+		/* check for interrupt after every block */
+
 		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING) {
 			quit = 1;
 			break;
 		}
 	}
+
+	/* check for timeout */
 
 	curr_time = time(NULL);
 	elapsed = curr_time - L->start_time;
@@ -251,6 +367,12 @@ static void
 batch_invert(uint32 *qlist, uint32 num_q, uint64 *invlist,
 		uint32 p, uint64 p2_r, uint32 p2_w)
 {
+	/* use Montgomery's batch modular inversion algorithm
+	   to compute the inverse of many special q modulo a
+	   single p. For one extra Montgomery multiplication,
+	   leave all the outputs in Montgomery form even though
+	   they didn't start that way */
+
 	uint32 i;
 	uint64 q2[SPECIALQ_BATCH_SIZE];
 	uint64 invprod;
@@ -278,6 +400,8 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		uint32 special_q_min, uint32 special_q_max, 
 		uint32 p_min, uint32 p_max)
 {
+	/* core search code */
+
 	uint32 i, j;
 	uint32 quit = 0;
 	p_packed_var_t specialq_array;
@@ -291,6 +415,8 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 	p_packed_init(&hash_array);
 	hashtable_init(&hashtable, 3, 2);
 	block_size = (uint64)p_min * p_min;
+
+	/* build all the arithmetic progressions */
 
 	sieve_fb_reset(sieve_p, p_min, p_max, 1, MAX_ROOTS);
 	while (sieve_fb_next(sieve_p, L->poly, 
@@ -311,6 +437,9 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 			goto finished;
 	}
 
+	/* invtable caches the inverse of each special-q modulo 
+	   each p in hash_array */
+	   
 	invtable = (uint64 *)xmalloc(num_p * SPECIALQ_BATCH_SIZE * 
 					sizeof(uint64));
 
@@ -324,6 +453,9 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		mp_t qprod;
 		uint32 batch_q[SPECIALQ_BATCH_SIZE];
 		uint64 batch_q_inv[SPECIALQ_BATCH_SIZE];
+
+		/* allocate the next batch of special-q and all the
+		   roots they use */
 
 		p_packed_reset(&specialq_array);
 		while (sieve_fb_next(sieve_special_q, L->poly, store_p_packed,
@@ -340,6 +472,10 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 					specialq_array.num_roots);
 #endif
 
+		/* multiply the special-q together; this, and the
+		   need to reduce the size of invtable, is the main
+		   reason the special-q batch size is not bigger */
+
 		mp_clear(&qprod);
 		qprod.nwords = qprod.val[0] = 1;
 
@@ -348,6 +484,17 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 			mp_mul_1(&qprod, tmp->p, &qprod);
 			tmp = p_packed_next(tmp);
 		}
+
+		/* invert all the special-q at once modulo each p in 
+		   hash_array. Because we use batch inversion, if a 
+		   given p has factors in common with one of the special-q 
+		   then the code below will produce garbage for all of
+		   them, so skip all the entries for that one p 
+		 
+		   Note that we need one inverse for each (p,special_q)
+		   pair, *not* one for each root. For degree 4 and 6,
+		   when each p has many roots, this speeds up the modular
+		   inverse phase by much more than SPECIALQ_BATCH_SIZE */
 
 		for (i = 0, tmp = hash_array.packed_array; i < num_p; i++) {
 
@@ -365,6 +512,8 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 			}
 			tmp = p_packed_next(tmp);
 		}
+
+		/* process (each root of) each special-q in turn */
 
 		invtmp = invtable;
 		for (i = 0; i < num_q; i++) {
@@ -403,6 +552,8 @@ sieve_lattice_cpu(msieve_obj *obj, lattice_fb_t *L,
 		sieve_fb_t *sieve_special_q,
 		uint32 special_q_min, uint32 special_q_max)
 {
+	/* main driver for collision search */
+
 	uint32 quit;
 	sieve_fb_t sieve_p;
 	uint32 p_min, p_max;
@@ -415,6 +566,12 @@ sieve_lattice_cpu(msieve_obj *obj, lattice_fb_t *L,
 			"in sieve_lattice_cpu()\n");
 		return 0;
 	}
+
+	/* size the problem; because special-q can have any factors,
+	   we require that the progressions we generate use p that
+	   have somewhat large factors. This minimizes the chance
+	   that a given special-q has factors in common with many
+	   progressions in the set */
 
 	p_max = sqrt(p_size_max * P_SCALE);
 	p_min = p_max / P_SCALE;

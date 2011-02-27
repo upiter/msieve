@@ -14,10 +14,15 @@ $Id$
 
 #include <stage1.h>
 
+/* main driver for stage 1 */
+
 /*------------------------------------------------------------------------*/
 static void
 stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 {
+	/* determine the parametrs for the collision search,
+	   given one leading algebraic coefficient a_d */
+
 	uint32 i, mult;
 	uint32 degree = poly->degree;
 	double N = mpz_get_d(poly->N);
@@ -30,6 +35,11 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	uint32 max_hash_iters;
 	double tmp;
 #endif
+
+	/* we don't know the optimal skewness for this polynomial
+	   but at least can bound the skewness. The value of the
+	   third-highest coefficient is from Kleinjung's 2006
+	   poly selection algorithm as published in Math. Comp. */
 
 	switch (degree) {
 	case 4:
@@ -57,6 +67,12 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 		printf("error: unexpected poly degree %d\n", degree);
 		exit(-1);
 	}
+
+	/* we perform the collision search on a transformed version
+	   of N and the low-order rational coefficient m0. In the
+	   transformed coordinates, a_d is 1 and a_{d-1} is 0. When
+	   a hit is found, we undo the transformation to recover
+	   the correction to m0 that makes the new polynomial 'work' */
 
 	mpz_mul_ui(poly->trans_N, poly->N, (mp_limb_t)mult);
 	for (i = 0; i < degree - 1; i++)
@@ -88,6 +104,10 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	else {
 		special_q_min = special_q_max = 1;
 	}
+
+	/* very large problems are split into pieces, and we
+	   randomly choose one to search. This allows multiple
+	   machines to search the same a_d */
 
 	num_pieces = (special_q_max - special_q_min)
 			/ (log(special_q_max) - 1)
@@ -160,6 +180,11 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 
 	poly->coeff_max = coeff_max;
 	poly->p_size_max = p_size_max;
+
+	/* Kleinjung's improved algorithm computes a 'correction'
+	   to m0, and the new m0 will cause a_{d-2} to be small enough
+	   if it is smaller than sieve_size */
+
 	poly->sieve_size = coeff_max * p_size_max * p_size_max
 				/ m0 / degree;
 	mpz_set_d(poly->mp_sieve_size, poly->sieve_size);
@@ -196,6 +221,10 @@ poly_search_init(poly_search_t *poly, poly_stage1_t *data)
 	CUDA_TRY(cuCtxCreate(&poly->gpu_context, 
 			CU_CTX_BLOCKING_SYNC,
 			poly->gpu_info->device_handle))
+
+	/* load two GPU kernels, one for special-q
+	   collision search and one for ordinary collision 
+	   search */
 
 	CUDA_TRY(cuModuleLoad(&poly->gpu_module_sq, 
 				"stage1_core_sq.ptx"))
@@ -236,6 +265,9 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	uint32 deadline_per_coeff;
 	double start_time = get_cpu_time();
 
+	/* determine the CPU time limit; I have no idea if
+	   the following is appropriate */
+
 	if (digits <= 100)
 		deadline_per_coeff = 5;
 	else if (digits <= 105)
@@ -259,13 +291,17 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 
 	printf("deadline: %u seconds per coefficient\n", deadline_per_coeff);
 
+	/* set up lower limit on a_d */
+
 	mpz_sub_ui(poly->high_coeff, poly->gmp_high_coeff_begin, (mp_limb_t)1);
 	mpz_fdiv_q_ui(poly->high_coeff, poly->high_coeff, 
 			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 	mpz_mul_ui(poly->high_coeff, poly->high_coeff, 
 			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 
-	while(1) {
+	while (1) {
+		/* increment a_d */
+
 		mpz_add_ui(poly->high_coeff, poly->high_coeff,
 				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 
@@ -274,6 +310,10 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 
 		mpz_divexact_ui(poly->tmp1, poly->high_coeff, 
 					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+
+		/* trial divide the result ad throw it away if it
+		   has large factors */
+
 		for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
 			p += prime_delta[i];
 
@@ -291,6 +331,8 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		}
 		if (mpz_cmp_ui(poly->tmp1, (mp_limb_t)1))
 			continue;
+
+		/* a_d is okay, search it */
 
 		stage1_bounds_update(obj, poly);
 		sieve_lattice(obj, poly, deadline_per_coeff);
@@ -334,6 +376,8 @@ poly_stage1_free(poly_stage1_t *data)
 void
 poly_stage1_run(msieve_obj *obj, poly_stage1_t *data)
 {
+	/* pass external configuration in and run the search */
+
 	poly_search_t poly;
 #ifdef HAVE_CUDA
 	gpu_config_t gpu_config;
