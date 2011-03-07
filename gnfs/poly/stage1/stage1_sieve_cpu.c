@@ -20,7 +20,7 @@ $Id$
    for two arithmetic progressions r1+k*p1^2 and r2+k*p2^2 we
    have
 
-      r1 + k1*p1^2 = r2+k2*p2^2
+      r1 + k1*p1^2 = r2 + k2*p2^2
 
    such that
       - p1 and p2 are coprime and < 2^32
@@ -35,8 +35,8 @@ $Id$
    because for e.g. 512-bit GNFS the range on k1 and k2 is typically 
    around 10^6 and the set has ~10^6 progressions. We can reduce the
    memory use by breaking the hashtable into blocks of size > p_min
-   and filling each block individually, but that does not reduce the
-   actual work required.
+   and filling each block individually, but that only reduces the 
+   memory use and not the actual work required.
    
    To scale up the idea, we further use a 'special-q' formulation 
    where all the inputs to the hashtable are constrained to fall 

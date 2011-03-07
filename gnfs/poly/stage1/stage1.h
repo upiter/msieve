@@ -37,7 +37,7 @@ extern "C" {
    to the set with many small primes, to increase the odds 
    that the resulting polynomial will have unusually many 
    projective roots modulo small primes. All high coeffs
-   are chosen to be divisibl by HIGH_COEFF_MULTIPLIER */
+   are chosen to be divisible by HIGH_COEFF_MULTIPLIER */
 
 #define HIGH_COEFF_MULTIPLIER 12
 #define HIGH_COEFF_PRIME_LIMIT 100
@@ -73,7 +73,7 @@ typedef struct {
 	   all poly coefficients. The low-order poly coefficients
 	   are bounded in size by (N/a_d) ^ (1/d) for input N,
 	   high coefficient a_d and poly degree d, because the 
-	   polynomial is essentially N split into d pieces. Our
+	   polynomial is essentially N/a_d split into d pieces. Our
 	   job is to find a 'stage 1 hit' that obeys the norm
 	   bound even for the high-order algebraic coefficients */
 
@@ -143,13 +143,17 @@ typedef struct {
    to be the product of 2 or 3 coprime groups of factors p; 
    each p is < 2^32 and the product of (powers of) up to 
    MAX_P_FACTORS distinct primes. The arithmetic progressions 
-   above are of the form r_i + k * p^2 for 'root' r_i. p 
-   may be prime or composite, and may have up to MAX_ROOTS 
-   roots. We get a collision when we can find two
-   progressions r_i1 + k1*p1^2 and r_i2+k2*p2^2 such that
+   mentioned above are of the form r_i + k * p^2 for 'root' r_i. 
+   p may be prime or composite, and may have up to MAX_ROOTS 
+   roots. 
+   
+   We get a collision when we can find two progressions 
+   aprog1(k) = r_i1 + k*p1^2 and aprog2(k) = r_i2+k*p2^2, 
+   and integers k1 and k2, such that
+
    	- p1 and p2 are coprime
-	- the values of the two progressions are equal
-	- the value is less than sieve_size above in 
+	- aprog1(k1) = aprog2(k2)
+	- the common value is less than sieve_size above in 
 		absolute value
    
    If p has several factors p_i, the exact number of roots 
@@ -250,14 +254,15 @@ void sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 typedef void (*root_callback)(uint32 p, uint32 num_roots, uint64 *roots, 
 				void *extra);
 
-/* produce the next p and all of its roots. The code calls
-   callback() and returns p, or P_SEARCH_DONE if no such p
-   is found that is less than p_max. 
+/* produce the next p and all of its roots. The code returns
+   P_SEARCH_DONE if no such p is found that is less than p_max,
+   otherwise it calls callback() and returns p.
 
    Composite p are found first, then prime p (since prime p
-   are slower and you may not want all of them). No other 
-   pattern may be assumed in the ordering of the p returned
-   by consecutive calls */
+   are slower and you may not want all of them). Prime p will 
+   be found in ascending order but no pattern may be assumed 
+   in the ordering of the composite p returned by consecutive 
+   calls */
 
 uint32 sieve_fb_next(sieve_fb_t *s, 
 			poly_search_t *poly, 
@@ -292,11 +297,11 @@ typedef struct {
 
 	poly_search_t *poly;
 
-	/* members to enforce a time limit on the collision
-	   search. The search space for Kleinjung's algorithm
-	   is essentially infinite, so rather than make a
-	   search deterministic we just let the code go as 
-	   far as it can in the time specified */
+	/* fields that enforce a time limit on the collision
+	   search. For large inputs the search space for Kleinjung's 
+	   algorithm is essentially infinite, so rather than 
+	   make a search deterministic we just let the code go 
+	   as far as it can in the time specified */
 
 	time_t start_time;
 	uint32 deadline;

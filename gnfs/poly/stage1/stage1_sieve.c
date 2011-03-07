@@ -22,7 +22,8 @@ handle_collision(poly_search_t *poly, uint32 p1, uint32 p2,
 		uint32 special_q, uint64 special_q_root, uint128 res)
 {
 	/* the proposed rational coefficient is p1*p2*special_q;
-	   all these pieces must be coprime */
+	   all these pieces must be coprime. The 'trivial
+	   special q' has special_q = 1 and special_q_root = 0 */
 
 	if (mp_gcd_1(special_q, p1) != 1 ||
 	    mp_gcd_1(special_q, p2) != 1 ||
@@ -37,7 +38,7 @@ handle_collision(poly_search_t *poly, uint32 p1, uint32 p2,
 	if (mpz_cmp_ui(poly->tmp3, 1))
 		return;
 
-	/* the corresponding correction to m0 is 
+	/* the corresponding correction to trans_m0 is 
 	   special_q_root + res * special_q^2 - sieve_size,
 	   and can be positive or negative */
 
@@ -70,8 +71,9 @@ handle_collision(poly_search_t *poly, uint32 p1, uint32 p2,
 	
 	   Try to make the computed correction as small as 
 	   possible. This is important because we have several
-	   choices that will all work but some will not satisfy
-	   the bound on a_{d-2} when we run stage 2 */
+	   choices that will all satisfy the modular condition
+	   above, but some will not satisfy the bound on a_{d-2} 
+	   when we run stage 2 */
 
 	mpz_mul_ui(poly->tmp1, poly->high_coeff, (mp_limb_t)poly->degree);
 	mpz_tdiv_qr(poly->m0, poly->tmp2, poly->m0, poly->tmp1);

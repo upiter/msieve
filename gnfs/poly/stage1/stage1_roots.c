@@ -21,8 +21,8 @@ static uint32
 lift_root_32(uint32 n, uint32 r, uint32 old_power, 
 		uint32 p, uint32 d)
 {
-	/* given a r, a d_th root of n mod p, compute
-	   the corresponding root mod p^2 via Hensel lifting */
+	/* given r, a d_th root of n mod old_power, compute
+	   the corresponding root mod (old_power*p) via Hensel lifting */
 
 	uint32 q;
 	uint32 p2 = old_power * p;
@@ -254,9 +254,9 @@ lift_roots(sieve_fb_t *s, poly_search_t *poly, uint32 p, uint32 num_roots)
 	/* we have num_roots arithmetic progressions mod p;
 	   convert the progressions to be mod p^2, using
 	   Hensel lifting, and then move the origin of the 
-	   result trans_m0 units to the left.  This means we 
-	   can 'sieve' up to 2*poly->sieve_size units past 
-	   the new origin */
+	   result (trans_m0 - sieve_size) units to the left.  
+	   This means we can 'sieve' up to 2*poly->sieve_size 
+	   units past the new origin */
 
 	uint32 i;
 	unsigned long degree = s->degree;
