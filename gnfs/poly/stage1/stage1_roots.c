@@ -55,10 +55,8 @@ sieve_fb_free(sieve_fb_t *s)
 static uint32
 get_prime_roots(poly_search_t *poly, uint32 p, uint32 *roots)
 {
-	/* find all the degree_th roots of the transformed 
-	   version of N modulo p. We abort if p has any factors
-	   in common with the leading algebraic coefficient
-	   of the candidate polynomial */
+	/* find all nonzero degree_th roots of the transformed 
+	   version of N modulo p. */
 
 	mp_poly_t tmp_poly;
 	mp_t *low_coeff;
@@ -66,21 +64,21 @@ get_prime_roots(poly_search_t *poly, uint32 p, uint32 *roots)
 	uint32 degree = poly->degree;
 
 	memset(&tmp_poly, 0, sizeof(mp_poly_t));
+
+	low_coeff = &tmp_poly.coeff[0].num;
+	low_coeff->nwords = 1;
+	low_coeff->val[0] = mpz_tdiv_ui(poly->trans_N, (mp_limb_t)p);
+
+	if (low_coeff->val[0] == 0)
+		/* when p divides trans_N, only a root of zero
+		   exists, so skip this p */
+		return 0;
+
 	tmp_poly.degree = degree;
 	tmp_poly.coeff[degree].num.nwords = 1;
 	tmp_poly.coeff[degree].num.val[0] = p - 1;
 
-	if (mp_gcd_1(p, (uint32)mpz_tdiv_ui(
-			poly->high_coeff, (mp_limb_t)p)) > 1)
-		return 0;
-
-	low_coeff = &tmp_poly.coeff[0].num;
-	low_coeff->val[0] = mpz_tdiv_ui(poly->trans_N, (mp_limb_t)p);
-	if (low_coeff->val[0])
-		low_coeff->nwords = 1;
-
-	return poly_get_zeros(roots, &tmp_poly, 
-				p, &high_coeff, 0);
+	return poly_get_zeros(roots, &tmp_poly, p, &high_coeff, 0);
 }
 
 /*------------------------------------------------------------------------*/
