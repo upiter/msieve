@@ -171,9 +171,9 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 	for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
 		p += prime_delta[i];
 
-		if (p <= factor_min)
+		if (p < factor_min)
 			continue;
-		else if (p >= factor_max)
+		else if (p > factor_max)
 			break;
 
 		sieve_add_aprog(s, poly, p, fb_roots_min, fb_roots_max);
