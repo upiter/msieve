@@ -28,12 +28,11 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	double N = mpz_get_d(poly->N);
 	double high_coeff = mpz_get_d(poly->high_coeff);
 	double skewness_min, m0;
-	double coeff_max, p_size_max;
-	uint32 special_q_min, special_q_max;
+	double coeff_max, p_size_max, cutoff;
+	double special_q_min, special_q_max;
 	uint32 num_pieces;
 #ifndef HAVE_CUDA
-	uint32 max_hash_iters;
-	double tmp;
+	double hash_iters;
 #endif
 
 	/* we don't know the optimal skewness for this polynomial
@@ -84,6 +83,14 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	mpz_root(poly->m0, poly->m0, (mp_limb_t)degree);
 	m0 = mpz_get_d(poly->m0);
 
+	/* for leading rational coefficient l, the sieve size
+	   will be l^2*cutoff. This is based on the norm limit
+	   given above, and largely determines how difficult
+	   it will be to find acceptable collisions in the
+	   search */
+
+	cutoff = coeff_max / m0 / degree;
+
 #ifdef HAVE_CUDA
 	/* the GPU code doesn't care how large the sieve 
 	   size is, so favor smaller special-q and try 
@@ -123,30 +130,83 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	   special q for larger inputs, adjusted implictly 
 	   for the polynomial degree */
 
+	/* hash_iters determines how often the hashtable code
+	   will run. This is the most important factor in the
+	   speed of the hashtable code, and is used to control
+	   the limits for the special-q. A larger value of
+	   hash_iters will result in smaller special-q being
+	   selected and thus more sieve offsets being hashed.
+	   Up to a point, smaller hash_iters will be faster,
+	   but values which are far too small may cause
+	   performance to degrade slightly as the 'birthday
+	   effect' is reduced. Somewhere, a 'sweet spot'
+	   exists, but this depends greatly on the size of
+	   problem being sieved. The values suggested below
+	   appear to yield decent results for problems
+	   currently supported by msieve */
+
 	if (degree < 5)
-		max_hash_iters = 1000;
+		hash_iters = 1000; /* be generous for deg4 */
 	else
-		max_hash_iters = 50;
+		hash_iters = 50; /* seems reasonable */
+
+	/* we need to be sure that the parameters with the
+	   specified value of hash_iters will 'work'. There
+	   are at least two things to check:
+
+		(1) l/special_q must be small enough to keep
+		    the hashtable size manageable
+		(2) 2*(l/special_q)^2*cutoff must fit in a
+		    64bit unsigned integer 
+
+	   these conditions kick in only for the largest
+	   problems, and this is just a way to keep the
+	   search from blowing up on us unexpectedly */
+
+	/* first limit hash_iters to keep l/special_q small.
+	   the size of aprogs p will be at most about 2^27,
+	   though this is deliberately over-estimated */
+
+	hash_iters = MIN(hash_iters, (double)((uint32)1 << 27) *
+					     ((uint32)1 << 27) *
+					     cutoff);
+
+	/* next limit hash_iters to keep 2*(l/special_q)^2*cutoff
+	   small. Again, we over-estimate a little bit */
+
+	hash_iters = MIN(hash_iters, sqrt((double)(uint64)(-1) *
+						  cutoff));
 
 #define SPECIAL_Q_SCALE 5
-	tmp = 2 * coeff_max * coeff_max / skewness_min
-		/ m0 / degree / max_hash_iters;
-	tmp = MAX(tmp, coeff_max / skewness_min /
-			((double)((uint32)1 << 27) *
-				 ((uint32)1 << 27) /
-				 max_hash_iters));
-	tmp *= P_SCALE * P_SCALE;
-	special_q_min = MIN((uint32)(-1) / SPECIAL_Q_SCALE, tmp);
+	/* the factor of 2 below comes from the fact that the
+	   total length of the line sieved is 2*sieve_size, since
+	   both sides of the origin are sieved at once */
+
+	p_size_max = coeff_max / skewness_min;
+	special_q_min = 2 * P_SCALE * P_SCALE * cutoff * coeff_max
+			/ skewness_min / hash_iters;
+
+	/* special_q must be <2^32. If it is too big, we can
+	   reduce the problem size a bit further to compensate */
+
+	if (special_q_min > (uint32)(-1) / SPECIAL_Q_SCALE) {
+
+		p_size_max *= (uint32)(-1) / special_q_min / SPECIAL_Q_SCALE;
+		special_q_min = (uint32)(-1) / SPECIAL_Q_SCALE;
+	}
+
 	if (special_q_min > 1) {
+		/* very small ranges of special q might be empty, so
+		   impose a limit on the minimum size */
+
 		special_q_min = MAX(special_q_min, 11);
 		special_q_max = special_q_min * SPECIAL_Q_SCALE;
 	}
 	else {
+		/* only trivial lattice */
+
 		special_q_min = special_q_max = 1;
 	}
-
-	tmp = MAX(1, tmp / special_q_min);
-	p_size_max = coeff_max / skewness_min / tmp;
 
 	num_pieces = (special_q_max - special_q_min)
 			/ (log(special_q_max) - 1)
@@ -174,9 +234,9 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 		special_q_max = special_q_min * piece_ratio;
 	}
 
-	poly->special_q_min = special_q_min;
-	poly->special_q_max = special_q_max;
-	poly->special_q_fb_max = MIN(special_q_max, 100000);
+	poly->special_q_min = (uint32)special_q_min;
+	poly->special_q_max = (uint32)special_q_max;
+	poly->special_q_fb_max = MIN((uint32)special_q_max, 100000);
 
 	poly->coeff_max = coeff_max;
 	poly->p_size_max = p_size_max;
@@ -185,8 +245,7 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	   to m0, and the new m0 will cause a_{d-2} to be small enough
 	   if it is smaller than sieve_size */
 
-	poly->sieve_size = coeff_max * p_size_max * p_size_max
-				/ m0 / degree;
+	poly->sieve_size = p_size_max * p_size_max * cutoff;
 	mpz_set_d(poly->mp_sieve_size, poly->sieve_size);
 }
 
