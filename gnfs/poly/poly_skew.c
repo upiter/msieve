@@ -39,8 +39,8 @@ static const poly_param_t prebuilt_params_deg4[] = {
 	{ 90, 1.00E+015, 5.00E+014, 3.80E-008},
 	{ 95, 1.00E+016, 1.00E+015, 1.50E-008},
 	{100, 3.10E+017, 4.00E+015, 8.30E-009},
-	{105, 1.00E+018, 1.00E+016, 4.00E-009},
-	{110, 3.00E+018, 4.00E+016, 1.20E-009},
+	{105, 1.00E+018, 1.50E+016, 3.00E-009},
+	{110, 9.00E+018, 5.00E+016, 1.00E-009},
 };
 
 static const poly_param_t prebuilt_params_deg5[] = {
@@ -107,7 +107,7 @@ static const poly_param_t prebuilt_params_deg5[] = {
 	/* contributed by Tom Womack */
 
 	{159, 2.00E+024, 2.00E+022, 1.00E-012},
-	{165, 8.00E+024, 2.00E+023, 4.00E-013},
+	{165, 8.00E+024, 2.00E+023, 5.00E-013},
 	{170, 5.00E+025, 1.58E+024, 1.50E-013},
 
 	/* contributed by Serge Batalov */
