@@ -292,7 +292,7 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 			for (j = 0; j < num_roots; j++) {
 				uint64 offset = tmp->roots[j].offset;
 
-				if (offset < sieve_end && offset > sieve_start) {
+				if (offset < sieve_end) {
 					hash_entry_t *hit;
 					hash_entry_t curr_entry;
 					uint32 already_seen = 0;
@@ -305,8 +305,9 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 
 					if (already_seen) {
 
-						/* collision found! Handle it
-						   in 'special q coordinates' */
+						/* collision found! The sieve
+						   offset 'res' is in 'special q
+						   coordinates' */
 
 						uint128 res;
 
@@ -331,7 +332,13 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 					/* compute the next offset 
 					   for root j */
 
-					tmp->roots[j].offset = offset + tmp->p2;
+					offset += tmp->p2;
+
+					if (offset < sieve_start)
+						/* handle overflow */
+						offset = (uint64)(-1);
+
+					tmp->roots[j].offset = offset;
 				}
 			}
 
@@ -493,8 +500,9 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		 
 		   Note that we need one inverse for each (p,special_q)
 		   pair, *not* one for each root. For degree 4 and 6,
-		   when each p has many roots, this speeds up the modular
-		   inverse phase by much more than SPECIALQ_BATCH_SIZE */
+		   when each special_q has many roots, this speeds up the
+		   modular inverse phase by much more than
+		   SPECIALQ_BATCH_SIZE */
 
 		for (i = 0, tmp = hash_array.packed_array; i < num_p; i++) {
 

@@ -311,8 +311,8 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		mpz_divexact_ui(poly->tmp1, poly->high_coeff, 
 					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 
-		/* trial divide the result ad throw it away if it
-		   has large factors */
+		/* trial divide the a_d and skip it if it
+		   has any large prime factors */
 
 		for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
 			p += prime_delta[i];

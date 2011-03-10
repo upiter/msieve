@@ -156,14 +156,15 @@ typedef struct {
 	- the common value is less than sieve_size above in 
 		absolute value
    
-   If p has several factors p_i, the exact number of roots 
-   that a given p has is the product of the number of d_th 
-   roots of N modulo each p_i. For degree 4 polyomials, N has 
-   either 0, 2, or 4 fourth roots mod p_i. For degree 5, 
+   If p has several prime factors p_i, the exact number of 
+   roots that a given p has is the product of the number of 
+   d_th roots of N modulo each p_i. For degree 4 polyomials, N 
+   has either 0, 2, or 4 fourth roots mod p_i. For degree 5, 
    N has either 1 or 5 fifth roots mod p_i. For degree 6, 
    N has either 0, 2 or 6 sixth roots mod p_i. So especially
-   when p is large, a composite p can contribute a large 
-   number of progressions to the collision search
+   when p is large and p_i are small, a composite p can 
+   contribute a large number of progressions to the collision 
+   search
 
    We will need to generate many p along with all their r_i
    fairly often, and need efficient methods to do so */
@@ -228,11 +229,12 @@ typedef struct {
 
 /* externally visible interface */
 
-/* initialize the factory. composite p will have factors
-   p_i between factor_min and factor max, and N will have
-   between fb_roots_min and fb_roots_max d_th roots modulo
-   each of these p_i. Prime p are skipped if fb_only is
-   nonzero */
+/* initialize the factory. p is allowed to have small prime
+   factors p_i between factor_min and factor_max, and N
+   will have between fb_roots_min and fb_roots_max d_th
+   roots modulo each of these p_i. Additionally, if fb_only
+   is zero, a sieve is used to find any prime p which are
+   larger than factor_max */
 
 void sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 			uint32 factor_min, uint32 factor_max,
@@ -254,15 +256,15 @@ void sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 typedef void (*root_callback)(uint32 p, uint32 num_roots, uint64 *roots, 
 				void *extra);
 
-/* produce the next p and all of its roots. The code returns
-   P_SEARCH_DONE if no such p is found that is less than p_max,
-   otherwise it calls callback() and returns p.
+/* find the next p and all of its roots. The code returns
+   P_SEARCH_DONE if no more p exist, otherwise it calls 
+   callback() and returns p.
 
-   Composite p are found first, then prime p (since prime p
-   are slower and you may not want all of them). Prime p will 
-   be found in ascending order but no pattern may be assumed 
-   in the ordering of the composite p returned by consecutive 
-   calls */
+   p which are products of small primes are found first, then
+   large prime p (since prime p are slower and you may not want
+   all of them). Prime p will be found in ascending order but 
+   no order may be assumed for composite p returned by 
+   consecutive calls */
 
 uint32 sieve_fb_next(sieve_fb_t *s, 
 			poly_search_t *poly, 
@@ -274,6 +276,11 @@ uint32 sieve_fb_next(sieve_fb_t *s,
 /* structure for handling collision search */
 
 typedef struct {
+
+#ifdef HAVE_CUDA
+
+	/* GPU-specific stuff */
+
 	/* the collections of p. sq_array stores 'special q'
 	   that force members of p_array and q_array to all
 	   fall on some third, 'special q' arithmetic 
@@ -282,9 +289,6 @@ typedef struct {
 	void *p_array; 
 	void *q_array; 
 	void *sq_array;
-
-#ifdef HAVE_CUDA
-	/* GPU stuff */
 
 	CUdeviceptr gpu_p_array;
 	CUdeviceptr gpu_q_array;

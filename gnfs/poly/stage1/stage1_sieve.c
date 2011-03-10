@@ -14,7 +14,10 @@ $Id$
 
 #include <stage1.h>
 
-/* wrapper for the collision search */
+/* wrapper for the collision search. Depending on build
+   options, the collision search may be performed either
+   via a hashtable method on the CPU or via a massively
+   parallel all-against-all method on nvidia GPU cards. */
 
 /*------------------------------------------------------------------------*/
 void
@@ -113,14 +116,6 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 			log(poly->p_size_max) / M_LN2,
 			log(poly->sieve_size) / M_LN2);
 
-	/* set up the special q factory; it may not be
-	   needed, but special-q may have arbitrary factors */
-
-	sieve_fb_init(&sieve_special_q, poly,
-			5, special_q_fb_max,
-			1, poly->degree,
-			0);
-
 	L.poly = poly;
 	L.start_time = time(NULL);
 	L.deadline = deadline;
@@ -136,12 +131,25 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	}
 
 	if (quit || special_q_max == 1)
-		goto finished;
+		return;
 
-	/* large problems with a long time limit may exhaust
-	   one batch of special q; in that case, if the search is
-	   broken up into pieces then just go on to the next 
-	   batch of special-q */
+	/* set up the special q factory; special-q may have 
+	   arbitrary factors, but many small factors are 
+	   preferred since that will allow for many more roots
+	   per special q, so we choose the factors to be as 
+	   small as possible */
+
+	sieve_fb_init(&sieve_special_q, poly,
+			5, special_q_fb_max,
+			1, poly->degree,
+			0);
+
+	/* if special q max is more than P_SCALE times special q
+	   min, then we split the range into P_SCALE-sized parts
+	   and search them individually to keep the size of the
+	   leading rational coefficient close to its target size.
+	   The size of the other factors of the leading rational
+	   coefficient are scaled appropriately */
 
 	while (1) {
 
@@ -165,6 +173,5 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		special_q_min = special_q_max2 + 1;
 	}
 
-finished:
 	sieve_fb_free(&sieve_special_q);
 }

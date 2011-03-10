@@ -191,8 +191,6 @@ sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 	aprog_t *aprogs = s->aprog_data.aprogs;
 	uint32 num_aprogs = s->aprog_data.num_aprogs;
 
-	free_prime_sieve(&s->p_prime);
-
 	if (num_roots_max > MAX_ROOTS) {
 		printf("error: num_roots_max exceeds %d\n", MAX_ROOTS);
 		exit(-1);
@@ -204,28 +202,8 @@ sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 	s->num_roots_max = num_roots_max;
 	s->avail_algos = 0;
 
-	/* set up for finding arithmetic progressions where
-	   p is prime; do so if that's allowed and the range
-	   of such p is higher than what's already in the
-	   aprog list */
-
-	if (s->fb_only == 0 &&
-	    p_min < P_PRIME_LIMIT &&
-	    s->degree >= num_roots_min) {
-		uint32 last_p;
-
-		if (num_aprogs == 0)
-			last_p = 0;
-		else
-			last_p = aprogs[num_aprogs - 1].p;
-
-		if (p_max > last_p) {
-			s->avail_algos |= ALGO_PRIME;
-
-			init_prime_sieve(&s->p_prime, MAX(p_min, last_p + 1),
-					 MIN(p_max, P_PRIME_LIMIT));
-		}
-	}
+	/* set up for finding arithmetic progressions by
+	   combining small factors p_i from the aprog list */
 
 	if (num_aprogs > 0) {
 		p_enum_t *p_enum = &s->p_enum; 
@@ -243,6 +221,30 @@ sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 
 			a->cofactor_max = p_max / a->p;
 			a->cofactor_roots_max = num_roots_max / a->num_roots;
+		}
+	}
+
+	/* set up for finding arithmetic progressions where
+	   p is a large prime exceeding factor_max; do so if
+	   that's allowed and the range of such p is higher
+	   than what's already in the aprog list */
+
+	if (s->fb_only == 0 &&
+	    p_min < P_PRIME_LIMIT &&
+	    s->degree >= num_roots_min) {
+		uint32 last_p;
+
+		if (num_aprogs == 0)
+			last_p = 0;
+		else
+			last_p = aprogs[num_aprogs - 1].p;
+
+		if (p_max > last_p) {
+			s->avail_algos |= ALGO_PRIME;
+
+			free_prime_sieve(&s->p_prime);
+			init_prime_sieve(&s->p_prime, MAX(p_min, last_p + 1),
+					 MIN(p_max, P_PRIME_LIMIT));
 		}
 	}
 }
@@ -450,7 +452,7 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 		if (s->avail_algos & ALGO_ENUM) {
 
 			/* first attempt to find a p by 
-			   combining smaller suitable p */
+			   combining smaller suitable aprogs p_i */
 
 			p = get_next_enum(s);
 
@@ -463,7 +465,7 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 		}
 		else if (s->avail_algos & ALGO_PRIME) {
 
-			/* then try to find a prime p */
+			/* then try to find a large prime p */
 
 			uint32 roots[MAX_POLYSELECT_DEGREE];
 
