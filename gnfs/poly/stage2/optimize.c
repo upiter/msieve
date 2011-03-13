@@ -379,6 +379,9 @@ optimize_initial(poly_stage2_t *data, double *pol_norm,
 	}
 
 	for (i = 0; i < 2; i++) {
+
+		uint32 num_minimize = 0;
+
 		do {
 			last_score = score;
 			score = minimize(best, num_vars, tol, 40, 
@@ -404,6 +407,9 @@ optimize_initial(poly_stage2_t *data, double *pol_norm,
 			best[ROTATE0] = 0;
 			best[ROTATE1] = 0;
 			best[ROTATE2] = 0;
+
+			if (++num_minimize >= 5)
+				break;
 
 		} while (fabs(score - last_score) > .001 * fabs(score));
 
