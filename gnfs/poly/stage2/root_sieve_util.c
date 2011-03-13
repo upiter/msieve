@@ -41,7 +41,7 @@ compute_line_size(double max_norm, dpoly_t *apoly,
 	APPLY_ROTATION(last_line_min);
 	v0 = optimize_basic(&bpoly, &new_skewness, &new_xlate);
 	offset = 1e-6 * fabs(last_line_min);
-	offset = MAX(offset, 10000.0);
+	offset = MAX(offset, 10.0);
 
 	if (v0 > max_norm) {
 		d0 = last_line_min;
@@ -88,7 +88,7 @@ compute_line_size(double max_norm, dpoly_t *apoly,
 	APPLY_ROTATION(last_line_max);
 	v0 = optimize_basic(&bpoly, &new_skewness, &new_xlate);
 	offset = 1e-6 * fabs(last_line_max);
-	offset = MAX(offset, 10000.0);
+	offset = MAX(offset, 10.0);
 
 	if (v0 > max_norm) {
 		d0 = last_line_max - offset;
