@@ -458,7 +458,13 @@ uint32 nfs_find_factors(msieve_obj *obj, mp_t *n,
 
 		mp_add(&sqrt_r, &sqrt_a, &tmp1);
 		mp_gcd(&tmp1, n, &tmp1);
-		if (!mp_is_one(&tmp1) && mp_cmp(n, &tmp1) != 0) {
+		if (mp_is_one(&tmp1)) {
+			logprintf(obj, "GCD is 1, no factor found\n");
+		}
+		else if (mp_cmp(n, &tmp1) == 0) {
+			logprintf(obj, "GCD is N, no factor found\n");
+		}
+		else {
 			/* factor found; add it to the list of factors. 
 			   Stop trying dependencies if the remaining
 			   composite is small enough that another method
@@ -469,10 +475,26 @@ uint32 nfs_find_factors(msieve_obj *obj, mp_t *n,
 			   avoid doing this because the MPQS code will run
 			   and wipe out all the NFS relations we've collected */
 
+			uint32 composite_bits = factor_list_add(obj, 
+						factor_list, &tmp1);
+
 			factor_found = 1;
-			if (factor_list_add(obj, factor_list, &tmp1) < 
-						SMALL_COMPOSITE_CUTOFF_BITS)
+			if (composite_bits < SMALL_COMPOSITE_CUTOFF_BITS) {
 				break;
+			}
+			else {
+				/* a single dependency could take hours,
+				   and if N has more than two factors then
+				   we'll need several dependencies to find
+				   them all. So at least report the smallest
+				   cofactor that we just found */
+
+				mp_div(n, &tmp1, &tmp2);
+				logprintf(obj, "found factor: %s\n",
+					mp_sprintf((mp_cmp(&tmp1, &tmp2) < 0) ?
+						&tmp1 : &tmp2, 10, 
+						obj->mp_sprintf_buf));
+			}
 		}
 	}
 
