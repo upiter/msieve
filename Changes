@@ -2,12 +2,17 @@ Version 1.49:
 	- Generalized the degree 6 root sieve to also handle degree
 		4 and 5. This makes stage 2 of NFS polyomial selection
 		hugely faster for very large problems
+	- Allowed the target matrix density within NFS filtering to
+		be specified from the demo binary (multiple people have
+		asked for this and I'd been too lazy to supply it)
 	- Fixed an erroneous error check in the MPI code (thanks
 		Ilya Popovyan)
 	- Fixed an MPI race condition in the Lanczos restart code
 		(thanks Jeff Gilchrist)
+	- Modified the NFS square root to print out factors as they are
+		found (thanks Paul Leyland)
 
-Version 1.48:
+Version 1.48: 1/8/11
 	- Performed a massive overhaul of the stage 1 NFS polynomial
 		selection, with a huge amount of help from Jayson King.
 		Once this is tuned a little better, polynomial selection

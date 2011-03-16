@@ -23,7 +23,7 @@ msieve_obj * msieve_obj_new(char *input_integer, uint32 flags,
 			    enum cpu_type cpu,
 			    uint32 cache_size1, uint32 cache_size2,
 			    uint32 num_threads, uint32 mem_mb,
-			    uint32 which_gpu) {
+			    uint32 which_gpu, double target_density) {
 
 	msieve_obj *obj = (msieve_obj *)xcalloc((size_t)1, sizeof(msieve_obj));
 
@@ -40,6 +40,7 @@ msieve_obj * msieve_obj_new(char *input_integer, uint32 flags,
 	obj->num_threads = num_threads;
 	obj->mem_mb = mem_mb;
 	obj->which_gpu = which_gpu;
+	obj->target_density = target_density;
 	obj->logfile_name = MSIEVE_DEFAULT_LOGFILE;
 	if (logfile_name)
 		obj->logfile_name = logfile_name;

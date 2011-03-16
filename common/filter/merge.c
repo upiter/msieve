@@ -330,7 +330,6 @@ static uint32 store_next_relset_group(merge_aux_t *aux,
 
 /*--------------------------------------------------------------------*/
 #define NUM_CYCLE_BINS 9
-#define TARGET_DENSITY 70.0
 
 void filter_merge_full(msieve_obj *obj, merge_t *merge, uint32 min_cycles) {
 
@@ -497,7 +496,7 @@ void filter_merge_full(msieve_obj *obj, merge_t *merge, uint32 min_cycles) {
 							&mat_weight, 
 							target_cycles) / 
 							target_cycles;
-				if (avg_cycle_weight >= TARGET_DENSITY)
+				if (avg_cycle_weight >= merge->target_density)
 					break;
 			}
 

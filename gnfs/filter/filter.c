@@ -152,6 +152,12 @@ static void set_filtering_bounds(msieve_obj *obj, factor_base_t *fb,
 
 #define FINAL_EXCESS_FRACTION 1.16
 
+/* the default expected number of sparse nonzeros in the
+   average matrix column (may be overriden if you know
+   what you are doing) */
+
+#define DEFAULT_TARGET_DENSITY 70.0
+
 static uint32 do_merge(msieve_obj *obj, filter_t *filter, merge_t *merge) {
 
 	uint32 relations_needed;
@@ -172,6 +178,10 @@ static uint32 do_merge(msieve_obj *obj, filter_t *filter, merge_t *merge) {
 	/* build the matrix */
 
 	merge->num_extra_relations = NUM_EXTRA_RELATIONS;
+
+	merge->target_density = DEFAULT_TARGET_DENSITY;
+	if (obj->target_density != 0)
+		merge->target_density = obj->target_density;
 
 	filter_make_relsets(obj, filter, merge, extra_needed);
 	return 0;
