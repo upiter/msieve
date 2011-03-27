@@ -15,8 +15,8 @@ $Id$
 #include "stage2.h"
 
 /*-------------------------------------------------------------------------*/
-static uint64
-find_lattice_size(double line_length)
+uint64
+find_lattice_size_y(double line_length)
 {
 	if (line_length < 1e3)
 		return 1;
@@ -177,50 +177,26 @@ sieve_xy_free(sieve_xy_t *xy)
 
 /*-------------------------------------------------------------------------*/
 void
-sieve_xy_run_deg45(root_sieve_t *rs, uint32 degree)
+sieve_xy_run_deg5(root_sieve_t *rs, uint64 lattice_size,
+		double line_min, double line_max)
 {
 	uint32 i, j;
 	sieve_xy_t *xy = &rs->xydata;
 	hit_t hitlist[MAX_CRT_FACTORS];
-	uint64 lattice_size;
 	uint32 num_lattice_primes;
 	uint32 num_lattices;
 	uint32 y_blocks;
 	int64 curr_y;
-
 	double direction[3] = {0, 1, 0};
-	double line_min, line_max;
-
-	lattice_size = xy->lattice_size = 1;
-	xy->num_lattices = 0;
-
-	if (degree == 4) {
-		line_min = 0;
-		line_max = 1;
-		lattice_size = 1;
-		y_blocks = 1;
-		mpz_set_ui(xy->y_base, 0);
-		uint64_2gmp(lattice_size, xy->mp_lattice_size);
-	}
-	else {
-		compute_line_size(rs->max_norm, &rs->apoly,
-				rs->dbl_p, rs->dbl_d, direction,
-				-10, 10, &line_min, &line_max);
-		if (line_min >= line_max)
-			return;
-
-		lattice_size = find_lattice_size(line_max - line_min);
-		uint64_2gmp(lattice_size, xy->mp_lattice_size);
-
-		y_blocks = (line_max - line_min) / lattice_size + 1;
-
-		mpz_set_d(xy->y_base, line_min / lattice_size - 1);
-		mpz_mul(xy->y_base, xy->y_base, xy->mp_lattice_size);
-	}
 
 	xy->lattice_size = lattice_size;
 	xy->dbl_lattice_size = (double)lattice_size;
+	uint64_2gmp(lattice_size, xy->mp_lattice_size);
 
+	mpz_set_d(xy->y_base, line_min / lattice_size - 1);
+	mpz_mul(xy->y_base, xy->y_base, xy->mp_lattice_size);
+
+	y_blocks = (line_max - line_min) / lattice_size + 1;
 	if (y_blocks > xy->y_blocks) {
 		xy->x_line_min = (double *)xrealloc(xy->x_line_min,
 						y_blocks * sizeof(double));
@@ -229,6 +205,7 @@ sieve_xy_run_deg45(root_sieve_t *rs, uint32 degree)
 	}
 	xy->y_blocks = y_blocks;
 
+	xy->num_lattices = 0;
 	if (lattice_size == 1) {
 		num_lattice_primes = xy->num_lattice_primes = 0;
 		num_lattices = 1;
@@ -313,5 +290,5 @@ sieve_xy_run_deg45(root_sieve_t *rs, uint32 degree)
 	printf("\n%.0lf %u %u\n", (double)lattice_size, 
 			y_blocks, num_lattices);
 
-	sieve_x_run_deg45(rs);
+	sieve_x_run_deg5(rs);
 }

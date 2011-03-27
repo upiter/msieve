@@ -345,7 +345,6 @@ root_sieve_line(root_sieve_t *rs)
 
 	printf("%u ", num_blocks); fflush(stdout);
 
-
 	if (mpz_cmp_ui(x->mp_lattice_size, 1) == 0)
 		prepare_sieve_line(rs);
 	else

@@ -141,7 +141,7 @@
     <ClCompile Include="..\..\gnfs\gnfs.c" />
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_cpu.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg45_x.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg45_xy.c" />
+    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg5_xy.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_x.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_xy.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_xyz.c" />

@@ -253,12 +253,24 @@ void root_sieve_free(root_sieve_t *rs);
 void root_sieve_run(poly_stage2_t *data, double curr_norm,
 				double alpha_proj);
 
-void sieve_xyz_run_deg6(root_sieve_t *rs);
-void sieve_xy_run_deg45(root_sieve_t *rs, uint32 degree);
+uint64 find_lattice_size_z(double line_length);
+void sieve_xyz_run_deg6(root_sieve_t *rs, uint64 lattice_size,
+			double line_min, double line_max);
+
+uint64 find_lattice_size_y(double line_length);
+void sieve_xy_run_deg5(root_sieve_t *rs, uint64 lattice_size,
+			double line_min, double line_max);
 void sieve_xy_run_deg6(root_sieve_t *rs);
-void sieve_x_run_deg45(root_sieve_t *rs);
+
+uint64 find_lattice_size_x(mpz_t prev_lattice_size,
+				double line_length);
+void sieve_x_run_deg4(root_sieve_t *rs, uint64 lattice_size,
+			double line_min, double line_max);
+void sieve_x_run_deg5(root_sieve_t *rs);
 void sieve_x_run_deg6(root_sieve_t *rs);
+
 void root_sieve_line(root_sieve_t *rs);
+
 void save_rotation(root_heap_t *heap, mpz_t x, mpz_t y,
 		int64 z, float score);
 
