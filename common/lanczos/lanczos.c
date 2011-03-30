@@ -496,23 +496,33 @@ static void dump_lanczos_state(msieve_obj *obj,
 #ifdef HAVE_MPI
 	/* pull the full-size vectors into rank 0 */
 	if (obj->mpi_la_row_rank == 0) {
-		MPI_TRY(MPI_Gatherv(x, n, MPI_LONG_LONG, x,
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : x,
+				n, MPI_LONG_LONG, x,
 				packed_matrix->col_counts,
 				packed_matrix->col_offsets,
 				MPI_LONG_LONG, 0, obj->mpi_la_row_grid))
-		MPI_TRY(MPI_Gatherv(v[0], n, MPI_LONG_LONG, v[0],
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : v[0],
+				n, MPI_LONG_LONG, v[0],
 				packed_matrix->col_counts,
 				packed_matrix->col_offsets,
 				MPI_LONG_LONG, 0, obj->mpi_la_row_grid))
-		MPI_TRY(MPI_Gatherv(v[1], n, MPI_LONG_LONG, v[1],
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : v[1],
+				n, MPI_LONG_LONG, v[1],
 				packed_matrix->col_counts,
 				packed_matrix->col_offsets,
 				MPI_LONG_LONG, 0, obj->mpi_la_row_grid))
-		MPI_TRY(MPI_Gatherv(v[2], n, MPI_LONG_LONG, v[2],
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : v[2],
+				n, MPI_LONG_LONG, v[2],
 				packed_matrix->col_counts,
 				packed_matrix->col_offsets,
 				MPI_LONG_LONG, 0, obj->mpi_la_row_grid))
-		MPI_TRY(MPI_Gatherv(v0, n, MPI_LONG_LONG, v0,
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : v0, 
+				n, MPI_LONG_LONG, v[2],
 				packed_matrix->col_counts,
 				packed_matrix->col_offsets,
 				MPI_LONG_LONG, 0, obj->mpi_la_row_grid))
@@ -629,26 +639,36 @@ static void read_lanczos_state(msieve_obj *obj,
 	/* push the full-size vectors to the top grid row */
 
 	if (obj->mpi_ncols > 1 && obj->mpi_la_row_rank == 0) {
-		MPI_TRY(MPI_Scatterv(x, packed_matrix->col_counts,
-				packed_matrix->col_offsets,
-				MPI_LONG_LONG, x, n, MPI_LONG_LONG, 0, 
-				obj->mpi_la_row_grid))
-		MPI_TRY(MPI_Scatterv(v[0], packed_matrix->col_counts,
-				packed_matrix->col_offsets,
-				MPI_LONG_LONG, v[0], n, MPI_LONG_LONG, 0, 
-				obj->mpi_la_row_grid))
-		MPI_TRY(MPI_Scatterv(v[1], packed_matrix->col_counts,
-				packed_matrix->col_offsets,
-				MPI_LONG_LONG, v[1], n, MPI_LONG_LONG, 0, 
-				obj->mpi_la_row_grid))
-		MPI_TRY(MPI_Scatterv(v[2], packed_matrix->col_counts,
-				packed_matrix->col_offsets,
-				MPI_LONG_LONG, v[2], n, MPI_LONG_LONG, 0, 
-				obj->mpi_la_row_grid))
-		MPI_TRY(MPI_Scatterv(v0, packed_matrix->col_counts,
-				packed_matrix->col_offsets,
-				MPI_LONG_LONG, v0, n, MPI_LONG_LONG, 0, 
-				obj->mpi_la_row_grid))
+		MPI_TRY(MPI_Scatterv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : x, 
+				packed_matrix->col_counts,
+				packed_matrix->col_offsets, 
+				MPI_LONG_LONG, x, n, MPI_LONG_LONG, 
+				0, obj->mpi_la_row_grid))
+		MPI_TRY(MPI_Scatterv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : v[0], 
+				packed_matrix->col_counts,
+				packed_matrix->col_offsets, 
+				MPI_LONG_LONG, v[0], n, MPI_LONG_LONG, 
+				0, obj->mpi_la_row_grid))
+		MPI_TRY(MPI_Scatterv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : v[1], 
+				packed_matrix->col_counts,
+				packed_matrix->col_offsets, 
+				MPI_LONG_LONG, v[1], n, MPI_LONG_LONG, 
+				0, obj->mpi_la_row_grid))
+		MPI_TRY(MPI_Scatterv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : v[2], 
+				packed_matrix->col_counts,
+				packed_matrix->col_offsets, 
+				MPI_LONG_LONG, v[2], n, MPI_LONG_LONG, 
+				0, obj->mpi_la_row_grid))
+		MPI_TRY(MPI_Scatterv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : v0, 
+				packed_matrix->col_counts,
+				packed_matrix->col_offsets, 
+				MPI_LONG_LONG, v0, n, MPI_LONG_LONG, 
+				0, obj->mpi_la_row_grid))
 	}
 
 	/* duplicate the top grid row across all the grid rows */
@@ -1242,22 +1262,30 @@ static uint64 * block_lanczos_core(msieve_obj *obj,
 	/* pull the result vectors into rank 0 */
 
 	if (obj->mpi_la_row_rank == 0) {
-		MPI_TRY(MPI_Gatherv(x, n, MPI_LONG_LONG, x,
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : x,
+				n, MPI_LONG_LONG, x,
 				packed_matrix->col_counts,
 				packed_matrix->col_offsets,
 				MPI_LONG_LONG, 0, obj->mpi_la_row_grid))
-		MPI_TRY(MPI_Gatherv(v[0], n, MPI_LONG_LONG, v[0],
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_col_rank == 0) ? 
+						MPI_IN_PLACE : v[0],
+				n, MPI_LONG_LONG, v[0],
 				packed_matrix->col_counts,
 				packed_matrix->col_offsets,
 				MPI_LONG_LONG, 0, obj->mpi_la_row_grid))
 	}
 	if (obj->mpi_la_col_rank == 0) {
-		MPI_TRY(MPI_Gatherv(v[1], packed_matrix->nrows, 
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_row_rank == 0) ? 
+						MPI_IN_PLACE : v[1],
+				packed_matrix->nrows, 
 				MPI_LONG_LONG, v[1],
 				packed_matrix->row_counts,
 				packed_matrix->row_offsets,
 				MPI_LONG_LONG, 0, obj->mpi_la_col_grid))
-		MPI_TRY(MPI_Gatherv(v[2], packed_matrix->nrows, 
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_row_rank == 0) ? 
+						MPI_IN_PLACE : v[2],
+				packed_matrix->nrows, 
 				MPI_LONG_LONG, v[2],
 				packed_matrix->row_counts,
 				packed_matrix->row_offsets,
@@ -1402,8 +1430,10 @@ uint64 * block_lanczos(msieve_obj *obj,
 						max_ncols * sizeof(uint64));
 		}
 
-		MPI_TRY(MPI_Gatherv(post_lanczos_matrix, ncols,
-				MPI_LONG_LONG, post_lanczos_matrix, 
+		MPI_TRY(MPI_Gatherv((obj->mpi_la_col_rank == 0) ?
+					MPI_IN_PLACE : post_lanczos_matrix, 
+				ncols, MPI_LONG_LONG, 
+				post_lanczos_matrix,
 				packed_matrix.col_counts,
 				packed_matrix.col_offsets,
 				MPI_LONG_LONG, 0, obj->mpi_la_row_grid))

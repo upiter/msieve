@@ -5,6 +5,8 @@ Version 1.49:
 	- Allowed the target matrix density within NFS filtering to
 		be specified from the demo binary (multiple people have
 		asked for this and I'd been too lazy to supply it)
+	- Modified the MPI code to flag in-place gather and scatter
+		operations as such (thanks Greg Childers)
 	- Fixed an erroneous error check in the MPI code (thanks
 		Ilya Popovyan)
 	- Fixed an MPI race condition in the Lanczos restart code
