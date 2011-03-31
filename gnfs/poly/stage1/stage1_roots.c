@@ -103,7 +103,7 @@ sieve_add_aprog(sieve_fb_t *s, poly_search_t *poly, uint32 p,
 						sizeof(aprog_t));
 	}
 
-	/* ...if trans_N has any roots mod p */
+	/* ...if trans_N has any degree_th roots mod p */
 
 	a = list->aprogs + list->num_aprogs;
 	a->p = p;
@@ -201,12 +201,15 @@ sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 	s->avail_algos = 0;
 
 	/* set up for finding arithmetic progressions by
-	   combining small factors p_i from the aprog list */
+	   enumerating combinations of small factors p_i
+	   from the aprog list */
 
 	if (num_aprogs > 0) {
 		p_enum_t *p_enum = &s->p_enum; 
 
 		s->avail_algos |= ALGO_ENUM;
+
+		/* clear the enum state */
 
 		p_enum->factors[0] = 0;
 		p_enum->num_factors = 0;
@@ -384,6 +387,26 @@ get_enum_roots(sieve_fb_t *s, uint32 p)
 static uint32
 get_next_enum(sieve_fb_t *s)
 {
+	/* find the next p by enumerating combinations of
+	   aprogs p_i. We do this by maintaining a "stack"
+	   of unique chosen p_i which are strictly in
+	   non-increasing order, when read first-to-last.
+	   While maintaining this ordering, and respecting
+	   the maximum size of p, we "push" a new p_i
+	   whenever possible. Otherwise, we "pop" p_i and,
+	   as long as ordering can be maintained, "push"
+	   the successor of the p_i which was last popped.
+	   Multiple copies of the same p_i are combined
+	   together into a single p_i (to simplify the CRT
+	   later).
+
+	   enumeration ends when there are no more aprogs
+	   p_i available to be pushed
+
+	   this method allows the p_i to be recovered
+	   directly by reading the stack; no trial division
+	   is necessary */
+
 	p_enum_t *p_enum = &s->p_enum;
 	uint32 *factors = p_enum->factors;
 	uint32 *powers = p_enum->powers;
@@ -422,11 +445,7 @@ get_next_enum(sieve_fb_t *s)
 		}
 		else if (i) {
 
-			while (--i) {
-				if (factors[i] != factors[i - 1])
-					break;
-			}
-
+			i--;
 			factors[i]++;
 			powers[i] = 0;
 			p_enum->num_factors = i;
