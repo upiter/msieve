@@ -391,7 +391,7 @@ batch_invert(uint32 *qlist, uint32 num_q, uint64 *invlist,
 		invlist[i] = invprod = montmul64(invprod, q2[i], p2, p2_w);
 	}
 
-	invprod = mp_modinv_2(invprod, p2);
+	invprod = mp_modinv_2(invprod % p2, p2);
 	invprod = montmul64(invprod, p2_r, p2, p2_w);
 	for (i = num_q - 1; i; i--) {
 		invlist[i] = montmul64(invprod, invlist[i-1], p2, p2_w);
