@@ -7,39 +7,29 @@ Introduction
 ------------
 
 This file describes the implementation of the number field sieve that
-Msieve uses. Use of the NFS module must be explicitly specified, and 
-even then will only happen for factorizations above ~97 digits in size.
-I've made things harder for myself by insisting that the NFS implementation
-be immediately useful for factorizations that are difficult for the 
-quadratic sieve implementation that Msieve already contains. 
+Msieve uses. By the time of this writing (version 1.49), the NFS code in
+Msieve has been the focus of almost continuous development on my part for
+almost 5 years now, but there are parts of it that still need doing. In
+order to truly be a fire-and-forget tool for NFS factoring, the current
+code needs a lattice sieve which is fast enough to be useful, and that is
+a very large undertaking given the time constraints I have. Because the
+code has no lattice sieve available, use of the NFS module must always 
+be explicitly specified in the Msieve demo binary. 
 
-A complete NFS implementation needs 7 pieces:
+Nonetheless, the implementation of all the other phases of the Number Field
+Sieve is pretty much production-quality by now, so that if you have a 
+lattice sieve from some other open-source NFS project, Msieve can do
+everything else you need.
 
-1. Polynomial selector
-2. Factor base generator
-3. Line siever
-4. Lattice siever
-5. Relation filtering module
-6. Linear algebra solver
-7. Square root solver
-
-Each piece is very complicated both from an algorithmic and a programming
-point of view. Version 1.24 of Msieve has everything except item 4. I'm
-happy enough with most of the pieces that I'll claim they're done, although
-a good NFS implementation must have a much better polynomial selector than 
-is currently present. Still, the polynomial selector and lattice siever are
-very complex pieces of code, so it will probably be a long time before the 
-NFS implementation in Msieve will represent a cutting-edge NFS package.
+The following sections will walk though the process of performing an NFS
+factorization using the Msieve demo binary, assuming you are running on
+a single machine and have a small-to-medium-size problem to solve. I will
+also explain the format of the intermediate files that are generated,
+to allow the construction of compatible tools.
 
 
 Before you begin
 ----------------
-
-Before taking the plunge and using this code, you should understand that 
-the NFS module still needs a lot of work before it can truly handle big
-problems. I haven't done any of that work because it's so difficult to 
-get even something basic up and running. That means you have a really
-tough job to do: not use it.
 
 One of the unfortunate side effects of cryptography in general, and RSA in
 particular, is that it's just so damn cool. Factoring big numbers has an
@@ -54,55 +44,485 @@ sophistication from the people using them, I suspect that flocks of people
 will want to use Msieve to solve factoring problems that are much too large
 (i.e. 155 digits and up).
 
-If you are one of those people, *please* don't use Msieve. NFS is so hard
-that making sure it works takes extensive testing, which has not been done
-at all for factorizations over about 105 digits as of version 1.13; in 
-addition, the performance difference between a basic and an advanced 
-implementation of NFS is a factor of at least 10, so by refusing to learn
-how to use advanced tools like GGNFS you've turned a months-long factoring
-job into a years-long factoring job. Finally, I can't stop you from wasting
-your time, but I also can't stop you from making your friends believe
-Msieve will work, or from starting up distributed computing projects that
-use Msieve to waste the time of thousands of strangers. To the extent that
-my opinion matters to you, I think this would be bad.
+If the above describes you, then for your own sake please take it slowly.
+You will find out that the tools you need to use are all the result of 
+research efforts by disparate groups that are not very polished and not
+explicitly meant to work together. This matters because in order to succeed
+with a big factorization you will have to use multiple tools.
 
-Despite the gloom-and-doom above, Msieve does allow working with numbers
-that are much too large to be factored successfully. I have no problem with
-experiments on big numbers, and plan to do a few myself.
- 
 
-Running the NFS package
+Running NFS
 -----------------------
 
-Factoring an integer using NFS has 4 main steps:
+Factoring an integer using NFS has 3 main steps:
 
 1. Select Polynomial
-2. Generate Factor Base
-3. Collect Relations via Sieving
-4. Combine Relations
+2. Collect Relations via Sieving
+3. Combine Relations
 
-(this is of course quite similar to the quadratic sieve, though the details
-are vastly different). Msieve allows steps 2 and 3 to run in parallel,
-which allows distributed sieving much like QS does. Step 1 could theoretically
-run in parallel, but I saw no point in doing this since the NFS code cannot
-handle really big problems and the entire implementation of step 1 will 
-eventually be replaced anyway.
+Msieve uses a line sieve for step 2, which is better than nothing but not
+by much. The line sieve can run in parallel, which allows distributed sieving 
+much like QS does. Step 1 could theoretically run in parallel, but is not 
+currently set up to do so.
 
 By default, the Msieve demo application will perform all steps in order.
 Each step can also be performed individually, for anyone who is familiar
 with how NFS works and needs maximum control of their factorization. The
 combining phase can run either all at once or in three separate subphases.
-Steps 1-4, as well as each of the three subphases of step 4, all leave
-intermediate information on disk that can be restarted from. In addition,
-the sieving leaves a reminder on disk that allows restarting the sieving
-from the previous point.
+Step 3 leaves intermediate information on disk that can be restarted from. 
+In addition, the sieving leaves a reminder on disk that allows restarting 
+the sieving from the previous point.
 
-In order to make the NFS code more useful, the results from the sieving 
-step are in GGNFS format. This lets you use GGNFS to finish a factorization
-Msieve has started, and also lets you use Msieve to finish a factorization
-that GGNFS has started. Because GGNFS contains a much faster siever than
-Msieve does, but Msieve has more sophisticated postprocessing, this 
-combination of the two tools can be nice for NFS experiments.
+While the flow of work above is similar to the way the Quadratic Sieve code
+works, the details are very different and in particular the amount of
+non-sieving overhead in the Number Field Sieve is much higher than with 
+the Quadratic Sieve. This means that an NFS factorization is never going 
+to take less than a few minutes, even if the sieving finished instantly.
+So running NFS will take longer than running QS until the number to be 
+factored is larger than a cutoff that dependes on the quality of both the
+NFS and QS code. 
+
+Right now, assuming you use somebody else's NFS lattice sieve, that cutoff 
+size is somewhere around 90 digits. Of course, if you used the super-fast QS
+code in YAFU instead, the cutoff moves up to over 105 digits.  If you 
+further insisted on using only the crappy NFS sieving code that is in
+Msieve the cutoff point will move up to maybe 120 digits. The difference
+in runtime between the fastest tool and the slowest is a few hours for 100-
+digit numbers, but at the 120-digit size you're looking at time differences
+measured in days to weeks. So if the object is to minimize the time spent 
+crunching away on your computer, using the correct tool for the job can 
+save you massive amounts of work.
+
+As a basic constraint, the NFS code in Msieve can run the combining phase
+for any size factorization if you already have the results of step 1 and 2,
+but steps 1 and 2 are only allowed to run on numbers larger than about
+85 digits in size.
+
+
+Intermediate Files
+------------------
+
+The Msieve library needs to generate a large amount of intermediate
+information in temporary files when running an NFS job. These files are
+of three general types:
+
+- a log file saves all the logging information generated by the library.
+  This is useful for diagnostic purposes, and by default any factors found
+  are logged. The default logfile name is 'msieve.log' in the directory
+  where the Msieve demo binary is invoked. You can choose a different
+  logfile name if you are running multiple copies of Msieve and want to keep
+  all the intermediate output in the same directory, but don't want 
+  multiple Msieve runs to all go to the same logfile
+
+- a factor base file; this is used to store the output from step 1, and
+  stores internal information used in the sieving (if you use Msieve for
+  step 2). Its default filename is 'msieve.fb' in the directory where the
+  msieve demo binary is invoked. You can change the name of the factor base
+  file to perform multiple factorizations in the same directory.
+
+- a data file; this stores the relations generated from NFS sieving. Its
+  default name is 'msieve.dat' and you can change the name to let multiple
+  Msieve runs each use their own data file in the same directory. The
+  combining phase (step 3) works from a single data file, and steps 1 and 3
+  generate many different intermediate files whose names are of the form 
+  '<data_file_name>.<suffix>', all in the current directory in which 
+  Msieve is invoked. These intermediate files are used to restart different
+  phases of the polynomial selection or combining phases. In principle,
+  knowing the format of these intermediate files lets you substitute 
+  different NFS tools at particular stages of the NFS process.
+
+  
+
+Polynomial Selection
+--------------------
+
+Step 1 of NFS involves choosing a polynomial-pair (customarily shortened to
+'a polynomial') to use in the other NFS pahses. The polynomial is
+completely specific to the number you need factored, and there is an 
+effectively infinite supply of polynomials that will work. The quality of
+the polynomial you select has a dramatic effect on the sieving time; a
+*good* polynomial can make the sieving proceed two or three times faster
+compared to an average polynomial. So you really want a *good* polynomial,
+and for large problems should be prepared to spend a fair amount of time
+looking for one. 
+
+Just how long is too long, and exactly how you should look for good
+polynomials, is currently an active research area. The approximate
+consensus is that you should spend maybe 3-5% of the anticipated sieving
+time looking for a good polynomial. Msieve's polynomial search code has
+been the focus of a great deal of work, since this subject is more 
+interesting to me than most any other part of NFS.
+
+The means by which one finds out how 'good' apolynomial is, is also an
+active research area. We measure the goodness of a polynomial primarily by
+its Murphy E score; this is the probability, averaged across all the 
+possible relations we could encounter during the sieving, that an 'average'
+relation will be useful for us. This is usually a very small number, and
+the E score to expect goes down as the number to be factored becomes larger.
+A larger E score is better.
+
+Besides the E score, the other customary measure of polynomial goodness
+is the 'alpha score', an approximate measure of how much of an average
+relation is easily 'divided out' by dividing by small primes. The E score
+computation requires that we know the approximate alpha value, but alpha
+is also of independent interest. Good alpha values are negative, and larger
+negative numbers are better. Both E and alpha were first formalized in
+Murphy's wonderful dissertation on NFS polynomial selection.
+
+With that in mind, here's an example polynomial for a 100-digit input
+of no great significance:
+
+R0: -2000270008852372562401653
+R1:  67637130392687
+A0: -315744766385259600878935362160
+A1:  76498885560536911440526
+A2:  19154618876851185
+A3: -953396814
+A4:  180
+skew 7872388.07, size 9.334881e-014, alpha -5.410475, combined = 1.161232e-008
+
+As mentioned, this 'polynomial' is actually a pair of polynomials, the
+Rational polynomial R1 * x + R0 and the 4-th degree Algebraic polynomial
+
+   A4 * x^4 + A3 * x^3 + A2 * x^2 + A1 * x + A0
+
+Msieve always computes rational polynomials that are linear; the algebraic
+polynomial is of degree 4, 5, or 6 depending on the size of the input.
+Current Msieve versions will choose degree-4 polynomials for inputs up
+to about 110 digits, and degree-5 polynomials for inputs up to about 220
+digits. Finding polynomial pairs whose degrees are more balanced (i.e.
+a rational polynomial with degree higher than 1) is another active research 
+area.
+
+The 'combined' score is the Murphy E value for this polynomial, and is
+pretty good in this case. The other thing to note about this polynomial-pair
+is that the leading algebraic coefficient is very small, and each other 
+coefficient looks like it's a fixed factor larger than the next higher-
+degree coefficient. That's because the algebraic polynomial expects the
+sieving region to be 'skewed' by a factor equal to the reported skew above.
+The polynomial selection determined that the 'average size' of relations 
+drawn from the sieving region is smallest when the region is 'short and
+wide' by a factor given by the skew. The big advantage to skewing the 
+polynomial is that it allows the low-order algebraic coefficients to be
+large, which in turn allows choosing them to optimize the alpha value.
+The modern algorithms for selecting NFS polynomials are optimized to work
+when the skew is very large.
+
+NFS polynomial selection is divided into two stages. Stage 1 chooses
+the leading algebraic coefficient and tries to find the two rational
+polynomial coefficients so that the top three algebraic coefficients
+are small. Because stage 1 doesn't try to find the entire algebraic
+polynomial, it can use powerful sieving techniques to speed up this portion
+of the search. When stage 1 finds a 'hit', composed of the rational
+and the leading algebraic polynomial coefficient, Stage 2 then finds
+the complete polynomial pair and tries to optimize both the alpha and E
+values. A single stage 1 hit can generate many complete polynomials in
+stage 2. You can think of stage 1 as a very compute-intensive net that
+tries to drag in something good, and stage 2 as a shorter but still
+compute-intensive process that tries to polish things.
+
+The Msieve demo binary can run the full polynomial selection algorithm
+(both stages) when invoked with '-np'. With no other argument to -np,
+the search starts from a leading algebraic coefficient of 1 and keeps
+working until a time limit is reached. You can specify a range of leading
+coefficients to search with '-np X,Y' and in this case the only limit
+is on the time spent searching a single coefficient in that range. The time
+limit assumes you are only using one computer to perform the search, which
+is increasingly inappropriate when you get to large numbers (more than
+~140 digits). 
+
+If you have multiple computers to run the search, you will have to manually 
+split up the range of leading coefficients between them.  Note that when 
+the number to be factored is really large (say, 155 digits and up), the 
+search space is so huge that each coefficient in the range is broken up 
+into many pieces and only one piece, chosen randomly, is searched. This 
+lets you give multiple computers the same range of coefficients to search 
+and reasonably expect them to not duplicate each other's work.
+
+By default, '-np' will run stage 1 and immediately run stage 2 on any
+hit that is found. It is also possible to run each stage by itself, and
+this can be useful if you want to do stage 1 on a graphics card (see below).
+You run stage 1 alone with '-np1 X,Y', and in that case any stage 1 hits 
+are written to a file <data_file_name>.m , where each hit is a line with 
+the triplet
+
+<leading_alg_coefficient> R1 R0
+
+and R0 is written as positive in the file. This is the same format used by
+the polynomial selection tools in GGNFS, so stage 2 code from either suite
+can be run on output from either Msieve or GGNFS (or other packages, since
+it should be easy to match up to the format above). There is a second 
+format that can be used in Msieve's stage 1 output, where each line has
+
+0 <all algebraic coefficients by decreasing degree> R1 R0
+
+When Msieve's stage 2 code sees a line of this type, it skips the size
+optimization part of the stage 2 algorithm and only attempts to optimize
+the alpha value for the polynomial. This allows Msieve to attempt to
+optimize complete polynomials generated by other tools.
+
+The second stage of polynomial selection can be run alone by specifying
+'-np2', with no qualifiers, to the Msieve demo binary. This reads
+<data_file_name>.m and produces <factor_base_file> and <data_file_name>.p;
+The first file is used by the rest of the NFS code, and the second is
+for reference only. Currently <factor_base_file> gets the polynomial with
+the highest E value, while the *.p file gets all the complete polynomials
+found by stage 2 whose E-value exceeds a cutoff determined internally. 
+
+The code saves everything because it isn't entirely clear how often 
+the polynomial with the highest E score really sieves the fastest. The
+E score was invented to reduce the number of polynomials that had to be
+test-sieved, but Msieve's polynomial selection does not do test sieving,
+and so for large input numbers it might be important to take the top few
+polynomials and experiment with them to determine which will achieve the
+highest sieving rate. Because this process is painful, for smaller inputs
+you can just use the polynomial with the highest E-value.
+
+The format of polynomials in <data_file_name>.p matches the format used
+by the sieving tools in GGNFS. You can guess why :)
+
+
+Polynomial Selection Using Graphics Cards
+-----------------------------------------
+
+Msieve's stage 1 polynomial selection code uses the improved algorithm
+of Thorsten Kleinjung, as described at the 2008 CADO Workshop on Integer
+Factorization. I realized in 2009 that the algorithm can be expressed in
+both a memory-bound and a compute-bound form, and the compute-bound
+version is perfectly suited to run on graphics card processors (GPUs). 
+These devices are cheap and have loads of compute units, allowing the
+possibility of higher throughput than an ordinary desktop computer if
+used correctly.
+
+So the Msieve source includes a branch that can drive an Nvidia GPU
+to perform stage 1 of NFS polynomial selection. If the code is compiled
+that way, running with '-np1' will use your GPU and output stage 1 hits
+in the same format as descibed above. The GPU code will *not* in general
+find the same polynomials that the CPU code does, so don't expect identical
+output.
+
+To run stage 1 this way, you have to have
+
+- a graphics card with an Nvidia GPU
+
+- the latest Nvidia drivers
+
+- (if building from source) the latest Nvidia CUDA toolkit
+
+You don't need the CUDA toolkit if you are using a precompiled-for-GPU 
+Msieve binary, since the GPU stage 1 code only uses the Nvidia driver API,
+and you don't need the full CUDA toolkit to get that.
+
+For maximum portability, the code that the GPU runs is compiled into 
+separate explicit (PTX) source files, and these files must be available
+in the directory where the Msieve demo binary is invoked. The Makefile
+can be configured to compile two sets of these PTX files, one for Fermi-class
+GPUs and one for older G80-class GPUs; if you have a Fermi card you can get
+increased performance if you build the Fermi PTX files.
+
+The GPU code works now but is still a work in progress. One side effect
+of that is that the current code passes large blocks of work to the card,
+and you will notice a corresponding slowdown in your graphics if the card
+you are using is hooked up to a monitor on your computer. Another side
+effect is that the polynomial selection is not multithreaded, and if it
+was then you could run stage 2 on the CPU while the GPU is busy on stage 1.
+Because that isn't possible right now, you will actually get the highest
+throughput for large NFS polynomial selection problems by running stage 1 
+separately from stage 2, so that the GPU is kept busy as much as possible.
+For small problems this extra finesse is not worth the hassle of saving 
+intermediate file. 
+
+Finally, if you actually have several graphics boards in your machine, 
+you can use the '-g' flag in the Msieve demo binary to choose one of those 
+boards out of the list available.
+
+Anytime people find out you've moved code to a GPU, invariably there are
+two burning questions: 'How fast is it now' and 'you fanboy loser, why don't 
+you care about ATI cards but only Nvidia'. Believe it or not, I don't have
+a ready answer to the first question. I know that for small problems, using
+a GPU accumulates stage 1 hits noticeably faster on a GPU than using the
+memory-bound version of Kleinjung's algorithm. Here, 'small' is intentionally
+left vague, because I haven't had time to measure the crossover point.
+Even at the 155-digit input size, I subjectively notice that my medium-end
+test machine produces hits somewhat slower than the medium-end GPU I use.
+But eventually no number of GPU processors will be able to go through the
+number of combinations to search that the memory-bound version of Kleinjung's
+algorithm achieves for really big problems. That's a shame, because a GPU
+is overkill for small polynomial selection problems. The total speed
+possible on a GPU also depends a great deal on exactly how your algorithm
+is implemented in code, especially for Fermi-class GPUs with caches. It's
+entirely possible that the throughput you will see can improve drastically
+with a little GPU tuning (or recasting the compute-bound version of 
+Kleinjung's algorithm in slightly different terms that map better to the
+hardware).
+
+As for the second question: I assure you that I know ATI builds GPU
+processors, and that I can use languages like OpenCL to run code on them.
+Further, I know that computer hardware is a poor subsititute for religion
+(I've read all the tiresome agruments on usenet: Intel vs AMD, DDR vs
+Rambus, x86 vs Alpha...they produce massive volumes of hot air and 
+little else).
+
+I also know that ATI's implementation of OpenCL intentionally generates
+slow code on their GPUs to avoid an incompatibility between the OpenCL
+memory model and ATI hardware. Further, do you know of anybody who has
+implemented multiple-precision arithmetic on an ATI GPU? Even papers from
+this year (2011, by which time ATI chips were capable of running user
+code for three years) only use CUDA to implement these algorithms, because
+invaribly multiple-precision arithmetic requires low-level access to the
+processor to retrieve things like carry bits and high-half multiplication
+results. Nobody needs these sorts of things for your typical GPU floating
+point applications, so no effort goes into making it easy to use them in
+OpenCL. I can use inline assembler to make CUDA generate the requisite 
+instructions, but my understanding is that if I wanted to do the same
+things on ATI GPUs I'd have to use assembly language throughout. The fact
+of the matter is that I only have the time to do research on factorization 
+algorithms, which is sufficiently out of the mainstream that whatever tools I 
+need have to be written from scratch. I don't have the time to be a beta-
+tester for other companies' software products.
+
+All of this may change in a year's time, when ATI's tools and the OpenCL 
+specification itself both become more mature, but I haven't chosen the tools 
+I use because I'm a dummy, and if you don't like my decision then you 
+should try to light a candle rather than curse the darkness like everyone 
+else does.
+
+
+Sieving for Relations
+---------------------
+
+As mentioned in the introduction, Msieve only contains a line sieve. The
+last few years have proved pretty conclusively that NFS requires a lattice
+sieve to achieve the best efficiency, and the difference between good
+implementations of line and lattice sieves is typically a factor of FIVE
+in performance. That difference is just too large to ignore, so once again
+I recommend that you not exclusively use Msieve for the sieving phase of
+NFS. That being said, here are more details on the sieving implementation.
+
+The Msieve demo binary will perform NFS (line) sieving when invoked with
+'-ns X,Y', where X and Y specify the range of lines (inclusive) that will be
+sieved. The sieving code reads the NFS factor base file produced by the
+polynomial selection code, and writes <data_file_name> with any relations
+found. If shut down gracefully, it also writes <data_file_name>.last, which
+contains the index of the last line that was completely sieved, so that if
+such a file exists then running the sieving again will pick up the computation
+from the next line and not from the beginning.
+
+The factor base file is the repository for a hodgepodge of different 
+information that is used by the various NFS modules of the Msieve library.
+At a minimum, <factor_base_file> must contain
+
+N <number_to_be_factored_in_decimal>
+SKEW <skew_of_polynomial>
+R0 <low_order_rational_poly_coefficient>
+R1 <high_order_rational_poly_coefficient>
+A0 <low_order_algebraic_poly_coefficient>
+A1 <next_algebraic_coefficient>
+A2 <next_algebraic_coefficient>
+...
+
+Polynomial coefficients can appear in any order, and missing coefficients
+are assumed to be zero. The degree of the algebraic polynomial is determined
+by its nonzero coefficient of highest degree. The SKEW is not currently used,
+and is set to 1.0 if missing.
+
+If you already have an NFS polynomial, for example because you are using
+the Special Number Field Sieve or used another tool to generate it, then
+creating a factor base file as above is sufficient to run the sieving on
+that polynomial.
+
+Running the sieving adds a lot more information to this file. The NFS factor
+base is appended to the above, and also the parameters to be used when
+running the line sieve. These parameters are set to internally generated
+defaults, but may be overridden by specifying them explicitly in the factor
+base file when sieving starts:
+
+FRNUM     Number of rational factor base entries
+FRMAX     The largest rational factor base entry
+FANUM     Number of algebraic factor base entries
+FAMAX     The largest algebraic factor base entry
+SRLPMAX   Bound on rational large primes
+SALPMAX   Bound on algebraic large primes
+SLINE     Sieve from -SLINE to +SLINE
+SMIN      Start of sieve line (-SLINE if missing)
+SMAX      End of sieve line (+SLINE if missing)
+
+The first line in the factor base file that doesn't start with 'F' or 'S'
+is assumed to be the beginning of the factor base to be used for sieving,
+and if no such line exists then the factor base is created. Whenever the
+sieving runs, it does the following during initialization:
+
+- read N and the polynomial, check they are compatible
+- generate default parameters
+- override parameters if they exist in the file
+- read in the factor base, or generate it if missing
+- overwrite <factor_base_file> with polynomial, current parameters
+		and the newly generated factor base
+
+Sieving in NFS works by assuming the rational and algebraic polynomials are
+in some variable x, then replacing x by the fraction a/b, where a and b are
+integers that don't have factors in common. Line sieving fixes the value
+of b and then looks for all the values of 'a' between -SLINE and +SLINE
+where the homogeneous form of the rational polynomial 
+
+	b * R(a/b) 
+
+and the homogeneous form of the algebraic polynomial 
+
+	b^(degree(A)) * A(a/b)
+
+both factor completely into small primes. Any (a,b) pair that factors 
+completely in this way is a relation that can proceed to the combining 
+phase, and you may need millions, even billions of such relations for 
+the combining phase to succeed in factoring N. 
+
+Relations are written to <data_file_name>, one relation per line. The first
+line of <data_file_name> must be 'N <number to be factored in decimal>'; if
+it is not, the sieving will assume these are relations from another 
+factorization and will truncate the file. Don't worry, if you are only
+running the combining phase this behavior is disabled, and you can give
+Msieve a file with just the relations.
+
+Relations are written to the file in GGNFS format. A relation in GGNFS
+format looks like:
+
+a,b:rat1,rat2,...ratX:alg1,alg2,...ratY
+
+where
+
+a is the relation 'a' value in decimal
+
+b is the relation 'b' value (must be between 1 and 2^32-1)
+
+rat1,rat2,...ratX is a comma-delimited list of the X factors of the
+		homogeneous form of the rational NFS polynomial, each
+		written in hexadecimal (without any '0x' in front)
+
+alg1,alg2,...algY is a comma-delimited list of the Y factors of the
+		homogeneous form of the algebraic NFS polynomial, each
+		written in hexadecimal (without any '0x' in front)
+
+Factors in each list can occur in arbitrary order, and a given factor only
+needs to occur in the list once even if it divides one of the polynomials
+multiple times. In addition, to conserve space in what can potentially be
+very large text files, factors less than 1000 can be completely omitted
+from the factor lists. The combining phase in Msieve will recover these
+small factors manually, by trial division.
+
+The Msieve, CADO-NFS and GGNFS sieving tools all output relations 
+in this format, so that any of these tools can use relations generated
+by any of the other tools.
+
+The sieving code will insist on choosing for itself the number of large 
+primes and the cutoffs for using non-sieving methods. This is because it
+is supposed to choose these based on the size of numbers actually
+encountered during the sieving. In addition, the sieving code uses a
+batch factoring algorithm due to Dan Bernstein, which makes it possible
+to find relations containing three algebraic and/or rational large primes
+with a minimum of extra effort over and above the time ordinarily needed
+to find relations with only two large primes. This unfortunately means 
+that the line sieve uses up an unusually large amount of memory, up to 
+several hundreds of megabytes even for medium-size problems.
 
 
 Distributed Computing
@@ -120,14 +540,8 @@ of the NFS process. A straightforward recipe for doing so is as follows:
   that will be sieving.
 
 - Start each copy of Msieve with a different range to sieve.
-  Each copy will automatically generate its own factor base.
-
-An alternative that works nicely over a fast network is to generate the 
-polynomial and also do a little sieving. This will generate the complete 
-factor base, which all of the sieving machines can simultaneously read 
-from a network directory. The factor base is read-only once generated,
-so this is safe.
-
+  Each copy will automatically generate its own factor base
+  and stick it into the factor base file
 
 Some notes on this process:
 
