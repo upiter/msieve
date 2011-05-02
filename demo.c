@@ -81,8 +81,9 @@ void get_random_seeds(uint32 *seed1, uint32 *seed2) {
 /*--------------------------------------------------------------------*/
 void print_usage(char *progname) {
 
-	printf("\nMsieve v. %d.%02d\n", MSIEVE_MAJOR_VERSION, 
-					MSIEVE_MINOR_VERSION);
+	printf("\nMsieve v. %d.%02d (SVN %s)\n", MSIEVE_MAJOR_VERSION, 
+					MSIEVE_MINOR_VERSION,
+					MSIEVE_SVN_VERSION);
 
 	printf("\nusage: %s [options] [one_number]\n", progname);
 	printf("\nnumbers starting with '0' are treated as octal,\n"

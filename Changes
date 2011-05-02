@@ -7,12 +7,18 @@ Version 1.49:
 		asked for this and I'd been too lazy to supply it)
 	- Modified the MPI code to flag in-place gather and scatter
 		operations as such (thanks Greg Childers)
+	- Performed a major overhaul of the various Readme files
 	- Fixed an erroneous error check in the MPI code (thanks
 		Ilya Popovyan)
 	- Fixed an MPI race condition in the Lanczos restart code
 		(thanks Jeff Gilchrist)
 	- Modified the NFS square root to print out factors as they are
 		found (thanks Paul Leyland)
+	- Made the library report the current SVN revision, determined at
+		compile time. This should finally end the confusion about
+		exactly which revision of the demo binary is running 
+	- Added the (current) linux CUDA include and library paths to
+		the Makefile (thanks Paul Leyland)
 
 Version 1.48: 1/8/11
 	- Performed a massive overhaul of the stage 1 NFS polynomial

@@ -191,8 +191,10 @@ void msieve_run(msieve_obj *obj) {
 
 	logprintf(obj, "\n");
 	logprintf(obj, "\n");
-	logprintf(obj, "Msieve v. %d.%02d\n", MSIEVE_MAJOR_VERSION, 
-					MSIEVE_MINOR_VERSION);
+	logprintf(obj, "Msieve v. %d.%02d (SVN %s)\n", 
+				MSIEVE_MAJOR_VERSION, 
+				MSIEVE_MINOR_VERSION,
+				MSIEVE_SVN_VERSION);
 	start_time = time(NULL);
 	if (obj->flags & MSIEVE_FLAG_LOG_TO_STDOUT) {
 		printf("%s", ctime(&start_time));
