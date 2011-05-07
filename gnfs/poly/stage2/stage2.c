@@ -14,10 +14,6 @@ $Id$
 
 #include "stage2.h"
 
-#if 0
-#define CHECK
-#endif
-
 /*----------------------------------------------------------------------*/
 void
 assess_init(assess_t *a)
@@ -135,12 +131,10 @@ pol_expand(curr_poly_t *c, mpz_t gmp_N, mpz_t high_coeff,
 		fabs(mpz_get_d(c->gmp_a[degree-2])) / coeff_bound);
 #endif
 
-#ifdef CHECK
 	if (check_poly(c, c->gmp_a, 
 			c->gmp_lina[0], gmp_N, degree) != 1) {
 		return 0;
 	}
-#endif
 
 	if (mpz_cmpabs_d(c->gmp_a[degree - 2], coeff_bound) > 0) {
 		return 1;
@@ -288,13 +282,6 @@ poly_stage2_run(poly_stage2_t *data, mpz_t high_coeff, mpz_t p,
 
 	optimize_initial(data, &pol_norm, skew_only);
 
-#ifdef CHECK
-	if (check_poly(c, c->gmp_a, c->gmp_lina[0],
-			data->gmp_N, degree) != 1)
-		goto finished;
-
-	printf("%le %le\n", pol_norm, data->max_norm);
-#endif
 	if (pol_norm > data->max_norm)
 		goto finished;
 
