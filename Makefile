@@ -19,7 +19,7 @@ WARN_FLAGS = -Wall -W
 OPT_FLAGS = -O3 -fomit-frame-pointer -march=k8 -DNDEBUG -D_LARGEFILE64_SOURCE
 
 # use := instead of = so we only run the following once
-SVN_VERSION := $(shell svnversion)
+SVN_VERSION := $(shell svnversion .)
 ifeq ($(SVN_VERSION),)
 	SVN_VERSION := unknown
 endif
