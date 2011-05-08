@@ -69,30 +69,34 @@ handle_collision(poly_search_t *poly, uint32 p1, uint32 p2,
 	}
 
 	/* the pair works, now translate the computed m0 back
-	   to the original polynomial. We do this via a cheesy
-	   version of the extended Euclidean algorithm.
-	
-	   Try to make the computed correction as small as 
-	   possible. This is important because we have several
-	   choices that will all satisfy the modular condition
-	   above, but some will not satisfy the bound on a_{d-2} 
-	   when we run stage 2 */
+	   to the original polynomial. We have
+
+	   computed_m0 = degree * high_coeff * real_m0 +
+	   			(second_highest_coeff) * p
+
+	   and need to solve for real_m0 and second_highest_coeff.
+	   Per the CADO code: reducing the above modulo
+	   degree*high_coeff causes the first term on the right
+	   to disappear, so second_highest_coeff can be found
+	   modulo degree*high_coeff and real_m0 then follows */
 
 	mpz_mul_ui(poly->tmp1, poly->high_coeff, (mp_limb_t)poly->degree);
-	mpz_tdiv_qr(poly->m0, poly->tmp2, poly->m0, poly->tmp1);
-	mpz_invert(poly->tmp3, poly->tmp1, poly->p);
+	mpz_tdiv_r(poly->tmp2, poly->m0, poly->tmp1);
+	mpz_invert(poly->tmp3, poly->p, poly->tmp1);
+	mpz_mul(poly->tmp2, poly->tmp3, poly->tmp2);
+	mpz_tdiv_r(poly->tmp2, poly->tmp2, poly->tmp1);
 
-	mpz_sub(poly->tmp4, poly->tmp3, poly->p);
-	if (mpz_cmpabs(poly->tmp3, poly->tmp4) < 0)
-		mpz_set(poly->tmp4, poly->tmp3);
+	/* make second_highest_coeff as small as possible in
+	   absolute value */
 
-	mpz_sub(poly->tmp5, poly->tmp2, poly->tmp1);
-	if (mpz_cmpabs(poly->tmp2, poly->tmp5) > 0)
-		mpz_add_ui(poly->m0, poly->m0, (mp_limb_t)1);
-	else
-		mpz_set(poly->tmp5, poly->tmp2);
+	mpz_tdiv_q_2exp(poly->tmp3, poly->tmp1, 1);
+	if (mpz_cmp(poly->tmp2, poly->tmp3) > 0) {
+		mpz_sub(poly->tmp2, poly->tmp2, poly->tmp1);
+	}
 
-	mpz_addmul(poly->m0, poly->tmp4, poly->tmp5);
+	/* solve for real_m0 */
+	mpz_submul(poly->m0, poly->tmp2, poly->p);
+	mpz_tdiv_q(poly->m0, poly->m0, poly->tmp1);
 
 	gmp_printf("poly %Zd %Zd %Zd\n",
 			poly->high_coeff, poly->p, poly->m0);
