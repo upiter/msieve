@@ -257,7 +257,7 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 			   value of R + k * p^2 that also falls on
 			   special_q_root + m * special_q^2. This is 
 			   a standard arithmetic problem, finding the
-			   union of two arithmetic progressions */
+			   intersection of two arithmetic progressions */
 
 			for (j = 0; j < num_roots; j++) {
 				uint64 proot = tmp->roots[j].start_offset;
