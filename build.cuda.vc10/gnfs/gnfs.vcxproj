@@ -78,7 +78,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>.\;..\;..\..\;..\..\include;..\..\gnfs;..\..\gnfs\poly;..\..\gnfs\poly\stage1;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;..\;..\..\;..\..\include;..\..\gnfs;..\..\gnfs\poly;..\..\gnfs\poly\stage1;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;HAVE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -93,7 +93,7 @@
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
     <Lib>
-      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\lib\$(Intdir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\lib\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -102,7 +102,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>.\;..\;..\..\;..\..\include;..\..\gnfs;..\..\gnfs\poly;..\..\gnfs\poly\stage1;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;..\;..\..\;..\..\include;..\..\gnfs;..\..\gnfs\poly;..\..\gnfs\poly\stage1;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;HAVE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -117,14 +117,14 @@
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
     <Lib>
-      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\lib\$(Intdir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\lib\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>.\;..\;..\..\;..\..\include;..\..\gnfs;..\..\gnfs\poly;..\..\gnfs\poly\stage1;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;..\;..\..\;..\..\include;..\..\gnfs;..\..\gnfs\poly;..\..\gnfs\poly\stage1;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;HAVE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
@@ -137,7 +137,7 @@
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
     <Lib>
-      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\lib\$(Intdir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\lib\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -147,7 +147,7 @@
     <ClCompile>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>.\;..\;..\..\;..\..\include;..\..\gnfs;..\..\gnfs\poly;..\..\gnfs\poly\stage1;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;..\;..\..\;..\..\include;..\..\gnfs;..\..\gnfs\poly;..\..\gnfs\poly\stage1;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;HAVE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
@@ -160,7 +160,7 @@
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
     <Lib>
-      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\lib\$(Intdir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\lib\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -203,19 +203,16 @@
     <ClInclude Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_core_nosq.h" />
     <ClInclude Include="..\..\gnfs\poly\stage1\stage1_core_gpu\stage1_core_sq.h" />
     <ClInclude Include="..\..\gnfs\sieve\sieve.h" />
-    <ClInclude Include="..\..\include\ap.h" />
     <ClInclude Include="..\..\include\batch_factor.h" />
     <ClInclude Include="..\..\include\common.h" />
     <ClInclude Include="..\..\include\dd.h" />
     <ClInclude Include="..\..\include\ddcomplex.h" />
-    <ClInclude Include="..\..\include\fastmult.h" />
     <ClInclude Include="..\..\common\filter\filter.h" />
     <ClInclude Include="..\..\common\filter\filter_priv.h" />
     <ClInclude Include="..\..\gnfs\gnfs.h" />
     <ClInclude Include="..\..\include\integrate.h" />
     <ClInclude Include="..\..\common\lanczos\lanczos.h" />
     <ClInclude Include="..\..\include\mp.h" />
-    <ClInclude Include="..\..\include\mp_int.h" />
     <ClInclude Include="..\..\include\msieve.h" />
     <ClInclude Include="..\..\gnfs\poly\poly.h" />
     <ClInclude Include="..\..\gnfs\poly\poly_skew.h" />

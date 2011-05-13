@@ -97,6 +97,8 @@
     </Link>
     <CudaCompile>
       <Runtime>MTd</Runtime>
+      <NvccCompilation>ptx</NvccCompilation>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -116,6 +118,7 @@
     <CudaCompile>
       <Runtime>MTd</Runtime>
       <TargetMachinePlatform>64</TargetMachinePlatform>
+      <NvccCompilation>ptx</NvccCompilation>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -138,6 +141,8 @@
     </Link>
     <CudaCompile>
       <Runtime>MT</Runtime>
+      <NvccCompilation>ptx</NvccCompilation>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -161,6 +166,7 @@
     <CudaCompile>
       <Runtime>MT</Runtime>
       <TargetMachinePlatform>64</TargetMachinePlatform>
+      <NvccCompilation>ptx</NvccCompilation>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
