@@ -12,7 +12,6 @@ benefit from your work.
 $Id$
 --------------------------------------------------------------------*/
 
-#include <polyroot.h>
 #include "poly.h"
 
 #if MAX_POLY_DEGREE > 8

@@ -19,6 +19,7 @@ $Id$
 #include <dd.h>
 #include <ddcomplex.h>
 #include <integrate.h>
+#include <polyroot.h>
 #include "gnfs.h"
 
 #ifdef __cplusplus
@@ -41,12 +42,6 @@ typedef struct {
 	double skewness;
 	uint32 num_real_roots;
 } poly_select_t;
-
-/* extended-precision polynomial rootfinder */
-
-#define MAX_ROOTFINDER_DEGREE 10
-
-uint32 find_poly_roots(dd_t *poly, uint32 degree, dd_complex_t *roots);
 
 /* main structure for poly selection */
 
