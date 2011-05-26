@@ -9,7 +9,7 @@ Introduction
 This file describes the implementation of the number field sieve that
 Msieve uses. By the time of this writing (version 1.49), the NFS code in
 Msieve has been the focus of almost continuous development on my part for
-almost 5 years now, but there are parts of it that still need doing. In
+about 5 years now, but there are parts of it that still need doing. In
 order to truly be a fire-and-forget tool for NFS factoring, the current
 code needs a lattice sieve which is fast enough to be useful, and that is
 a very large undertaking given the time constraints I have. Because the
@@ -52,7 +52,7 @@ with a big factorization you will have to use multiple tools.
 
 
 Running NFS
------------------------
+-----------
 
 Factoring an integer using NFS has 3 main steps:
 
@@ -79,7 +79,7 @@ non-sieving overhead in the Number Field Sieve is much higher than with
 the Quadratic Sieve. This means that an NFS factorization is never going 
 to take less than a few minutes, even if the sieving finished instantly.
 So running NFS will take longer than running QS until the number to be 
-factored is larger than a cutoff that dependes on the quality of both the
+factored is larger than a cutoff that depends on the quality of both the
 NFS and QS code. 
 
 Right now, assuming you use somebody else's NFS lattice sieve, that cutoff 
@@ -137,7 +137,7 @@ Polynomial Selection
 --------------------
 
 Step 1 of NFS involves choosing a polynomial-pair (customarily shortened to
-'a polynomial') to use in the other NFS pahses. The polynomial is
+'a polynomial') to use in the other NFS phases. The polynomial is
 completely specific to the number you need factored, and there is an 
 effectively infinite supply of polynomials that will work. The quality of
 the polynomial you select has a dramatic effect on the sieving time; a
@@ -153,7 +153,7 @@ time looking for a good polynomial. Msieve's polynomial search code has
 been the focus of a great deal of work, since this subject is more 
 interesting to me than most any other part of NFS.
 
-The means by which one finds out how 'good' apolynomial is, is also an
+The means by which one finds out how 'good' a polynomial is, is also an
 active research area. We measure the goodness of a polynomial primarily by
 its Murphy E score; this is the probability, averaged across all the 
 possible relations we could encounter during the sieving, that an 'average'
@@ -165,9 +165,9 @@ Besides the E score, the other customary measure of polynomial goodness
 is the 'alpha score', an approximate measure of how much of an average
 relation is easily 'divided out' by dividing by small primes. The E score
 computation requires that we know the approximate alpha value, but alpha
-is also of independent interest. Good alpha values are negative, and larger
-negative numbers are better. Both E and alpha were first formalized in
-Murphy's wonderful dissertation on NFS polynomial selection.
+is also of independent interest. Good alpha values are negative, and negative
+alpha with large aboslute value is better. Both E and alpha were first 
+formalized in Murphy's wonderful dissertation on NFS polynomial selection.
 
 With that in mind, here's an example polynomial for a 100-digit input
 of no great significance:
@@ -330,7 +330,7 @@ Because that isn't possible right now, you will actually get the highest
 throughput for large NFS polynomial selection problems by running stage 1 
 separately from stage 2, so that the GPU is kept busy as much as possible.
 For small problems this extra finesse is not worth the hassle of saving 
-intermediate file. 
+intermediate files. 
 
 Finally, if you actually have several graphics boards in your machine, 
 you can use the '-g' flag in the Msieve demo binary to choose one of those 
@@ -477,11 +477,12 @@ phase, and you may need millions, even billions of such relations for
 the combining phase to succeed in factoring N. 
 
 Relations are written to <data_file_name>, one relation per line. The first
-line of <data_file_name> must be 'N <number to be factored in decimal>'; if
-it is not, the sieving will assume these are relations from another 
-factorization and will truncate the file. Don't worry, if you are only
-running the combining phase this behavior is disabled, and you can give
-Msieve a file with just the relations.
+line of <data_file_name> is set to 'N <number to be factored in decimal>'; if
+sieving restarts and the first line of the data file is not as specified, 
+the sieving will assume these are relations from another factorization 
+and will truncate the file. Don't worry, if you are only running the
+combining phase this behavior is disabled, and you can give Msieve a 
+file with just the relations.
 
 Relations are written to the file in GGNFS format. A relation in GGNFS
 format looks like:
@@ -580,3 +581,334 @@ Some notes on this process:
 5. If interrupted, a sieving machine will complete its current line and
    state the line that it finished. A script can then parse the logfile
    or the screen output and use that to restart from that point later on.
+
+
+NFS Combining Phase
+-------------------
+
+The last phase of NFS factorization is a group of tasks collectively
+referred to as 'NFS postprocessing'. You need the factor base file described
+in the sieving section (only the polynomial is needed, not the actual
+factor base entries), and all of the relations from the sieving. If you
+have performed sieving in multiple steps or on multiple machines, all
+of the relations that have been produced need to be combined into a single
+giant file. And by giant I mean *really big*; the largest NFS jobs that
+I know about currently have involved relation files up to 100GB in size.
+Even a fairly small 100-digit factorization generates perhaps 500MB of
+disk files, so you are well advised to allow plenty of space for relations.
+Don't like having to deal with piling together thousands of files into
+one? Sorry, but disk space is cheap now.
+
+With the factor base and relation data file available, the Msieve demo binary
+will perform NFS postprocessing with the '-nc' switch. For smaller jobs,
+it's convenient to let the library do all the intermediate postprocessing
+steps in order. However, for larger jobs or for any job where data has
+to be moved from machine to machine, it is probably necessary to divide
+the postprocessing into its three fundamental tasks. These are described
+below, along with the data they need and the format of the output they
+produce.
+
+
+NFS Filtering
+-------------
+
+The first phase of NFS postprocessing is the filtering step, invoked by
+giving '-nc1' and not '-nc' to the demo binary. This analyzes the input 
+relation file, sets up the rest of the filtering to ignore relations 
+that will not be useful (usually 90% of them or more), and produces 
+a 'cycle file' that describes the huge matrix to be used in the next 
+postprocessing stage.
+
+To do that, every relation is assigned a unique number, corresponding to
+its line number in the relation file. Relations are numbered starting
+from zero, and part of the filtering also adds 'free relations' to the 
+dataset. Free relations are so-called because it does not require any
+sieving to find them; these are a unique feature of the number field
+sieve, although there will never be very many of them.
+
+Filtering is a very complex process, and the filtering in Msieve is designed 
+to proceed in a fully automated fashion.  The intermediate steps of Msieve's 
+filtering are not designed to allow for user intervention, although it 
+may be instructive to build compatible filtering tools. There are only 
+three 'knobs to turn' for the filtering:
+
+- you can invoke the filtering with '-nc1 X,Y' instead of '-nc1'. Here
+  X is the bound on the size of primes that will participate in the 
+  filtering; if set to 0, the code chooses X automatically. The number
+  of relations you want to participate in the filtering, counted from
+  the beginning of the relation file, is given by Y. Ordinairly you would
+  want to use all relations, since you spent the time to compute them in
+  the first place, but sometimes the other postprocessing stages have
+  trouble when given too many relations to deal with, and this lets you 
+  limit the dataset size without having to manually trim relations out
+  of the data file. Limitations in the parsing of arguments mean that if
+  you want to specify one of X or Y, you must specify the other to be the
+  default of zero.
+
+- you can also invoke the demo binary with an additional '-D X' flag. This
+  controls how hard the filtering will work to produce a matrix that is 
+  small. Setting X to a value larger than the default of 70.0 will cause
+  the memory use of the filtering to be possibly much higher, and you need
+  to make sure you have a large number of excess relations, over and above
+  the number needed for filtering to converge to a reasonable matrix. In
+  practice, setting -D to a value over 130.0 will cause your computer to
+  run out of memory for large problems. Nonetheless, for the largest problems
+  making the filtering work harder can save a noticeable amount of time in
+  the linear algebra.
+
+If you do not have enough relations for filtering to succeed, no output 
+is produced other than complaints to that effect. If there are 'enough' 
+relations for filtering to succeed, the result is a 'cycle file'. This 
+is a binary file named '<data_file_name>.cyc', full of 32-bit integers 
+in the native byte order of the filtering machine. The format is as follows:
+
+- The first 32-bit word gives the number of matrix columns C that the
+  linear algebra should expect for the matrix generated by the filtering
+
+- Then the file has C column descriptors. A descriptor has a 32-bit word
+  giving the number of relations that contribute to the current matrix
+  column, and then an unordered list of the (32-bit) relation numbers
+  from <data_file_name> that appear in the current column.
+
+The use of 32-bit relation numbers means that the filtering cannot currently
+handle more than about 4 billion relations.
+
+How many relations is 'enough'? This is unfortunately another hard question,
+and answering it requires either compiling large tables of factorizations of
+similar size numbers, running the filtering over and over again, or 
+performing simulations after a little test-sieving. There's no harm in 
+finding more relations than you strictly need for filtering to work at 
+all, although if you mess up and find twice as many relations as you need 
+then getting the filtering to work can also be difficult. In general the 
+filtering works better if you give it somewhat more relations than it
+stricly needs, maybe 10% more. As more and more relations are added, the
+size of the generated matrix becomes smaller and smaller, partly because the
+filtering can throw away more and more relations to keep only the 'best'
+ones.
+
+Of course finding the exact point at which filtering begins to succeed 
+is a painful exercise as well :)
+
+
+NFS Linear Algebra
+------------------
+
+The linear algebra step constructs the matrix that was generated from the
+filtering, and finds a group of vectors that lie in the nullspace of that
+matrix. Matrices generated by Msieve are slightly wider than they are tall,
+which means that a properly constructed matrix will have C columns and
+perhaps (C-100) rows. The value of C goes up as the number to be factored
+gets larger, and very large factorizations can generate huge matrices. The
+largest value of C that I know of is around 42 million; at that size you'd 
+need 10GB of memory just to store it.
+
+Needless to say, finding nullspace vectors for a really big matrix is an
+enormous amount of work. To do the job, Msieve uses the block Lanczos algorithm
+with a large number of performance optimizations. Even with fast code like
+that, solving the matrix can take anywhere from a few minutes (factoring
+a 100-digit input leads to a matrix of size ~200000) to several months 
+(using the special number field sieve on 280-digit numbers from the 
+Cunningham Project usually leads to matrices of size ~18 million). Even
+worse, the answer has to be *exactly* correct all the way through; there's
+no throwing away intermediate results that are bad, like the other NFS
+phases can do. So solving a big matrix is a severe test of both your computer
+and your patience.
+
+The Msieve demo binary performs NFS linear algebra when run with '-nc2'. 
+This requires all the relations from <dat_file_name> and also the cycles
+generated by the filtering and previously written to '<dat_file_name>.cyc'.
+When complete, the solver writes the nullspace vectors to a 'dependency
+file' whose name is '<dat_file_name>.dep'; this is a file full of 64-bit
+words, in the native byte order of the machine, with one word for each of
+the C columns in the matrix. If the solver found D solutions, then the
+D low-order bits of each word matter. If bit i in word j is a 1, then the
+j_th column of the matrix participates in solution number i. Since the
+cycle file gives the relation numbers for matrix column j, the dependency
+file lets you construct a collection of relations that will make the NFS
+square root step (described next) work correctly. Since the dependency
+file is composed of 64-bit words, there can never be more than 64 nullspace
+solutions; usually there will be 25-35 of them, and each of these has about
+a 50-50 chance of factoring the input number at the conclusion of the NFS
+square root step.
+
+Both the matrix and all of the solutions are numbers in a finite field of
+size 2, so if a matrix entry or any solution entry is not zero, then it has
+to be 1. Hence we don't need to explicitly store the value at a particular 
+position in the matrix, since all the nonzero matrix values will always be 1.
+This lets us get away with only storing the *coordinates* of nonzero matrix
+entries. To do that, the linear algebra first constructs the complete matrix
+that will be solved and writes it to disk, as a file named '<dat_file_name>.mat'.
+Then it optimizes the matrix slightly, possibly rearranging the matrix 
+columns, and writes the new matrix and a new cycle file that is optimized 
+the same way. The linear algebra does not require the cycle file contents 
+when the solver is running, only during the initial matrix build.
+
+While the actual .mat file is only useful for the linear algebra phase, other
+tools that can analyze or permute or even solve the matrix could benefit from 
+being able to parse the .mat file. To that end:
+
+The matrix file is an array of 32-bit words, with byte ordering determined 
+by the machine that produced the matrix (it will be little-endian for just 
+about everybody). The nonzero matrix entries are stored by column, because 
+they are easy to generate that way. The first word in the file is the number 
+of rows, the second is the number of dense rows ('D'), and the third is the 
+number of matrix columns. Each column is then dumped out. For each column, 
+there is a 32-bit word indicating the number of sparse entries in the column, 
+then a list of that many nonzero row positions (each a 32-bit word, with 
+words in arbitrary order), then floor((D+31)/32) words for the dense rows 
+in that column. The latter should be treated as an array of D bits in 
+little-endian word order.
+
+Rows are numbered from 0 to (number of rows - 1). Rows 0 to D-1 are considered 
+dense, with a set bit in the bitfield indicating a nonzero entry for that 
+column. The sparse entries in each column are numbered from D onward. 
+
+There are two tools in the linear algebra to make a long-running, error-prone
+process like finding nullspace vectors more robust. The first is a periodic
+integrity check on the current solution, which happens automatically. This
+is very good at detecting computation or memory errors that occur for whatever
+reason (heat, marginal timing, overclocking, cosmic rays, etc). The second
+tool is periodic checkpointing; for matrices larger than about a million 
+columns, the solver will periodically (about once per hour) package up the 
+entire current state of the solver and dump it to a checkpoint file. The most
+recent pair of checkpoint files is saved, and either one can be used to restart
+the solver at a later time. The demo binary also installs a signal handler
+that can catch Ctrl-C or process termination interrupts, and will generate
+a checkpoint immediately before quitting. The two checkpoint files are named 
+'<dat_file_name>.chk' and '<dat_file_name>.bak.chk' although Msieve can only
+restart from files named like the former. 
+
+Checkpoint files are not very large, about 60x the number of columns in 
+the matrix, but they are completely specific to a given matrix. Mess up 
+the .mat file, permute it in any way, and the checkpoint will not work 
+anymore. This also extends to restarting the linear algebra when you only
+meant to restart from a checkpoint; do not assume that the linear algebra
+will generate the exact same matrix two times in a row. To restart the linear
+algebra from a checkpoint file, run the Msieve demo binary with '-ncr' 
+instead of '-nc2'.
+
+
+Multithreaded Linear Algebra
+----------------------------
+
+Unlike all the other code in the Msieve library, the linear algebra is fully
+multithread aware, and if the demo binary is started with '-t X' then the
+matrix solver uses X threads. Note that the solver is primarily memory bound,
+and using as many threads as you have cores on your multicore processor will
+probably not give the best performance. The best number of threads to use
+depends on the underlying machine; more recent processors have much more
+powerful memory controllers and can continue speeding up as more and more
+threads are used. A good rule of thumb to start off is to try two threads
+for each physical package on your motherboard; even if it's not the fastest
+choice, just two or four threads gets the vast majority of the potential
+speedup for the vast majority of machines.
+
+There are a few other things to note about the multithreading. Multiple 
+threads are only used for matrices larger than about 250k columns, regardless
+of what you specify on the command line. A matrix that small only takes 10 or
+15 minutes to solve with one thread, so this isn't exactly a hardship. Also,
+if the matrix is large enough to have checkpointing turned on, the format of
+the matrix file is completely independent of the number of threads specified.
+So you can build the matrix once, interrupt the solver so that a checkpoint is
+generated, then restart from the checkpoint with a different number of threads.
+This lets you experiment with different runtime configurations without chewing
+up large amounts of time and memory rebuilding the matrix needlessly.
+
+Finally, note that the matrix solver is a 'tightly parallel' computation, which
+means if you give it four threads then the machine those four threads run on
+must be mostly idle otherwise. The linear algebra will soak up most of the
+memory bandwidth your machine has, so if you divert any of it away to something
+else then the completion time for the linear algebra will suffer.
+
+As for memory use, solving the matrix for a 512-bit input is going to 
+require around 2GB of memory in the solver, and a fast modern processor running 
+the solver with four threads will need about 36 hours. A slow, less modern
+processor that is busy with other stuff could take up to a week!
+
+
+Parallel Linear Algebra with MPI
+-------------------------------
+
+The most effective way to speed up the linear algebra solver is to throw more
+bus wires at it, and that means harnessing the power of multiple separate
+computers to solve a single matrix. As of August 2010 Msieve now includes
+a high-performance MPI driver that is the focus of current research by several
+people and myself. So the following describes an experimental but very
+powerful way of running the linear algebra.
+
+To use MPI, you have to have an MPI library installed, or work somewhere that
+does. I only have practice with OpenMPI on my one test rig, but it's straight-
+forward to get started with that combination. Just because you use MPI doesn't
+mean you have to have a cluster to run it on; MPI abstracts away any underlying
+hardware from the number of separate copies of your program that it runs.
+This is not the place to describe how to set up your actual hardware and
+software for a MPI run, because there are too many details to deal with.
+
+Assuming that you have done so, though, and have built an MPI-aware copy
+of the Msieve library, then you can solve a matrix on an M x N grid of MPI
+processes by running the demo binary with '-nc2 M,N' and giving the resulting
+command line to your MPI library's parallel launch script, i.e. to 'mpirun'
+if that's what your MPI uses. 
+
+All the MPI processes need access to a shared directory containing the .mat
+file, and each MPI process gets its own logfile by appending a number to the
+base logfile name. The matrix file on disk needs to be constructed with MPI in
+mind; the format of the .mat file is unchanged, but the matrix building code
+adds an auxiliary file called '<dat_file_name>.mat.idx' that gives the file
+offsets each MPI process will use to read in its own chunk of the .mat file.
+The offsets are chosen so that each MPI process gets about the same number
+of nonzero entries in its chunk of the matrix, and a single auxiliary file 
+can handle any decomposition of the matrix up to a 35x35 MPI grid.
+
+Currently the matrix file itself is constructed by only one MPI process,
+the others wait on a barrier until it finishes. This is wasteful, especially
+if you are using someone else's cluster time, but there's a trick to avoid
+having to do this if you can modify the source. Of course, a better idea would
+be to improve the library so that the matrix build happens in parallel along
+with the rest of the solver, and I know what to do, but it hasn't been a
+priority to make it happen. Contact me if you want more details. While I'm 
+dreaming, NFS filtering could also benefit from using MPI, if the pile of
+relations is so large that it won't fit on a single machine.
+
+If you run MPI Msieve with the '-t X' argument as well, *each* MPI process
+runs its part of the solver ith X threads. If you expect one MPI process
+will use one physical machine, this is a handy way of soaking up more of the
+memory bandwidth that machine has to offer. Using X threads on a MxN grid
+means you have M x N x X threads running, but you can also increase M and N
+so that X is 1 and more of the computation is exposed to your MPI library.
+In general there's a tradeoff between using more MPI processes and fewer
+processes with more threads, and the best combination depends on your hardware
+and the efficiency of your MPI library.
+
+The on-disk format of the matrix is independent of the choice of M and N,
+and checkpointing is still available to interrupt an MPI run in progress.
+However, there are some caveats to relying on checkpoints with an MPI run.
+First of all, a checkpoint file is not produced when you interrupt a run in 
+progress; I don't know how to do this in a portable way because different 
+MPI libraries handle the propagation of signals to MPI processes in 
+different ways, and you won't be able to trust a checkpoint file to be 
+constructed correctly with that restriction. So you only get a checkpoint 
+when it is periodically written, usually once an hour. The other restriction 
+with checkpoint files is that while you can change the number of threads 
+and restart from a checkpoint file, if the file was written by an MxN grid 
+of MPI processes then you can only change N when you restart from that 
+checkpoint. This is because the matrix reading code permutes the matrix rows
+to try to equalize the distribution of nonzero matrix elements across each
+of the M MPI processes in an MPI column, and that makes the checkpoints
+specific to the value of M used.
+
+You should not expect a linear speedup when using P processes. The actual
+speedup you will get depends almost completely on the interconnect between
+your compute nodes, and only then on how fast each node is. With a cluster
+of PCs, there is a huge difference in performance between using gigabit
+ethernet for an interconnect and using infiniband; the latter is much faster
+and scales better too. We've experimentally found that the best decomposition
+for P MPI processes will reduce the solve time by a factor of about P^0.6
+using gigabit ethernet, while an infiniband interconnect scales the solve 
+time by around P^0.8
+
+For the record, the largest matrix Msieve has currently been used on had about
+43 million columns, and was solved by the MPI version of Msieve running on
+a 30x30 grid of MPI processes on a supercomputer at Moscow State University,
+in just 63 hours. The same computation on a single fast PC would have taken
+many months.
