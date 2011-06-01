@@ -951,7 +951,7 @@ when run with '-nc3 X,Y'. Nonexistent dependencies are (obviously) skipped.
 If you have multiple separate machines, you can give each one its own
 (X,Y) range, since each dependency is completely independent of the others.
 
-Each dependency has a 50% chance if finding a nontrivial factorization of the
+Each dependency has a 50% chance of finding a nontrivial factorization of the
 input. The code includes a great deal of consistency checking and error
 checking throughout the square root phase, because a lot can go wrong in this
 or one of the earlier NFS phases. So if you don't see any errors but
