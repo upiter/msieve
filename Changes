@@ -1,4 +1,4 @@
-Version 1.49:
+Version 1.49: 6/16/11
 	- Generalized the degree 6 root sieve to also handle degree
 		4 and 5. This makes stage 2 of NFS polyomial selection
 		hugely faster for very large problems
@@ -12,6 +12,7 @@ Version 1.49:
 		Ilya Popovyan)
 	- Fixed an MPI race condition in the Lanczos restart code
 		(thanks Jeff Gilchrist)
+	- From Brian Gladman: added build fixes for the latest CUDA tools
 	- Modified the NFS square root to print out factors as they are
 		found (thanks Paul Leyland)
 	- Made the library report the current SVN revision, determined at

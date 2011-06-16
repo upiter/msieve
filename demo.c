@@ -111,9 +111,9 @@ void print_usage(char *progname) {
 #ifdef HAVE_CUDA
 		 "   -g <num>  use GPU <num>, 0 <= num < (# graphics cards)>\n"
 #endif
-	         "   -t <num>  use at most <num> threads\n\n"
+	         "   -t <num>  use at most <num> threads\n"
 		 "   -D <num>  make filtering target <num> nonzeros per\n"
-		 "             matrix column (default value if 0)\n"
+		 "             matrix column (default value if 0)\n\n"
 		 " elliptic curve options:\n"
 		 "   -e        perform 'deep' ECM, seek factors > 15 digits\n\n"
 		 " quadratic sieve options:\n"
@@ -331,7 +331,7 @@ int main(int argc, char **argv) {
 	buf[0] = 0;
 	while (i < argc) {
 		if (argv[i][0] == (char)('-')) {
-			switch(tolower(argv[i][1])) {
+			switch(argv[i][1]) {
 			case 'h':
 			case '?':
 				print_usage(argv[0]);
