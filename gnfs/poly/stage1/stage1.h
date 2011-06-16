@@ -184,7 +184,6 @@ typedef struct {
 	uint32 power[MAX_POWER];
 	uint32 roots[MAX_POWER][MAX_POLYSELECT_DEGREE];
 	uint32 cofactor_max;
-	uint32 cofactor_roots_max;
 } aprog_t;
 
 typedef struct {

@@ -221,7 +221,6 @@ sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 			aprog_t *a = aprogs + i;
 
 			a->cofactor_max = p_max / a->p;
-			a->cofactor_roots_max = num_roots_max / a->num_roots;
 		}
 	}
 
@@ -309,6 +308,7 @@ get_enum_roots(sieve_fb_t *s, uint32 p)
 	uint32 *factors = p_enum->factors;
 	uint32 *powers = p_enum->powers;
 	uint32 num_factors = p_enum->num_factors;
+	uint32 num_roots_max = s->num_roots_max;
 
 	uint32 num_roots[MAX_P_FACTORS];
 	uint32 prod[MAX_P_FACTORS];
@@ -377,9 +377,13 @@ get_enum_roots(sieve_fb_t *s, uint32 p)
 		for (i0 = num_roots[0] - 1; (int32)i0 >= 0; i0--) {
 			accum[0] = accum[1] + (uint64)prod[0] * roots[0][i0];
 			s->roots[i++] = accum[0] % p;
+
+			if (i == num_roots_max)
+				goto finished;
 		}}}}}}}
 	}
 
+finished:
 	return i;
 }
 
@@ -425,8 +429,7 @@ get_next_enum(sieve_fb_t *s)
 
 		if (a != NULL && cofactors[i] <= a->cofactor_max
 		    && !(power_up && ++powers[i - 1] >= a->max_power)
-		    && (power_up || (cofac_roots[i] <= a->cofactor_roots_max
-				     && i < MAX_P_FACTORS))) {
+		    && (power_up || i < MAX_P_FACTORS)) {
 
 			uint32 p = cofactors[i] * a->p;
 
