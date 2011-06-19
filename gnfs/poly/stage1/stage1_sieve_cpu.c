@@ -569,7 +569,7 @@ sieve_lattice_cpu(msieve_obj *obj, lattice_fb_t *L,
 	double p_size_max = L->poly->p_size_max;
 
 	p_size_max /= special_q_max;
-	if ((uint32)sqrt(p_size_max * P_SCALE) > (uint32)(-1)) {
+	if (sqrt(p_size_max * P_SCALE) > (uint32)1 << 27) {
 		printf("error: invalid parameters for rational coefficient "
 			"in sieve_lattice_cpu()\n");
 		return 0;

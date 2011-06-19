@@ -523,7 +523,7 @@ sieve_lattice_gpu_nosq(msieve_obj *obj, lattice_fb_t *L)
 	double p_size_max = L->poly->p_size_max;
 	sieve_fb_t sieve_large_p, sieve_small_p;
 
-	if ((uint32)sqrt(p_size_max) * P_SCALE > (uint32)(-1)) {
+	if (sqrt(p_size_max) > (uint32)(-1) / P_SCALE) {
 		printf("error: invalid parameters for rational coefficient "
 			"in sieve_lattice_gpu_nosq()\n");
 		return 0;
