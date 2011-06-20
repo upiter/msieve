@@ -509,6 +509,7 @@ sieve_xy_run_deg6(root_sieve_t *rs)
 	sieve_xy_t *xy = &rs->xydata;
 	sieve_prime_t *lattice_primes = xy->lattice_primes;
 	uint32 num_lattice_primes;
+	msieve_obj *obj = rs->data->obj;
 
 	double direction[3] = {0, 1, 0};
 	double line_min, line_max;
@@ -607,5 +608,8 @@ sieve_xy_run_deg6(root_sieve_t *rs)
 		rs->curr_z = z_base + lattice_xyz->z; 
 
 		sieve_x_run_deg6(rs);
+
+		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+			break;
 	}
 }

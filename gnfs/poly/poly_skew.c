@@ -481,6 +481,9 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 				continue;
 
 			poly_stage2_run(&stage2_data, ad, p, m, 1e100, arg);
+
+			if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+				break;
 		}
 
 		mpz_clear(ad);

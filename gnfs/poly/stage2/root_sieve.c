@@ -162,6 +162,7 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 			double alpha_proj)
 {
 	uint32 i;
+	msieve_obj *obj = data->obj;
 	stage2_curr_data_t *s = (stage2_curr_data_t *)data->internal;
 	root_sieve_t *rs = &s->root_sieve;
 	curr_poly_t *c = &s->curr_poly;
@@ -174,6 +175,7 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 	double direction[3] = {0};
 	double max_norm;
 
+	rs->data = data;
 	rs->root_heap.num_entries = 0;
 	rs->dbl_p = mpz_get_d(c->gmp_p);
 	rs->dbl_d = mpz_get_d(c->gmp_d);
@@ -265,6 +267,9 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 					curr_bound->line_max);
 			break;
 		}
+
+		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+			return;
 	}
 
 	printf("\n");
@@ -272,6 +277,9 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 		rotation_t *r = rs->root_heap.entries + i;
 
 		optimize_final(r->x, r->y, r->z, data);
+
+		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+			return;
 	}
 }
 

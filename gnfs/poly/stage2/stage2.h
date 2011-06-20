@@ -225,6 +225,8 @@ void sieve_x_free(sieve_x_t *x);
 #define DEFAULT_BLOCK_SIZE  8192
 
 typedef struct {
+	poly_stage2_t *data;
+
 	uint32 num_primes;
 	sieve_prime_t *primes;
 

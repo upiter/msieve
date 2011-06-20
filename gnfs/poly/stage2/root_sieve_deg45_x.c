@@ -448,6 +448,7 @@ sieve_x_run_deg5(root_sieve_t *rs)
 	sieve_x_t *x = &rs->xdata;
 	sieve_prime_t *lattice_primes = x->lattice_primes;
 	uint32 num_lattice_primes;
+	msieve_obj *obj = rs->data->obj;
 
 	double line_min, line_max;
 	xdata_t xdata[MAX_CRT_FACTORS];
@@ -512,6 +513,9 @@ sieve_x_run_deg5(root_sieve_t *rs)
 				mpz_add(rs->curr_y, rs->curr_y, 
 						xy->mp_lattice_size);
 			}
+
+			if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+				break;
 		}
 		printf("\n");
 		return;
@@ -579,6 +583,9 @@ sieve_x_run_deg5(root_sieve_t *rs)
 		x->curr_score = curr_xline->score;
 
 		root_sieve_line(rs);
+
+		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+			break;
 	}
 	printf("\n");
 }
@@ -593,6 +600,7 @@ sieve_x_run_deg4(root_sieve_t *rs, uint64 lattice_size,
 	sieve_x_t *x = &rs->xdata;
 	sieve_prime_t *lattice_primes = x->lattice_primes;
 	uint32 num_lattice_primes;
+	msieve_obj *obj = rs->data->obj;
 
 	xdata_t xdata[MAX_CRT_FACTORS];
 	xline_heap_t xline_heap;
@@ -653,6 +661,9 @@ sieve_x_run_deg4(root_sieve_t *rs, uint64 lattice_size,
 
 		x->curr_score = curr_xline->score;
 		root_sieve_line(rs);
+
+		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+			break;
 	}
 
 	printf("\n");
