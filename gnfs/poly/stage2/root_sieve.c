@@ -181,11 +181,6 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 	for (i = 0; i <= data->degree; i++)
 		rs->apoly.coeff[i] = mpz_get_d(c->gmp_a[i]);
 
-	num_bounds = 0;
-	bounds[0].lattice_size = 1;
-	bounds[0].max_norm = alpha_bias * initial_norm;
-	bounds[0].line_min = 0;
-	bounds[0].line_max = 0;
 	direction[data->degree - 4] = 1.0;
 	rs->xyzdata.lattice_size = 1;
 	mpz_set_ui(rs->xydata.mp_lattice_size, 1);
@@ -194,16 +189,19 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 	line_max = 10;
 	max_norm = MIN(data->max_norm, 100 * initial_norm);
 
+	num_bounds = 0;
 	for (curr_norm = 0; curr_norm < max_norm;
 			norm_multiple *= 1.10) {
 
 		uint64 lattice_size = 1;
+		bound_t tmp_bound;
 
 		curr_norm = initial_norm * norm_multiple;
 		if (curr_norm > max_norm)
 			curr_norm = max_norm;
 
-		compute_line_size(alpha_bias * curr_norm,
+		tmp_bound.max_norm = alpha_bias * curr_norm;
+		compute_line_size(tmp_bound.max_norm,
 				&rs->apoly, rs->dbl_p, rs->dbl_d,
 				direction, line_min, line_max,
 				&line_min, &line_max);
@@ -216,6 +214,8 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 			else
 				continue;
 		}
+		tmp_bound.line_min = line_min;
+		tmp_bound.line_max = line_max;
 
 		switch (data->degree) {
 		case 4:
@@ -233,18 +233,18 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 			break;
 		}
 
-		if (lattice_size > bounds[num_bounds].lattice_size) {
-			if (num_bounds < MAX_BOUNDS - 1)
+		if (num_bounds == 0 ||
+		    lattice_size > bounds[num_bounds - 1].lattice_size) {
+
+			if (num_bounds < MAX_BOUNDS)
 				num_bounds++;
 		}
 
-		bounds[num_bounds].lattice_size = lattice_size;
-		bounds[num_bounds].max_norm = alpha_bias * curr_norm;
-		bounds[num_bounds].line_min = line_min;
-		bounds[num_bounds].line_max = line_max;
+		tmp_bound.lattice_size = lattice_size;
+		bounds[num_bounds - 1] = tmp_bound;
 	}
 
-	for (i = 0, num_bounds++; i < num_bounds; i++) {
+	for (i = 0; i < num_bounds; i++) {
 		bound_t *curr_bound = bounds + i;
 
 		rs->max_norm = curr_bound->max_norm;
