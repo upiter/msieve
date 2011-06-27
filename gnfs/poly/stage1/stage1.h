@@ -296,6 +296,8 @@ typedef struct {
 	uint32 found_array_size;
 	void *p_marshall;
 	void *q_marshall;
+	CUevent start;
+	CUevent end;
 #endif
 
 	poly_search_t *poly;
@@ -306,8 +308,7 @@ typedef struct {
 	   make a search deterministic we just let the code go 
 	   as far as it can in the time specified */
 
-	time_t start_time;
-	uint32 deadline;
+	double deadline;
 } lattice_fb_t;
 
 /* what to do when the collision search finds a 'stage 1 hit' */
@@ -318,8 +319,8 @@ handle_collision(poly_search_t *poly, uint32 p1, uint32 p2,
 
 /* main search routine */
 
-void sieve_lattice(msieve_obj *obj, poly_search_t *poly, 
-				uint32 deadline);
+double sieve_lattice(msieve_obj *obj, poly_search_t *poly, 
+				double deadline);
 
 /* low-level routines */
 

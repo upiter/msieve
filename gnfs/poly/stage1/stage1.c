@@ -321,8 +321,8 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 {
 	uint32 i, j, p;
 	uint32 digits = mpz_sizeinbase(poly->N, 10);
-	uint32 deadline_per_coeff;
-	double start_time = get_cpu_time();
+	double deadline_per_coeff;
+	double cumulative_time = 0;
 
 	/* determine the CPU time limit; I have no idea if
 	   the following is appropriate */
@@ -348,7 +348,8 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	else
 		deadline_per_coeff = 3200;
 
-	printf("deadline: %u seconds per coefficient\n", deadline_per_coeff);
+	printf("deadline: %.0lf seconds per coefficient\n",
+					deadline_per_coeff);
 
 	/* set up lower limit on a_d */
 
@@ -359,6 +360,8 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 
 	while (1) {
+		double elapsed;
+
 		/* increment a_d */
 
 		mpz_add_ui(poly->high_coeff, poly->high_coeff,
@@ -394,18 +397,14 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		/* a_d is okay, search it */
 
 		stage1_bounds_update(obj, poly);
-		sieve_lattice(obj, poly, deadline_per_coeff);
+		elapsed = sieve_lattice(obj, poly, deadline_per_coeff);
+		cumulative_time += elapsed;
 
 		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
 			break;
 
-		if (deadline) {
-			double curr_time = get_cpu_time();
-			double elapsed = curr_time - start_time;
-
-			if (elapsed > deadline)
-				break;
-		}
+		if (deadline && cumulative_time > deadline)
+			break;
 	}
 }
 

@@ -275,8 +275,7 @@ sieve_lattice_batch(msieve_obj *obj, lattice_fb_t *L,
 		q_soa_var_t *soa = q_array->soa + i;
 		uint32 num_qroots = soa->num_roots;
 		uint32 num_q_done = 0;
-		time_t curr_time;
-		double elapsed;
+		float elapsed_ms;
 
 		if (soa->num_p < threads_per_block)
 			continue;
@@ -349,8 +348,11 @@ sieve_lattice_batch(msieve_obj *obj, lattice_fb_t *L,
 						threads_per_block;
 				}
 
+				CUDA_TRY(cuEventRecord(L->start, 0))
 				CUDA_TRY(cuLaunchGrid(gpu_kernel, 
 							num_blocks, 1))
+				CUDA_TRY(cuEventRecord(L->end, 0))
+				CUDA_TRY(cuEventSynchronize(L->end))
 
 				CUDA_TRY(cuMemcpyDtoH(found_array, 
 							L->gpu_found_array, 
@@ -380,7 +382,14 @@ sieve_lattice_batch(msieve_obj *obj, lattice_fb_t *L,
 					}
 				}
 
+				CUDA_TRY(cuEventElapsedTime(&elapsed_ms,
+							L->start, L->end))
+				L->deadline -= elapsed_ms / 1000;
+
 				if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+					return 1;
+
+				if (L->deadline < 0)
 					return 1;
 
 				packed_start = curr_packed;
@@ -390,11 +399,6 @@ sieve_lattice_batch(msieve_obj *obj, lattice_fb_t *L,
 
 			num_q_done += curr_num_q;
 		}
-
-		curr_time = time(NULL);
-		elapsed = curr_time - L->start_time;
-		if (elapsed > L->deadline)
-			return 1;
 	}
 
 	return 0;
@@ -409,6 +413,7 @@ sieve_nospecialq_64(msieve_obj *obj, lattice_fb_t *L,
 		uint32 large_p_min, uint32 large_p_max)
 {
 	uint32 quit = 0;
+	double cpu_start_time = get_cpu_time();
 	p_packed_var_t * p_array;
 	q_soa_array_t * q_array;
 	uint32 degree = L->poly->degree;
@@ -455,6 +460,9 @@ sieve_nospecialq_64(msieve_obj *obj, lattice_fb_t *L,
 	CUDA_TRY(cuMemAlloc(&L->gpu_found_array, 
 			L->found_array_size * sizeof(found_t)))
 
+	CUDA_TRY(cuEventCreate(&L->start, CU_EVENT_BLOCKING_SYNC))
+	CUDA_TRY(cuEventCreate(&L->end, CU_EVENT_BLOCKING_SYNC))
+
 	host_p_batch_size = MAX(10000, L->found_array_size / 3);
 	host_q_batch_size = MAX(50000, 12 * L->found_array_size);
 
@@ -469,6 +477,8 @@ sieve_nospecialq_64(msieve_obj *obj, lattice_fb_t *L,
 	sieve_fb_reset(sieve_large_p, large_p_min, large_p_max,
 			q_min_roots, q_max_roots);
 	while (!quit) {
+
+		double curr_time;
 
 		q_soa_array_reset(q_array);
 		while (sieve_fb_next(sieve_large_p, L->poly, store_q_soa,
@@ -498,10 +508,16 @@ sieve_nospecialq_64(msieve_obj *obj, lattice_fb_t *L,
 					p_array, q_array,
 					gpu_info, gpu_kernel);
 		}
+
+		curr_time = get_cpu_time();
+		L->deadline -= curr_time - cpu_start_time;
+		cpu_start_time = curr_time;
 	}
 
 	CUDA_TRY(cuMemFree(L->gpu_q_array))
 	CUDA_TRY(cuMemFree(L->gpu_found_array))
+	CUDA_TRY(cuEventDestroy(L->start))
+	CUDA_TRY(cuEventDestroy(L->end))
 	p_packed_free(p_array);
 	q_soa_array_free(q_array);
 	free(p_array);

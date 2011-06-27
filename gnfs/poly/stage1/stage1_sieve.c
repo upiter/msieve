@@ -106,8 +106,8 @@ handle_collision(poly_search_t *poly, uint32 p1, uint32 p2,
 }
 
 /*------------------------------------------------------------------------*/
-void
-sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
+double
+sieve_lattice(msieve_obj *obj, poly_search_t *poly, double deadline)
 {
 	uint32 quit = 0;
 	uint32 special_q_min = poly->special_q_min;
@@ -120,8 +120,18 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 			log(poly->p_size_max) / M_LN2,
 			log(poly->sieve_size) / M_LN2);
 
+	/* set up the special q factory; special-q may have 
+	   arbitrary factors, but many small factors are 
+	   preferred since that will allow for many more roots
+	   per special q, so we choose the factors to be as 
+	   small as possible */
+
+	sieve_fb_init(&sieve_special_q, poly,
+			5, special_q_fb_max,
+			1, poly->degree,
+			0);
+
 	L.poly = poly;
-	L.start_time = time(NULL);
 	L.deadline = deadline;
 
 	if (special_q_min == 1) { /* handle trivial case */
@@ -135,18 +145,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	}
 
 	if (quit || special_q_max == 1)
-		return;
-
-	/* set up the special q factory; special-q may have 
-	   arbitrary factors, but many small factors are 
-	   preferred since that will allow for many more roots
-	   per special q, so we choose the factors to be as 
-	   small as possible */
-
-	sieve_fb_init(&sieve_special_q, poly,
-			5, special_q_fb_max,
-			1, poly->degree,
-			0);
+		goto finished;
 
 	/* if special q max is more than P_SCALE times special q
 	   min, then we split the range into P_SCALE-sized parts
@@ -177,5 +176,7 @@ sieve_lattice(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		special_q_min = special_q_max2 + 1;
 	}
 
+finished:
 	sieve_fb_free(&sieve_special_q);
+	return deadline - L.deadline;
 }

@@ -203,8 +203,6 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 	uint64 sieve_size;
 	uint64 sieve_start = 0;
 	uint32 num_blocks = 0;
-	time_t curr_time;
-	double elapsed;
 
 	if (2 * L->poly->sieve_size / special_q2 > (uint64)(-1)) {
 		printf("error: sieve size too large "
@@ -356,13 +354,6 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 		}
 	}
 
-	/* check for timeout */
-
-	curr_time = time(NULL);
-	elapsed = curr_time - L->start_time;
-	if (elapsed > L->deadline)
-		quit = 1;
-
 //	printf("%u\n", num_blocks); 
 	return quit;
 }
@@ -417,6 +408,7 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 	uint32 num_p;
 	uint64 block_size;
 	uint64 *invtable = NULL;
+	double cpu_start_time = get_cpu_time();
 
 	p_packed_init(&specialq_array);
 	p_packed_init(&hash_array);
@@ -453,6 +445,7 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 	sieve_fb_reset(sieve_special_q, special_q_min, special_q_max, 
 			1, MAX_ROOTS);
 	while (1) {
+		double curr_time;
 		p_packed_t *qptr = specialq_array.packed_array;
 		uint32 num_q;
 		p_packed_t *tmp;
@@ -460,6 +453,12 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		mp_t qprod;
 		uint32 batch_q[SPECIALQ_BATCH_SIZE];
 		uint64 batch_q_inv[SPECIALQ_BATCH_SIZE];
+
+		curr_time = get_cpu_time();
+		if (curr_time - cpu_start_time > L->deadline) {
+			quit = 1;
+			goto finished;
+		}
 
 		/* allocate the next batch of special-q and all the
 		   roots they use */
@@ -551,6 +550,7 @@ finished:
 	hashtable_free(&hashtable);
 	p_packed_free(&specialq_array);
 	p_packed_free(&hash_array);
+	L->deadline -= get_cpu_time() - cpu_start_time;
 	return quit;
 }
 
