@@ -488,11 +488,11 @@ static void sieve_next_poly_tiny(tiny_qs_params *params) {
 				uint32 bits = sieve_block[8 * j + k];
 				if (bits <= cutoff1)
 					continue;
-				if (params->num_relations >= target_relations)
-					return;
 				check_sieve_val_tiny(params, &a, &b, &c,
 					block_start + 8 * j + k, 
 					POSITIVE, cutoff1 + 257 - bits);
+				if (params->num_relations == target_relations)
+					return;
 			}
 		}
 		block_start += SIEVE_BLOCK_SIZE_TINY;
@@ -525,11 +525,11 @@ static void sieve_next_poly_tiny(tiny_qs_params *params) {
 				uint32 bits = sieve_block[8 * j + k];
 				if (bits <= cutoff1)
 					continue;
-				if (params->num_relations >= target_relations)
-					return;
 				check_sieve_val_tiny(params, &a, &b, &c,
 					block_start + 8 * j + k, 
 					NEGATIVE, cutoff1 + 257 - bits);
+				if (params->num_relations == target_relations)
+					return;
 			}
 		}
 		block_start += SIEVE_BLOCK_SIZE_TINY;
