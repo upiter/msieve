@@ -65,7 +65,7 @@ static const uint64 bitmask[64] = {
 #define MAX_RELATIONS_TINY (MAX_FB_SIZE_TINY + NUM_EXTRA_RELATIONS_TINY)
 #define MIN_FB_OFFSET_TO_SIEVE_TINY 7
 #define SMALL_PRIME_FUDGE_TINY (LOGPRIME_SCALE_TINY * 10)
-#define MAX_POLY_TINY 20
+#define MAX_POLY_TINY 32
 #define SIEVE_BLOCK_SIZE_TINY 32768
 #define MAX_FACTORS_TINY 20
 #define LOG2_PARTIAL_TABLE_SIZE 10
@@ -109,6 +109,7 @@ typedef struct {
 	tiny_fb factor_base[MAX_FB_SIZE_TINY];
 
 	uint32 num_relations;
+	uint32 target_relations;
 	uint16 large_prime_max;
 	uint32 error_bits;
 	tiny_relation relation_list[MAX_RELATIONS_TINY];
@@ -410,7 +411,7 @@ static void sieve_next_poly_tiny(tiny_qs_params *params) {
 	uint32 cutoff1;
 	uint8 poly_num = params->poly_num;
 	uint8 num_sieve_blocks = params->num_sieve_blocks;
-	uint32 target_relations = params->fb_size + NUM_EXTRA_RELATIONS_TINY;
+	uint32 target_relations = params->target_relations;
 
 	i = params->curr_poly_offset;
 	do {
@@ -787,14 +788,27 @@ uint32 tinyqs(mp_t *n, mp_t *factor1, mp_t *factor2) {
 	for (i = 0; i < (1 << LOG2_PARTIAL_TABLE_SIZE); i++)
 		params->partial_list[i].large_prime = 0;
 
-	while (params->poly_num < MAX_POLY_TINY &&
-	       params->num_relations < fb_size + NUM_EXTRA_RELATIONS_TINY) {
+	params->target_relations = params->fb_size + NUM_EXTRA_RELATIONS_TINY;
+	while (params->poly_num < MAX_POLY_TINY) {
 		sieve_next_poly_tiny(params);
-	}
 
-	if (params->num_relations >= fb_size + NUM_EXTRA_RELATIONS_TINY) {
-		solve_linear_system_tiny(params);
-		status = find_factors_tiny(params, factor1, factor2);
+		if (params->num_relations == params->target_relations) {
+
+			solve_linear_system_tiny(params);
+			status = find_factors_tiny(params, factor1, factor2);
+
+			if (!status) {
+				/* Failed to find a nontrivial solution.
+				   Throw away some relations and try again. */
+
+				uint32 discard = params->num_relations / 10 + 1;
+
+				params->num_relations -= discard;
+			}
+			else {
+				break;
+			}
+		}
 	}
 
 	free(params);
