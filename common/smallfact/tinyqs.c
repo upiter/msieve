@@ -92,6 +92,7 @@ typedef struct {
 	
 typedef struct {
 	mp_t n;
+	mp_t kn;
 	uint32 multiplier;
 
 	mp_t target_a;
@@ -161,7 +162,7 @@ static void init_fb_tiny(tiny_qs_params *params) {
 	tiny_fb next_fb_array[MAX_FB_SIZE_TINY];
 	uint32 next_fb_size;
 	double score, best_score;
-	mp_t n2;
+	mp_t kn;
 	uint16 mult_list[] = {1, 3, 5, 7, 11, 13, 15, 17, 19, 21, 23,
 			 29, 31, 33, 35, 37, 39, 41, 43, 47, 51,
 			 53, 55, 57, 59, 61, 65, 67, 69, 71, 73};
@@ -173,10 +174,10 @@ static void init_fb_tiny(tiny_qs_params *params) {
 
 		uint32 curr_mult = mult_list[i];
 
-		mp_mul_1(&params->n, curr_mult, &n2);
+		mp_mul_1(&params->n, curr_mult, &kn);
 
 		next_fb_size = init_one_fb_tiny(MAX_FB_SIZE_TINY,
-						&n2, next_fb_array);
+						&kn, next_fb_array);
 		
 		if ((params->n.val[0] & 7) == 1)
 			score = 0.5 * log((double)curr_mult) - 2 * M_LN2;
@@ -201,10 +202,9 @@ static void init_fb_tiny(tiny_qs_params *params) {
 			best_score = score;
 			params->fb_size = next_fb_size;
 			params->multiplier = curr_mult;
+			mp_copy(&kn, &params->kn);
 		}
 	}
-
-	mp_mul_1(&params->n, params->multiplier, &params->n);
 }
 
 /*----------------------------------------------------------------------*/
@@ -406,7 +406,7 @@ static void sieve_next_poly_tiny(tiny_qs_params *params) {
 	uint32 block_start;
 	tiny_fb *factor_base = params->factor_base;
 	mp_t a, b, c, tmp;
-	mp_t *n = &params->n;
+	mp_t *kn = &params->kn;
 	uint32 cutoff1;
 	uint8 poly_num = params->poly_num;
 	uint8 num_sieve_blocks = params->num_sieve_blocks;
@@ -417,9 +417,9 @@ static void sieve_next_poly_tiny(tiny_qs_params *params) {
 		mp_add_1(&params->target_a, i, &a);
 		i += mp_next_prime(&a, &tmp, &params->seed1,
 					&params->seed2);
-	} while(mp_legendre(n, &tmp) != 1);
+	} while(mp_legendre(kn, &tmp) != 1);
 
-	mp_modsqrt2(n, &tmp, &b, &params->seed1, &params->seed2);
+	mp_modsqrt2(kn, &tmp, &b, &params->seed1, &params->seed2);
 	mp_mul(&tmp, &tmp, &a);
 
 	params->curr_poly_offset = i;
@@ -428,7 +428,7 @@ static void sieve_next_poly_tiny(tiny_qs_params *params) {
 	params->poly_num++;
 
 	mp_mul(&b, &b, &tmp);
-	mp_sub(n, &tmp, &tmp);
+	mp_sub(kn, &tmp, &tmp);
 	mp_div(&tmp, &a, &c);
 
 	for (i = MIN_FB_OFFSET + 1; i < fb_size; i++) {
@@ -612,6 +612,7 @@ static uint32 find_factors_tiny(tiny_qs_params *params,
 
 	mp_t x, y, t0, t1;
 	mp_t *n = &params->n;
+	mp_t *kn = &params->kn;
 	uint16 i, j, k;
 	uint16 mask;
 	uint16 fb_counts[MAX_FB_SIZE_TINY];
@@ -640,7 +641,7 @@ static uint32 find_factors_tiny(tiny_qs_params *params,
 								r->large_prime);
 						mp_mul_1(&y, 
 							r->large_prime, &t0);
-						mp_mod(&t0, n, &y);
+						mp_mod(&t0, kn, &y);
 					}
 					else {
 						break;
@@ -650,7 +651,7 @@ static uint32 find_factors_tiny(tiny_qs_params *params,
 	
 				mp_add_1(&params->target_a, 
 					params->poly_offset[poly_num], &t0);
-				mp_modmul(&y, &t0, n, &y);
+				mp_modmul(&y, &t0, kn, &y);
 	
 				for (k = 0; k < r->num_factors; k++)
 					fb_counts[r->fb_offsets[k]]++;
@@ -664,7 +665,7 @@ static uint32 find_factors_tiny(tiny_qs_params *params,
 				else
 					mp_add(&t1, &params->poly_b[poly_num], 
 								&t1);
-				mp_modmul(&x, &t1, n, &x);
+				mp_modmul(&x, &t1, kn, &x);
 			}
 		}
 
@@ -685,12 +686,12 @@ static uint32 find_factors_tiny(tiny_qs_params *params,
 				mask2 >>= 1;
 
 			for (mask2 >>= 1; mask2; mask2 >>= 1) {
-				mp_modmul(&t0, &t0, n, &t0);
+				mp_modmul(&t0, &t0, kn, &t0);
 				if (exponent & mask2) {
-					mp_modmul(&t0, &t1, n, &t0);
+					mp_modmul(&t0, &t1, kn, &t0);
 				}
 			}
-			mp_modmul(&t0, &y, n, &y);
+			mp_modmul(&t0, &y, kn, &y);
 		}
 
 		for (i = 0; i < 2; i++) {
@@ -701,8 +702,8 @@ static uint32 find_factors_tiny(tiny_qs_params *params,
 			else
 				mp_sub(&y, &x, &t0);
 
-			mp_gcd(&t0, n, &t1);
-			if (!mp_is_one(&t1) && mp_cmp(&t1, n)) {
+			mp_gcd(&t0, kn, &t1);
+			if (!mp_is_one(&t1) && mp_cmp(&t1, kn)) {
 				if (params->multiplier > 1) {
 					mp_t m;
 					mp_clear(&m);
@@ -711,9 +712,8 @@ static uint32 find_factors_tiny(tiny_qs_params *params,
 					mp_gcd(&t1, &m, &t0);
 					mp_divrem_1(&t1, t0.val[0], &t1);
 				}
-				if (!mp_is_one(&t1)) {
-					mp_divrem_1(n, params->multiplier, &t0);
-					mp_div(&t0, &t1, factor1);
+				if (!mp_is_one(&t1) && mp_cmp(&t1, n)) {
+					mp_div(n, &t1, factor1);
 					mp_copy(&t1, factor2);
 					return 1;
 				}
