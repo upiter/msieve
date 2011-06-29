@@ -745,7 +745,7 @@ uint32 tinyqs(mp_t *n, mp_t *factor1, mp_t *factor2) {
 	params->poly_num = 0;
 
 	init_fb_tiny(params);
-	bits = mp_bits(&params->n);
+	bits = mp_bits(&params->kn);
 
 	if (bits < 70) {
 		fb_size = MIN(params->fb_size, 40);
