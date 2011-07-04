@@ -30,6 +30,7 @@ typedef struct {
 	mpz_t gmp_c[MAX_POLY_DEGREE + 1];
 	mpz_t gmp_lina[2];
 	mpz_t gmp_linb[2];
+	mpz_t gmp_linc[2];
 	mpz_t gmp_help1;
 	mpz_t gmp_help2;
 	mpz_t gmp_help3;
@@ -59,6 +60,9 @@ uint32 stage2_root_score(uint32 deg1, mpz_t *coeff1,
 
 void optimize_initial(poly_stage2_t *data, double *pol_norm,
 			uint32 skew_only);
+
+double optimize_initial_deg6(double best[MAX_VARS], 
+			curr_poly_t *c, uint32 degree);
 
 void optimize_final(mpz_t x, mpz_t y, int64 z, poly_stage2_t *data);
 

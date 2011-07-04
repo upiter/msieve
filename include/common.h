@@ -357,7 +357,7 @@ void add_next_factor(msieve_obj *obj, mp_t *n,
 
 #define MAX_VARS 5
 
-typedef double (*objective_func)(double *v, void *extra);
+typedef double (*objective_func)(double v[MAX_VARS], void *extra);
 
 double minimize(double p[MAX_VARS], uint32 ndim, 
 			double ftol, uint32 max_iter,
@@ -368,6 +368,34 @@ double minimize_global(double p[MAX_VARS], uint32 ndim,
 			double tol, uint32 iter_limit,
 			objective_func callback, 
 			void *extra);
+
+typedef double (*objective_func_grad)(double v[MAX_VARS], 
+					double grad[MAX_VARS],
+					void *extra);
+
+double minimize_grad(double p[MAX_VARS], uint32 ndim, 
+			double ftol, uint32 max_iter,
+			objective_func callback, 
+			objective_func_grad callback_grad,
+			void *extra);
+
+typedef double (*objective_func_hess)(double v[MAX_VARS], 
+					double grad[MAX_VARS],
+					double hess[MAX_VARS][MAX_VARS],
+					void *extra);
+
+double minimize_hess(double p[MAX_VARS], uint32 ndim, 
+			double ftol, uint32 max_iter,
+			objective_func callback, 
+			objective_func_hess callback_hess,
+			void *extra);
+
+/* solve a linear system of size n; matrix and b are overwritten */
+
+void solve_dmatrix(double matrix[MAX_VARS][MAX_VARS], 
+			double x[MAX_VARS],
+			double b[MAX_VARS],
+			uint32 n);
 
 /* Dickman's rho function */
 

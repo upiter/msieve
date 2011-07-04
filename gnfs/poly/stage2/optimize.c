@@ -128,7 +128,7 @@ ifs_radial(double *a, uint32 degree, double s)
 
 	return 1e100;
 }
-
+ 
 /*----------------------------------------------------------------------*/
 uint32
 stage2_root_score(uint32 deg1, mpz_t *coeff1, 
@@ -287,7 +287,7 @@ static double poly_rotate_callback(double *v, void *extra)
 	opt_data_t *opt = (opt_data_t *)extra;
 	dpoly_t apoly = *(opt->dapoly);
 	double translated[MAX_POLY_DEGREE + 1];
-	double s = v[SKEWNESS];
+	double s = floor(v[SKEWNESS] + 0.5);
 	double t = floor(v[TRANSLATE_SIZE] + 0.5);
 	double r0 = opt->drpoly->coeff[0];
 	double r1 = opt->drpoly->coeff[1];
@@ -300,7 +300,7 @@ static double poly_rotate_callback(double *v, void *extra)
 		apoly.coeff[i] += r0 * c;
 		apoly.coeff[i+1] += r1 * c;
 	}
-
+	
 	translate_d(translated, apoly.coeff, apoly.degree, t);
 	return opt->norm_callback(translated, apoly.degree, s);
 }
@@ -357,26 +357,29 @@ optimize_initial(poly_stage2_t *data, double *pol_norm,
 	opt_data.dapoly = &apoly;
 	opt_data.norm_callback = ifs_radial;
 
-	rpoly.degree = 1;
-	for (i = 0; i <= 1; i++) {
-		rpoly.coeff[i] = mpz_get_d(c->gmp_lina[i]);
-	}
-	apoly.degree = deg;
-	for (i = 0; i <= deg; i++) {
-		apoly.coeff[i] = mpz_get_d(c->gmp_a[i]);
-	}
-
 	best[SKEWNESS] = 1000;
 	best[TRANSLATE_SIZE] = 0;
 	best[ROTATE0] = 0;
 	best[ROTATE1] = 0;
 	best[ROTATE2] = 0;
-	score = 1e100;
-	tol = 1e-3;
 	if (skew_only) {
 		num_vars = 1;
 		objective = poly_skew_callback;
 	}
+	else if (deg == 6) {
+		score = optimize_initial_deg6(best, c, deg);
+
+		printf("preopt %.7e skew %lf\n", score, best[SKEWNESS]);
+	}
+
+	score = 1e100;
+	tol = 1e-5;
+	rpoly.degree = 1;
+	for (i = 0; i <= 1; i++)
+		rpoly.coeff[i] = mpz_get_d(c->gmp_lina[i]);
+	apoly.degree = deg;
+	for (i = 0; i <= deg; i++)
+		apoly.coeff[i] = mpz_get_d(c->gmp_a[i]);
 
 	for (i = 0; i < 2; i++) {
 
@@ -387,6 +390,7 @@ optimize_initial(poly_stage2_t *data, double *pol_norm,
 			score = minimize(best, num_vars, tol, 40, 
 					objective, &opt_data);
 
+			printf("i %u score %le\n", i, score);
 			for (j = 0; j <= rotate_dim; j++) {
 				double cj = floor(best[ROTATE0 + j] + 0.5);
 				mpz_set_d(c->gmp_help1, cj);
@@ -418,6 +422,7 @@ optimize_initial(poly_stage2_t *data, double *pol_norm,
 			tol = 1e-5;
 			score = ifs_rectangular(apoly.coeff, apoly.degree,
 						best[SKEWNESS]);
+			printf("transition score %le\n", score);
 		}
 	}
 

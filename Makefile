@@ -210,6 +210,7 @@ NFS_SRCS = \
 	gnfs/poly/stage1/stage1_roots.c \
 	gnfs/poly/stage1/stage1_sieve.c \
 	gnfs/poly/stage2/optimize.c \
+	gnfs/poly/stage2/optimize_deg6.c \
 	gnfs/poly/stage2/root_sieve.c \
 	gnfs/poly/stage2/root_sieve_deg45_x.c \
 	gnfs/poly/stage2/root_sieve_deg5_xy.c \
