@@ -316,6 +316,22 @@ poly_search_free(poly_search_t *poly)
 }
 
 /*------------------------------------------------------------------------*/
+typedef struct {
+	uint32 p, r;
+	uint8 log_val;
+} sieve_prime_t;
+
+#define SIEVE_ARRAY_SIZE 8192
+
+typedef struct {
+	uint8 *sieve_array;
+	sieve_prime_t *primes;
+	uint32 num_primes;
+	uint32 num_primes_alloc;
+	uint32 curr_offset;
+} sieve_t;
+
+/*------------------------------------------------------------------------*/
 static void
 search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 {
@@ -323,6 +339,7 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	uint32 digits = mpz_sizeinbase(poly->N, 10);
 	double deadline_per_coeff;
 	double cumulative_time = 0;
+	sieve_t ad_sieve;
 
 	/* determine the CPU time limit; I have no idea if
 	   the following is appropriate */
@@ -353,59 +370,145 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 
 	/* set up lower limit on a_d */
 
-	mpz_sub_ui(poly->high_coeff, poly->gmp_high_coeff_begin, (mp_limb_t)1);
-	mpz_fdiv_q_ui(poly->high_coeff, poly->high_coeff, 
+	mpz_sub_ui(poly->tmp1, poly->gmp_high_coeff_begin, (mp_limb_t)1);
+	mpz_fdiv_q_ui(poly->tmp1, poly->tmp1, 
 			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
-	mpz_mul_ui(poly->high_coeff, poly->high_coeff, 
+	mpz_add_ui(poly->tmp1, poly->tmp1, (mp_limb_t)1);
+	mpz_mul_ui(poly->gmp_high_coeff_begin, poly->tmp1, 
 			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 
-	while (1) {
-		double elapsed;
+	/* set up a_d sieve */
 
-		/* increment a_d */
+	ad_sieve.num_primes = 0;
+	ad_sieve.num_primes_alloc = 100;
+	ad_sieve.primes = (sieve_prime_t *)xmalloc(sizeof(sieve_prime_t) *
+						ad_sieve.num_primes_alloc);
+	ad_sieve.sieve_array = (uint8 *)xmalloc(sizeof(uint8) *
+						SIEVE_ARRAY_SIZE);
 
-		mpz_add_ui(poly->high_coeff, poly->high_coeff,
-				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+	for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
+		uint32 power;
+		uint8 log_val;
 
-		if (mpz_cmp(poly->high_coeff, poly->gmp_high_coeff_end) > 0)
+		p += prime_delta[i];
+		if (p > HIGH_COEFF_PRIME_LIMIT)
 			break;
 
-		mpz_divexact_ui(poly->tmp1, poly->high_coeff, 
-					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+		log_val = floor(log(p) / M_LN2 + 0.5);
+		power = p;
+		for (j = 0; j < HIGH_COEFF_POWER_LIMIT; j++) {
+			uint32 r = power - mpz_fdiv_ui(poly->tmp1,
+							(mp_limb_t)power);
 
-		/* trial divide the a_d and skip it if it
-		   has any large prime factors */
+			if (ad_sieve.num_primes >= ad_sieve.num_primes_alloc) {
+				ad_sieve.num_primes_alloc *= 2;
+				ad_sieve.primes = (sieve_prime_t *)xrealloc(
+					ad_sieve.primes,
+					ad_sieve.num_primes_alloc *
+						sizeof(sieve_prime_t));
+			}
 
-		for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
-			p += prime_delta[i];
+			ad_sieve.primes[ad_sieve.num_primes].p = power;
+			ad_sieve.primes[ad_sieve.num_primes].r = r;
+			ad_sieve.primes[ad_sieve.num_primes].log_val = log_val;
+			ad_sieve.num_primes++;
 
-			if (p > HIGH_COEFF_PRIME_LIMIT)
+			if ((uint32)(-1) / power < p)
 				break;
 
-			for (j = 0; j < HIGH_COEFF_POWER_LIMIT; j++) {
-				if (mpz_divisible_ui_p(poly->tmp1, 
-						(mp_limb_t)p))
-					mpz_divexact_ui(poly->tmp1, 
-						poly->tmp1, (mp_limb_t)p);
-				else
-					break;
-			}
+			power *= p;
 		}
-		if (mpz_cmp_ui(poly->tmp1, (mp_limb_t)1))
-			continue;
-
-		/* a_d is okay, search it */
-
-		stage1_bounds_update(obj, poly);
-		elapsed = sieve_lattice(obj, poly, deadline_per_coeff);
-		cumulative_time += elapsed;
-
-		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
-			break;
-
-		if (deadline && cumulative_time > deadline)
-			break;
 	}
+
+	while (1) {
+		uint32 log_coeff;
+		double elapsed;
+
+		mpz_divexact_ui(poly->tmp1, poly->gmp_high_coeff_begin,
+				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+
+		log_coeff = floor(log(mpz_get_d(poly->tmp1)) / M_LN2 + 0.5);
+		memset(ad_sieve.sieve_array, (int)(log_coeff - 4),
+				SIEVE_ARRAY_SIZE);
+
+		/* sieve a_d */
+
+		for (i = 0; i < ad_sieve.num_primes; i++) {
+			uint32 p = ad_sieve.primes[i].p;
+			uint32 r = ad_sieve.primes[i].r;
+			uint8 log_val = ad_sieve.primes[i].log_val;
+
+			while (r < SIEVE_ARRAY_SIZE) {
+				ad_sieve.sieve_array[r] -= log_val;
+				r += p;
+			}
+			ad_sieve.primes[i].r = r - SIEVE_ARRAY_SIZE;
+		}
+
+		for (i = 0; i < SIEVE_ARRAY_SIZE; i++) {
+			uint32 k;
+
+			if (!(ad_sieve.sieve_array[i] & 0x80)) {
+				continue;
+			}
+
+			mpz_divexact_ui(poly->tmp1, poly->gmp_high_coeff_begin,
+					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+			mpz_add_ui(poly->tmp1, poly->tmp1, (mp_limb_t)i);
+			mpz_mul_ui(poly->high_coeff, poly->tmp1,
+					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+
+			if (mpz_cmp(poly->high_coeff,
+						poly->gmp_high_coeff_end) > 0)
+				goto finished;
+
+			/* trial divide the a_d and skip it if it
+			   has any large prime factors */
+
+			for (j = p = 0; j < PRECOMPUTED_NUM_PRIMES; j++) {
+				p += prime_delta[j];
+
+				if (p > HIGH_COEFF_PRIME_LIMIT)
+					break;
+
+				for (k = 0; k < HIGH_COEFF_POWER_LIMIT; k++) {
+					if (mpz_divisible_ui_p(poly->tmp1, 
+							(mp_limb_t)p))
+						mpz_divexact_ui(poly->tmp1, 
+							poly->tmp1,
+							(mp_limb_t)p);
+					else
+						break;
+				}
+			}
+			if (mpz_cmp_ui(poly->tmp1, (mp_limb_t)1))
+				continue;
+
+			/* a_d is okay, search it */
+
+			stage1_bounds_update(obj, poly);
+			elapsed = sieve_lattice(obj, poly, deadline_per_coeff);
+			cumulative_time += elapsed;
+
+			if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+				goto finished;
+
+			if (deadline && cumulative_time > deadline)
+				goto finished;
+		}
+
+		mpz_set_ui(poly->tmp1, (mp_limb_t)SIEVE_ARRAY_SIZE);
+		mpz_mul_ui(poly->tmp1, poly->tmp1,
+				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+		mpz_add(poly->gmp_high_coeff_begin,
+				poly->gmp_high_coeff_begin, poly->tmp1);
+
+		if (mpz_cmp(poly->gmp_high_coeff_begin,
+					poly->gmp_high_coeff_end) > 0)
+			goto finished;
+	}
+finished:
+	return;
 }
 
 /*------------------------------------------------------------------------*/
