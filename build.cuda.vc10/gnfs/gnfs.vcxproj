@@ -170,6 +170,7 @@
     <ClCompile Include="..\..\gnfs\gnfs.c" />
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu_nosq.c" />
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu_sq.c" />
+    <ClCompile Include="..\..\gnfs\poly\stage2\optimize_deg6.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg45_x.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg5_xy.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg6_x.c" />

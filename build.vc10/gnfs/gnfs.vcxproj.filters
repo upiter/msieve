@@ -106,14 +106,8 @@
     </ClCompile>
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve.c">
       <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_cpu.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
+    </ClCompile> 
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg45_x.c">
-      <Filter>Source Files\poly\Stage2</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg5_xy.c">
       <Filter>Source Files\poly\Stage2</Filter>
     </ClCompile>
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_line.c">
@@ -121,6 +115,15 @@
     </ClCompile>
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_util.c">
       <Filter>Source Files\poly\Stage2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\gnfs\poly\stage2\optimize_deg6.c">
+      <Filter>Source Files\poly\Stage2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg5_xy.c">
+      <Filter>Source Files\poly\Stage2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_cpu.c">
+      <Filter>Source Files\poly\Stage1</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
