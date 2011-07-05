@@ -153,6 +153,7 @@ curr_poly_init(curr_poly_t *c)
 	for (i = 0; i < 2; i++) {
 		mpz_init(c->gmp_lina[i]);
 		mpz_init(c->gmp_linb[i]);
+		mpz_init(c->gmp_linc[i]);
 	}
 	for (i = 0; i < MAX_POLY_DEGREE + 1; i++) {
 		mpz_init(c->gmp_a[i]);
@@ -176,6 +177,7 @@ curr_poly_free(curr_poly_t *c)
 	for (i = 0; i < 2; i++) {
 		mpz_clear(c->gmp_lina[i]);
 		mpz_clear(c->gmp_linb[i]);
+		mpz_clear(c->gmp_linc[i]);
 	}
 	for (i = 0; i < MAX_POLY_DEGREE + 1; i++) {
 		mpz_clear(c->gmp_a[i]);
