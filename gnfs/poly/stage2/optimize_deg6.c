@@ -629,10 +629,13 @@ find_start_point(opt_data_t *opt, double best[MAX_VARS])
 			for (j = 0; j < MAX_PARAMS; j++) {
 				if (t->params[j] == 0) 
 					continue;
+				if (opt->params[j] == 0) 
+					break;
 				curr_target += t->params[j] * log(
 						fabs(opt->params[j]));
 			}
-			log_target = MAX(log_target, curr_target);
+			if (j == MAX_PARAMS)
+				log_target = MAX(log_target, curr_target);
 		}
 	}
 
@@ -649,9 +652,14 @@ find_start_point(opt_data_t *opt, double best[MAX_VARS])
 		for (j = 0; j < MAX_PARAMS; j++) {
 			if (t->params[j] == 0)
 				continue;
+			if (opt->params[j] == 0)
+				break;
 			curr_target += t->params[j] * 
 					log(fabs(opt->params[j]));
 		}
+		if (j < MAX_PARAMS)
+			continue;
+
 		for (j = 0; j < MAX_VARS; j++) {
 			if (t->powers[j] == 0)
 				continue;
