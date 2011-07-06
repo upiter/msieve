@@ -428,11 +428,11 @@ int main(int argc, char **argv) {
 						  strchr(argv[i+1], ',') != 
 						  		NULL ) {
 						char *tmp;
-						nfs_lower = (uint64)strtod(
-							argv[i+1], &tmp);
+						nfs_lower = strtoull(argv[i+1],
+								&tmp, 10);
 						tmp++;
-						nfs_upper = (uint64)strtod(
-							tmp, NULL);
+						nfs_upper = strtoull(tmp,
+								NULL, 10);
 						i++;
 					}
 				}

@@ -386,6 +386,7 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	ad_sieve.sieve_array = (uint8 *)xmalloc(sizeof(uint8) *
 						SIEVE_ARRAY_SIZE);
 
+	mpz_neg(poly->tmp1, poly->tmp1);
 	for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
 		uint32 power;
 		uint8 log_val;
@@ -397,8 +398,7 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		log_val = floor(log(p) / M_LN2 + 0.5);
 		power = p;
 		for (j = 0; j < HIGH_COEFF_POWER_LIMIT; j++) {
-			uint32 r = power - mpz_fdiv_ui(poly->tmp1,
-							(mp_limb_t)power);
+			uint32 r = mpz_fdiv_ui(poly->tmp1, (mp_limb_t)power);
 
 			if (ad_sieve.num_primes >= ad_sieve.num_primes_alloc) {
 				ad_sieve.num_primes_alloc *= 2;
