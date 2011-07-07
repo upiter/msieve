@@ -23,12 +23,11 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	/* determine the parametrs for the collision search,
 	   given one leading algebraic coefficient a_d */
 
-	uint32 i, mult;
 	uint32 degree = poly->degree;
 	double N = mpz_get_d(poly->N);
 	double high_coeff = mpz_get_d(poly->high_coeff);
-	double skewness_min, m0;
-	double coeff_max, p_size_max, cutoff;
+	double m0 = pow(N / high_coeff, 1./degree);
+	double skewness_min, coeff_max, p_size_max, cutoff;
 	double special_q_min, special_q_max;
 	uint32 num_pieces;
 #ifndef HAVE_CUDA
@@ -42,23 +41,17 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 
 	switch (degree) {
 	case 4:
-		mult = 4 * 4 * 4 * 4;
-		skewness_min = sqrt(pow(N / high_coeff, 1./4.) /
-					poly->norm_max);
+		skewness_min = sqrt(m0 / poly->norm_max);
 		coeff_max = poly->norm_max;
 		break;
 
 	case 5:
-		mult = 5 * 5 * 5 * 5 * 5;
-		skewness_min = pow(pow(N / high_coeff, 1./5.) /
-					poly->norm_max, 2./3.);
+		skewness_min = pow(m0 / poly->norm_max, 2./3.);
 		coeff_max = poly->norm_max / sqrt(skewness_min);
 		break;
 
 	case 6:
-		mult = 6 * 6 * 6 * 6 * 6 * 6;
-		skewness_min = sqrt(pow(N / high_coeff, 1./6.) /
-					poly->norm_max);
+		skewness_min = sqrt(m0 / poly->norm_max);
 		coeff_max = poly->norm_max / skewness_min;
 		break;
 
@@ -68,20 +61,16 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	}
 
 	/* we perform the collision search on a transformed version
-	   of N and the low-order rational coefficient m0. In the
+	   of N and the low-order rational coefficient m. In the
 	   transformed coordinates, a_d is 1 and a_{d-1} is 0. When
 	   a hit is found, we undo the transformation to recover
-	   the correction to m0 that makes the new polynomial 'work' */
+	   the correction to m that makes the new polynomial 'work' */
 
-	mpz_mul_ui(poly->trans_N, poly->N, (mp_limb_t)mult);
-	for (i = 0; i < degree - 1; i++)
-		mpz_mul(poly->trans_N, poly->trans_N, poly->high_coeff);
-
+	mpz_mul_ui(poly->trans_N, poly->high_coeff, (mp_limb_t)degree);
+	mpz_pow_ui(poly->trans_N, poly->trans_N, (mp_limb_t)(degree - 1));
+	mpz_mul_ui(poly->trans_N, poly->trans_N, (mp_limb_t)degree);
+	mpz_mul(poly->trans_N, poly->trans_N, poly->N);
 	mpz_root(poly->trans_m0, poly->trans_N, (mp_limb_t)degree);
-
-	mpz_tdiv_q(poly->m0, poly->N, poly->high_coeff);
-	mpz_root(poly->m0, poly->m0, (mp_limb_t)degree);
-	m0 = mpz_get_d(poly->m0);
 
 	/* for leading rational coefficient l, the sieve size
 	   will be l^2*cutoff. This is based on the norm limit
@@ -242,7 +231,7 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	poly->p_size_max = p_size_max;
 
 	/* Kleinjung's improved algorithm computes a 'correction'
-	   to m0, and the new m0 will cause a_{d-2} to be small enough
+	   to m, and the new m will cause a_{d-2} to be small enough
 	   if it is smaller than sieve_size */
 
 	poly->sieve_size = p_size_max * p_size_max * cutoff;
@@ -258,7 +247,7 @@ poly_search_init(poly_search_t *poly, poly_stage1_t *data)
 	mpz_init(poly->trans_N);
 	mpz_init(poly->trans_m0);
 	mpz_init(poly->mp_sieve_size);
-	mpz_init(poly->m0);
+	mpz_init(poly->m);
 	mpz_init(poly->p);
 	mpz_init(poly->tmp1);
 	mpz_init(poly->tmp2);
@@ -301,7 +290,7 @@ poly_search_free(poly_search_t *poly)
 	mpz_clear(poly->trans_N);
 	mpz_clear(poly->trans_m0);
 	mpz_clear(poly->mp_sieve_size);
-	mpz_clear(poly->m0);
+	mpz_clear(poly->m);
 	mpz_clear(poly->p);
 	mpz_clear(poly->tmp1);
 	mpz_clear(poly->tmp2);
@@ -333,9 +322,158 @@ typedef struct {
 
 /*------------------------------------------------------------------------*/
 static void
-search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
+sieve_ad_block(sieve_t *sieve, poly_search_t *poly)
+{
+	uint32 log_coeff;
+	uint32 i;
+
+	mpz_divexact_ui(poly->tmp1, poly->gmp_high_coeff_begin,
+			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+
+	log_coeff = floor(log(mpz_get_d(poly->tmp1)) / M_LN2 + 0.5);
+	memset(sieve->sieve_array, (int)(log_coeff - 4),
+			SIEVE_ARRAY_SIZE);
+
+	for (i = 0; i < sieve->num_primes; i++) {
+		uint32 p = sieve->primes[i].p;
+		uint32 r = sieve->primes[i].r;
+		uint8 log_val = sieve->primes[i].log_val;
+
+		while (r < SIEVE_ARRAY_SIZE) {
+			sieve->sieve_array[r] -= log_val;
+			r += p;
+		}
+		sieve->primes[i].r = r - SIEVE_ARRAY_SIZE;
+	}
+}
+
+/*------------------------------------------------------------------------*/
+static int
+find_next_ad(sieve_t *sieve, poly_search_t *poly)
+{
+	uint32 i, j, p, k;
+	uint8 *sieve_array = sieve->sieve_array;
+
+	while (1) {
+
+		for (i = sieve->curr_offset; i < SIEVE_ARRAY_SIZE; i++) {
+
+			if (!(sieve_array[i] & 0x80))
+				continue;
+
+			mpz_divexact_ui(poly->tmp1, poly->gmp_high_coeff_begin,
+					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+			mpz_add_ui(poly->tmp1, poly->tmp1, (mp_limb_t)i);
+			mpz_mul_ui(poly->high_coeff, poly->tmp1,
+					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+
+			if (mpz_cmp(poly->high_coeff,
+						poly->gmp_high_coeff_end) > 0)
+				break;
+
+			/* trial divide the a_d and skip it if it
+			   has any large prime factors */
+
+			for (j = p = 0; j < PRECOMPUTED_NUM_PRIMES; j++) {
+				p += prime_delta[j];
+
+				if (p > HIGH_COEFF_PRIME_LIMIT)
+					break;
+
+				for (k = 0; k < HIGH_COEFF_POWER_LIMIT; k++) {
+					if (mpz_divisible_ui_p(poly->tmp1, 
+							(mp_limb_t)p))
+						mpz_divexact_ui(poly->tmp1, 
+							poly->tmp1,
+							(mp_limb_t)p);
+					else
+						break;
+				}
+			}
+			if (mpz_cmp_ui(poly->tmp1, (mp_limb_t)1))
+				continue;
+
+			/* a_d is okay, search it */
+
+			sieve->curr_offset = i + 1;
+			return 0;
+		}
+
+		/* update lower bound for next sieve block */
+
+		mpz_set_ui(poly->tmp1, (mp_limb_t)SIEVE_ARRAY_SIZE);
+		mpz_mul_ui(poly->tmp1, poly->tmp1,
+				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+		mpz_add(poly->gmp_high_coeff_begin,
+				poly->gmp_high_coeff_begin, poly->tmp1);
+
+		if (mpz_cmp(poly->gmp_high_coeff_begin,
+					poly->gmp_high_coeff_end) > 0)
+			break;
+
+		sieve->curr_offset = 0;
+		sieve_ad_block(sieve, poly);
+	}
+
+	return 1;
+}
+
+/*------------------------------------------------------------------------*/
+static void
+init_ad_sieve(sieve_t *sieve, poly_search_t *poly)
 {
 	uint32 i, j, p;
+
+	sieve->num_primes = 0;
+	sieve->num_primes_alloc = 100;
+	sieve->primes = (sieve_prime_t *)xmalloc(sizeof(sieve_prime_t) *
+						sieve->num_primes_alloc);
+	sieve->sieve_array = (uint8 *)xmalloc(sizeof(uint8) *
+						SIEVE_ARRAY_SIZE);
+
+	mpz_divexact_ui(poly->tmp1, poly->gmp_high_coeff_begin,
+			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+	for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
+		uint32 power;
+		uint8 log_val;
+
+		p += prime_delta[i];
+		if (p > HIGH_COEFF_PRIME_LIMIT)
+			break;
+
+		log_val = floor(log(p) / M_LN2 + 0.5);
+		power = p;
+		for (j = 0; j < HIGH_COEFF_POWER_LIMIT; j++) {
+			uint32 r = mpz_cdiv_ui(poly->tmp1, (mp_limb_t)power);
+
+			if (sieve->num_primes >= sieve->num_primes_alloc) {
+				sieve->num_primes_alloc *= 2;
+				sieve->primes = (sieve_prime_t *)xrealloc(
+					sieve->primes,
+					sieve->num_primes_alloc *
+						sizeof(sieve_prime_t));
+			}
+
+			sieve->primes[sieve->num_primes].p = power;
+			sieve->primes[sieve->num_primes].r = r;
+			sieve->primes[sieve->num_primes].log_val = log_val;
+			sieve->num_primes++;
+
+			if ((uint32)(-1) / power < p)
+				break;
+
+			power *= p;
+		}
+	}
+
+	sieve->curr_offset = 0;
+	sieve_ad_block(sieve, poly);
+}
+
+/*------------------------------------------------------------------------*/
+static void
+search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
+{
 	uint32 digits = mpz_sizeinbase(poly->N, 10);
 	double deadline_per_coeff;
 	double cumulative_time = 0;
@@ -377,138 +515,36 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	mpz_mul_ui(poly->gmp_high_coeff_begin, poly->tmp1, 
 			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
 
-	/* set up a_d sieve */
-
-	ad_sieve.num_primes = 0;
-	ad_sieve.num_primes_alloc = 100;
-	ad_sieve.primes = (sieve_prime_t *)xmalloc(sizeof(sieve_prime_t) *
-						ad_sieve.num_primes_alloc);
-	ad_sieve.sieve_array = (uint8 *)xmalloc(sizeof(uint8) *
-						SIEVE_ARRAY_SIZE);
-
-	mpz_neg(poly->tmp1, poly->tmp1);
-	for (i = p = 0; i < PRECOMPUTED_NUM_PRIMES; i++) {
-		uint32 power;
-		uint8 log_val;
-
-		p += prime_delta[i];
-		if (p > HIGH_COEFF_PRIME_LIMIT)
-			break;
-
-		log_val = floor(log(p) / M_LN2 + 0.5);
-		power = p;
-		for (j = 0; j < HIGH_COEFF_POWER_LIMIT; j++) {
-			uint32 r = mpz_fdiv_ui(poly->tmp1, (mp_limb_t)power);
-
-			if (ad_sieve.num_primes >= ad_sieve.num_primes_alloc) {
-				ad_sieve.num_primes_alloc *= 2;
-				ad_sieve.primes = (sieve_prime_t *)xrealloc(
-					ad_sieve.primes,
-					ad_sieve.num_primes_alloc *
-						sizeof(sieve_prime_t));
-			}
-
-			ad_sieve.primes[ad_sieve.num_primes].p = power;
-			ad_sieve.primes[ad_sieve.num_primes].r = r;
-			ad_sieve.primes[ad_sieve.num_primes].log_val = log_val;
-			ad_sieve.num_primes++;
-
-			if ((uint32)(-1) / power < p)
-				break;
-
-			power *= p;
-		}
-	}
+	init_ad_sieve(&ad_sieve, poly);
 
 	while (1) {
-		uint32 log_coeff;
 		double elapsed;
 
-		mpz_divexact_ui(poly->tmp1, poly->gmp_high_coeff_begin,
-				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+		/* we only use a_d which are composed of
+		   many small prime factors, in order to
+		   have lots of projective roots going
+		   into stage 2 */
 
-		log_coeff = floor(log(mpz_get_d(poly->tmp1)) / M_LN2 + 0.5);
-		memset(ad_sieve.sieve_array, (int)(log_coeff - 4),
-				SIEVE_ARRAY_SIZE);
+		if (find_next_ad(&ad_sieve, poly))
+			break;
 
-		/* sieve a_d */
+		/* recalculate internal parameters used
+		   for search */
 
-		for (i = 0; i < ad_sieve.num_primes; i++) {
-			uint32 p = ad_sieve.primes[i].p;
-			uint32 r = ad_sieve.primes[i].r;
-			uint8 log_val = ad_sieve.primes[i].log_val;
+		stage1_bounds_update(obj, poly);
 
-			while (r < SIEVE_ARRAY_SIZE) {
-				ad_sieve.sieve_array[r] -= log_val;
-				r += p;
-			}
-			ad_sieve.primes[i].r = r - SIEVE_ARRAY_SIZE;
-		}
+		/* finally, sieve for polynomials using
+		   Kleinjung's improved algorithm */
 
-		for (i = 0; i < SIEVE_ARRAY_SIZE; i++) {
-			uint32 k;
+		elapsed = sieve_lattice(obj, poly, deadline_per_coeff);
+		cumulative_time += elapsed;
 
-			if (!(ad_sieve.sieve_array[i] & 0x80)) {
-				continue;
-			}
+		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+			break;
 
-			mpz_divexact_ui(poly->tmp1, poly->gmp_high_coeff_begin,
-					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
-			mpz_add_ui(poly->tmp1, poly->tmp1, (mp_limb_t)i);
-			mpz_mul_ui(poly->high_coeff, poly->tmp1,
-					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
-
-			if (mpz_cmp(poly->high_coeff,
-						poly->gmp_high_coeff_end) > 0)
-				goto finished;
-
-			/* trial divide the a_d and skip it if it
-			   has any large prime factors */
-
-			for (j = p = 0; j < PRECOMPUTED_NUM_PRIMES; j++) {
-				p += prime_delta[j];
-
-				if (p > HIGH_COEFF_PRIME_LIMIT)
-					break;
-
-				for (k = 0; k < HIGH_COEFF_POWER_LIMIT; k++) {
-					if (mpz_divisible_ui_p(poly->tmp1, 
-							(mp_limb_t)p))
-						mpz_divexact_ui(poly->tmp1, 
-							poly->tmp1,
-							(mp_limb_t)p);
-					else
-						break;
-				}
-			}
-			if (mpz_cmp_ui(poly->tmp1, (mp_limb_t)1))
-				continue;
-
-			/* a_d is okay, search it */
-
-			stage1_bounds_update(obj, poly);
-			elapsed = sieve_lattice(obj, poly, deadline_per_coeff);
-			cumulative_time += elapsed;
-
-			if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
-				goto finished;
-
-			if (deadline && cumulative_time > deadline)
-				goto finished;
-		}
-
-		mpz_set_ui(poly->tmp1, (mp_limb_t)SIEVE_ARRAY_SIZE);
-		mpz_mul_ui(poly->tmp1, poly->tmp1,
-				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
-		mpz_add(poly->gmp_high_coeff_begin,
-				poly->gmp_high_coeff_begin, poly->tmp1);
-
-		if (mpz_cmp(poly->gmp_high_coeff_begin,
-					poly->gmp_high_coeff_end) > 0)
-			goto finished;
+		if (deadline && cumulative_time > deadline)
+			break;
 	}
-finished:
-	return;
 }
 
 /*------------------------------------------------------------------------*/

@@ -37,10 +37,6 @@ handle_collision(poly_search_t *poly, uint32 p1, uint32 p2,
 	mpz_mul_ui(poly->p, poly->p, (unsigned long)p2);
 	mpz_mul_ui(poly->p, poly->p, (unsigned long)special_q);
 
-	mpz_gcd(poly->tmp3, poly->p, poly->high_coeff);
-	if (mpz_cmp_ui(poly->tmp3, 1))
-		return;
-
 	/* the corresponding correction to trans_m0 is 
 	   special_q_root + res * special_q^2 - sieve_size,
 	   and can be positive or negative */
@@ -52,36 +48,36 @@ handle_collision(poly_search_t *poly, uint32 p1, uint32 p2,
 	mpz_mul(poly->tmp3, poly->tmp3, poly->tmp3);
 	mpz_addmul(poly->tmp1, poly->tmp2, poly->tmp3);
 	mpz_sub(poly->tmp1, poly->tmp1, poly->mp_sieve_size);
-	mpz_add(poly->m0, poly->trans_m0, poly->tmp1);
+	mpz_add(poly->m, poly->trans_m0, poly->tmp1);
 
 	/* a lot can go wrong before this function is called!
 	   Check that Kleinjung's modular condition is satisfied */
 
-	mpz_pow_ui(poly->tmp1, poly->m0, (mp_limb_t)poly->degree);
+	mpz_pow_ui(poly->tmp1, poly->m, (mp_limb_t)poly->degree);
 	mpz_mul(poly->tmp2, poly->p, poly->p);
 	mpz_sub(poly->tmp1, poly->trans_N, poly->tmp1);
 	mpz_tdiv_r(poly->tmp3, poly->tmp1, poly->tmp2);
 	if (mpz_cmp_ui(poly->tmp3, (mp_limb_t)0)) {
 		gmp_printf("poly %Zd %Zd %Zd\n",
-				poly->high_coeff, poly->p, poly->m0);
+				poly->high_coeff, poly->p, poly->m);
 		printf("crap\n");
 		return;
 	}
 
-	/* the pair works, now translate the computed m0 back
+	/* the pair works, now translate the computed m back
 	   to the original polynomial. We have
 
-	   computed_m0 = degree * high_coeff * real_m0 +
+	   computed_m = degree * high_coeff * real_m +
 	   			(second_highest_coeff) * p
 
-	   and need to solve for real_m0 and second_highest_coeff.
+	   and need to solve for real_m and second_highest_coeff.
 	   Per the CADO code: reducing the above modulo
 	   degree*high_coeff causes the first term on the right
 	   to disappear, so second_highest_coeff can be found
-	   modulo degree*high_coeff and real_m0 then follows */
+	   modulo degree*high_coeff and real_m then follows */
 
 	mpz_mul_ui(poly->tmp1, poly->high_coeff, (mp_limb_t)poly->degree);
-	mpz_tdiv_r(poly->tmp2, poly->m0, poly->tmp1);
+	mpz_tdiv_r(poly->tmp2, poly->m, poly->tmp1);
 	mpz_invert(poly->tmp3, poly->p, poly->tmp1);
 	mpz_mul(poly->tmp2, poly->tmp3, poly->tmp2);
 	mpz_tdiv_r(poly->tmp2, poly->tmp2, poly->tmp1);
@@ -94,14 +90,14 @@ handle_collision(poly_search_t *poly, uint32 p1, uint32 p2,
 		mpz_sub(poly->tmp2, poly->tmp2, poly->tmp1);
 	}
 
-	/* solve for real_m0 */
-	mpz_submul(poly->m0, poly->tmp2, poly->p);
-	mpz_tdiv_q(poly->m0, poly->m0, poly->tmp1);
+	/* solve for real_m */
+	mpz_submul(poly->m, poly->tmp2, poly->p);
+	mpz_tdiv_q(poly->m, poly->m, poly->tmp1);
 
 	gmp_printf("poly %Zd %Zd %Zd\n",
-			poly->high_coeff, poly->p, poly->m0);
+			poly->high_coeff, poly->p, poly->m);
 
-	poly->callback(poly->high_coeff, poly->p, poly->m0,
+	poly->callback(poly->high_coeff, poly->p, poly->m,
 			poly->coeff_max, poly->callback_data);
 }
 

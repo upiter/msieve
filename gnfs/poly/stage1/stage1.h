@@ -72,14 +72,14 @@ typedef struct {
 	   value of (poly coefficient i) * (optimal skew)^i across
 	   all poly coefficients. The low-order poly coefficients
 	   are bounded in size by (N/a_d) ^ (1/d) for input N,
-	   high coefficient a_d and poly degree d, because the 
+	   high coefficient a_d and poly degree d, because the
 	   polynomial is essentially N/a_d split into d pieces. Our
 	   job is to find a 'stage 1 hit' that obeys the norm
 	   bound even for the high-order algebraic coefficients */
 
 	double norm_max; 
 
-	/* (computed) bound on the third-highest algebraic 
+	/* (computed) bound on the third-highest algebraic
 	   poly coefficient. Making this small is the only
 	   thing stage 1 can do; the other coefficients can
 	   only be optimized in stage 2 */
@@ -112,7 +112,7 @@ typedef struct {
 	mpz_t trans_N;
 	mpz_t trans_m0;
 	mpz_t N; 
-	mpz_t m0; 
+	mpz_t m; 
 	mpz_t p;
 	mpz_t tmp1;
 	mpz_t tmp2;
@@ -223,7 +223,7 @@ typedef struct {
 
 	p_enum_t p_enum;
 
-	mpz_t p, p2, m0, nmodp2, tmp1, tmp2, gmp_root;
+	mpz_t p, p2, nmodp2, tmp1, tmp2, tmp3, gmp_root;
 } sieve_fb_t;
 
 /* externally visible interface */

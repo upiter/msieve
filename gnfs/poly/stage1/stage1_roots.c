@@ -44,10 +44,10 @@ sieve_fb_free(sieve_fb_t *s)
 
 	mpz_clear(s->p);
 	mpz_clear(s->p2);
-	mpz_clear(s->m0);
 	mpz_clear(s->nmodp2);
 	mpz_clear(s->tmp1);
 	mpz_clear(s->tmp2);
+	mpz_clear(s->tmp3);
 	mpz_clear(s->gmp_root);
 }
 
@@ -155,10 +155,10 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 
 	mpz_init(s->p);
 	mpz_init(s->p2);
-	mpz_init(s->m0);
 	mpz_init(s->nmodp2);
 	mpz_init(s->tmp1);
 	mpz_init(s->tmp2);
+	mpz_init(s->tmp3);
 	mpz_init(s->gmp_root);
 
 	if (factor_max <= factor_min)
@@ -267,7 +267,7 @@ lift_roots(sieve_fb_t *s, poly_search_t *poly, uint32 p, uint32 num_roots)
 	mpz_mul(s->p2, s->p, s->p);
 	mpz_tdiv_r(s->nmodp2, poly->trans_N, s->p2);
 	mpz_sub(s->tmp1, poly->trans_m0, poly->mp_sieve_size);
-	mpz_tdiv_r(s->m0, s->tmp1, s->p2);
+	mpz_tdiv_r(s->tmp3, s->tmp1, s->p2);
 
 	for (i = 0; i < num_roots; i++) {
 
@@ -286,7 +286,7 @@ lift_roots(sieve_fb_t *s, poly_search_t *poly, uint32 p, uint32 num_roots)
 		mpz_mul(s->tmp1, s->tmp1, s->tmp2);
 		mpz_tdiv_r(s->tmp1, s->tmp1, s->p);
 		mpz_addmul(s->gmp_root, s->tmp1, s->p);
-		mpz_sub(s->gmp_root, s->gmp_root, s->m0);
+		mpz_sub(s->gmp_root, s->gmp_root, s->tmp3);
 		if (mpz_cmp_ui(s->gmp_root, (unsigned long)0) < 0)
 			mpz_add(s->gmp_root, s->gmp_root, s->p2);
 
