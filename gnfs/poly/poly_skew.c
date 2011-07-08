@@ -380,7 +380,7 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 		if (obj->nfs_lower && obj->nfs_upper)
 			stage1_data.deadline = 0;
 		else
-			logprintf(obj, "time limit set to %.2f hours\n",
+			logprintf(obj, "time limit set to %.2f CPU-hours\n",
 				stage1_data.deadline / 3600.0);
 
 		if(digits >= 110) {

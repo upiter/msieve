@@ -302,11 +302,14 @@ typedef struct {
 
 	poly_search_t *poly;
 
-	/* fields that enforce a time limit on the collision
-	   search. For large inputs the search space for Kleinjung's 
+	/* enforce a CPU-time limit on the collision search.
+	   For large inputs the search space for Kleinjung's 
 	   algorithm is essentially infinite, so rather than 
 	   make a search deterministic we just let the code go 
 	   as far as it can in the time specified */
+
+	/* for GPU-based search, the deadline limits the
+	   combined CPU+GPU time spent in the search */
 
 	double deadline;
 } lattice_fb_t;

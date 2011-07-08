@@ -503,7 +503,7 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	else
 		deadline_per_coeff = 3200;
 
-	printf("deadline: %.0lf seconds per coefficient\n",
+	printf("deadline: %.0lf CPU-seconds per coefficient\n",
 					deadline_per_coeff);
 
 	/* set up lower limit on a_d */
