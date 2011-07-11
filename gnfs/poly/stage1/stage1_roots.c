@@ -331,7 +331,7 @@ get_enum_roots(sieve_fb_t *s, uint32 p)
 		for (i = 0; i < num_roots[0]; i++)
 			s->roots[i] = roots[0][i];
 
-		return num_roots[0];
+		return MIN(num_roots[0], num_roots_max);
 	}
 
 	/* fill in auxiliary CRT quantities */
@@ -497,10 +497,10 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 			}
 
 			num_roots = get_prime_roots(poly, p, roots);
+			num_roots = MIN(num_roots, s->num_roots_max);
 
 			if (num_roots == 0 ||
-			    num_roots < s->num_roots_min ||
-			    num_roots > s->num_roots_max)
+			    num_roots < s->num_roots_min)
 				continue;
 
 			for (i = 0; i < num_roots; i++)

@@ -556,7 +556,7 @@ sieve_lattice_gpu_nosq(msieve_obj *obj, lattice_fb_t *L)
 			large_p_fb_max, 100000, 1, degree, 0);
 
 	sieve_fb_init(&sieve_large_p, L->poly,
-			5, large_p_fb_max, 1, degree, 0);
+			5, large_p_fb_max - 1, 1, degree, 0);
 
 	while (1) {
 		gmp_printf("coeff %Zd p1 %u - %u p2 %u - %u\n",
