@@ -1,3 +1,11 @@
+Version 1.50:
+	- Added a second size optimization pass when searching for
+		degree 6 polynomials. This makes stage 2 much more
+		reliable for very large problems
+	- Patches from Jayson King: use a sieve to find larger leading
+		algebraic coefficients
+
+
 Version 1.49: 6/16/11
 	- Generalized the degree 6 root sieve to also handle degree
 		4 and 5. This makes stage 2 of NFS polyomial selection
