@@ -43,6 +43,14 @@ extern "C" {
 #define HIGH_COEFF_PRIME_LIMIT 100
 #define HIGH_COEFF_POWER_LIMIT 2
 
+/* for practical reasons, we limit the size of product of
+   small primes that we look for in the high-order algebraic
+   coefficient. High coeffs larger than
+   HIGH_COEFF_MULTIPLIER * HIGH_COEFF_SIEVE_LIMIT
+   will have additional factors that may be large */
+
+#define HIGH_COEFF_SIEVE_LIMIT 1e12
+
 /* 128-bit integers */
 
 typedef struct {

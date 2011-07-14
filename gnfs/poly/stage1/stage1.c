@@ -134,10 +134,28 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	   appear to yield decent results for problems
 	   currently supported by msieve */
 
+	/* start with a baseline value */
+
 	if (degree < 5)
 		hash_iters = 1000; /* be generous for deg4 */
 	else
 		hash_iters = 50; /* seems reasonable */
+
+	/* make sure we'll have plenty of progressions to
+	   hash. The size of special_q is inversely
+	   proportional to the size of hash_iters, and we
+	   want that the size of the 'other' factors
+	   remaining in the leading rational coefficient
+	   (after taking out special_q) will be large
+	   enough. If, for instance, the norm max or the
+	   high coeff is extremely large, a poor selection
+	   of hash_iters may leave us with few or no
+	   progressions to use. Consequently, we limit
+	   special_q to be about as large as the product of
+	   the 'other' factors */
+
+	p_size_max = coeff_max / skewness_min;
+	hash_iters = MAX(hash_iters, sqrt(p_size_max) * cutoff);
 
 	/* we need to be sure that the parameters with the
 	   specified value of hash_iters will 'work'. There
@@ -153,8 +171,9 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	   search from blowing up on us unexpectedly */
 
 	/* first limit hash_iters to keep l/special_q small.
-	   the size of aprogs p will be at most about 2^27,
-	   though this is deliberately over-estimated */
+	   The below limits the size of 'other' factors to
+	   be smaller than 2^27, though this is deliberately
+	   over-estimated */
 
 	hash_iters = MIN(hash_iters, (double)((uint32)1 << 27) *
 					     ((uint32)1 << 27) *
@@ -171,9 +190,8 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	   total length of the line sieved is 2*sieve_size, since
 	   both sides of the origin are sieved at once */
 
-	p_size_max = coeff_max / skewness_min;
-	special_q_min = 2 * P_SCALE * P_SCALE * cutoff * coeff_max
-			/ skewness_min / hash_iters;
+	special_q_min = 2 * P_SCALE * P_SCALE * cutoff *
+			p_size_max / hash_iters;
 
 	/* special_q must be <2^32. If it is too big, we can
 	   reduce the problem size a bit further to compensate */
@@ -324,14 +342,18 @@ typedef struct {
 static void
 sieve_ad_block(sieve_t *sieve, poly_search_t *poly)
 {
-	uint32 log_coeff;
 	uint32 i;
+	uint32 log_target;
+	double target;
 
-	mpz_divexact_ui(poly->tmp1, poly->gmp_high_coeff_begin,
-			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+	target = mpz_get_d(poly->gmp_high_coeff_begin) /
+				HIGH_COEFF_MULTIPLIER;
 
-	log_coeff = floor(log(mpz_get_d(poly->tmp1)) / M_LN2 + 0.5);
-	memset(sieve->sieve_array, (int)(log_coeff - 4),
+	if (HIGH_COEFF_SIEVE_LIMIT < target)
+		target = HIGH_COEFF_SIEVE_LIMIT;
+
+	log_target = floor(log(target) / M_LN2 + 0.5);
+	memset(sieve->sieve_array, (int)(log_target - 4),
 			SIEVE_ARRAY_SIZE);
 
 	for (i = 0; i < sieve->num_primes; i++) {
@@ -372,8 +394,10 @@ find_next_ad(sieve_t *sieve, poly_search_t *poly)
 				break;
 
 			/* trial divide the a_d and skip it if it
-			   has any large prime factors */
+			   does not have enough small factors */
 
+			mpz_cdiv_q_ui(poly->tmp2, poly->tmp1,
+				(mp_limb_t)HIGH_COEFF_SIEVE_LIMIT);
 			for (j = p = 0; j < PRECOMPUTED_NUM_PRIMES; j++) {
 				p += prime_delta[j];
 
@@ -390,7 +414,7 @@ find_next_ad(sieve_t *sieve, poly_search_t *poly)
 						break;
 				}
 			}
-			if (mpz_cmp_ui(poly->tmp1, (mp_limb_t)1))
+			if (mpz_cmp(poly->tmp1, poly->tmp2) > 0)
 				continue;
 
 			/* a_d is okay, search it */
