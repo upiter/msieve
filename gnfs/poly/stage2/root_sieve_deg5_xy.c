@@ -69,6 +69,9 @@ do_sieving(sieve_root_t *r, uint16 *sieve,
 	uint32 step = r->step;
 	uint32 resclass = r->resclass;
 
+	if (resclass >= step)
+		resclass %= step;
+
 	for (i = 0; i < dim; i++) {
 
 		uint32 ri = start;

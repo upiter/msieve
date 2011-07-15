@@ -72,7 +72,12 @@ do_sieving(sieve_root_t *r, uint16 *sieve,
 	uint32 start = r->start;
 	uint32 step = r->step;
 	uint32 resclass = r->resclass;
-	uint32 resclass2 = mp_modmul_1(resclass, resclass, step);
+	uint32 resclass2;
+
+	if (resclass >= step)
+		resclass %= step;
+
+	resclass2 = mp_modmul_1(resclass, resclass, step);
 
 	for (i = 0; i < dim; i++) {
 
