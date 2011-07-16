@@ -85,13 +85,19 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	   size is, so favor smaller special-q and try 
 	   to make the range of other rational factors large */
 
+#define MAX_SPECIAL_Q ((uint32)(-1))
+#define MAX_OTHER ((uint32)(-1))
 #define SPECIAL_Q_SCALE 16
-	p_size_max = MIN(coeff_max / skewness_min,
-			 (double)((uint32)(-1) / SPECIAL_Q_SCALE) *
-				 ((uint32)(-1) / P_SCALE - 1) *
-				 ((uint32)(-1) / P_SCALE - 1));
 
-	special_q_min = MIN((uint32)(-1) / SPECIAL_Q_SCALE,
+	p_size_max = MIN(coeff_max / skewness_min,
+			 (double)(MAX_SPECIAL_Q / SPECIAL_Q_SCALE) *
+				 (MAX_OTHER / P_SCALE - 1) *
+				 (MAX_OTHER / P_SCALE - 1));
+
+	/* 2*sieve_size must fit in a float */
+	p_size_max = MIN(p_size_max, sqrt(FLT_MAX / cutoff / 2.001));
+
+	special_q_min = MIN(MAX_SPECIAL_Q / SPECIAL_Q_SCALE,
 				p_size_max / 7200000 / 7200000);
 	if (special_q_min > 1) {
 		special_q_min = MAX(special_q_min, 251);
@@ -119,6 +125,10 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	   special q for larger inputs, adjusted implictly 
 	   for the polynomial degree */
 
+#define MAX_SPECIAL_Q ((uint32)(-1))
+#define MAX_OTHER ((uint32)1 << 27)
+#define SPECIAL_Q_SCALE 5
+
 	/* hash_iters determines how often the hashtable code
 	   will run. This is the most important factor in the
 	   speed of the hashtable code, and is used to control
@@ -134,6 +144,12 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	   appear to yield decent results for problems
 	   currently supported by msieve */
 
+	/* note: don't make hash_iters too small here. At the
+	   high end of the special-q range, the number of
+	   hashtable iterations drops by a factor of
+	   SPECIAL_Q_SCALE, so set hash_iters at least twice
+	   SPECIAL_Q_SCALE for best performance */
+
 	/* start with a baseline value */
 
 	if (degree < 5)
@@ -142,16 +158,16 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 		hash_iters = 50; /* seems reasonable */
 
 	/* make sure we'll have plenty of progressions to
-	   hash. The size of special_q is inversely
+	   hash. The size of special-q is inversely
 	   proportional to the size of hash_iters, and we
 	   want that the size of the 'other' factors
 	   remaining in the leading rational coefficient
-	   (after taking out special_q) will be large
+	   (after taking out special-q) will be large
 	   enough. If, for instance, the norm max or the
 	   high coeff is extremely large, a poor selection
 	   of hash_iters may leave us with few or no
 	   progressions to use. Consequently, we limit
-	   special_q to be about as large as the product of
+	   special-q to be about as large as the product of
 	   the 'other' factors */
 
 	p_size_max = coeff_max / skewness_min;
@@ -172,12 +188,10 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 
 	/* first limit hash_iters to keep l/special_q small.
 	   The below limits the size of 'other' factors to
-	   be smaller than 2^27, though this is deliberately
-	   over-estimated */
+	   be smaller than MAX_OTHER, though this is
+	   deliberately over-estimated */
 
-	hash_iters = MIN(hash_iters, (double)((uint32)1 << 27) *
-					     ((uint32)1 << 27) *
-					     cutoff);
+	hash_iters = MIN(hash_iters, (double)MAX_OTHER * MAX_OTHER * cutoff);
 
 	/* next limit hash_iters to keep 2*(l/special_q)^2*cutoff
 	   small. Again, we over-estimate a little bit */
@@ -185,7 +199,6 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	hash_iters = MIN(hash_iters, sqrt((double)(uint64)(-1) *
 						  cutoff));
 
-#define SPECIAL_Q_SCALE 5
 	/* the factor of 2 below comes from the fact that the
 	   total length of the line sieved is 2*sieve_size, since
 	   both sides of the origin are sieved at once */
@@ -193,17 +206,18 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	special_q_min = 2 * P_SCALE * P_SCALE * cutoff *
 			p_size_max / hash_iters;
 
-	/* special_q must be <2^32. If it is too big, we can
-	   reduce the problem size a bit further to compensate */
+	/* special-q must be < MAX_SPECIAL_Q. If it is too
+	   big, we can reduce the problem size a bit further
+	   to compensate */
 
-	if (special_q_min > (uint32)(-1) / SPECIAL_Q_SCALE) {
+	if (special_q_min > MAX_SPECIAL_Q / SPECIAL_Q_SCALE) {
 
-		p_size_max *= (uint32)(-1) / special_q_min / SPECIAL_Q_SCALE;
-		special_q_min = (uint32)(-1) / SPECIAL_Q_SCALE;
+		p_size_max *= MAX_SPECIAL_Q / SPECIAL_Q_SCALE / special_q_min;
+		special_q_min = MAX_SPECIAL_Q / SPECIAL_Q_SCALE;
 	}
 
 	if (special_q_min > 1) {
-		/* very small ranges of special q might be empty, so
+		/* very small ranges of special-q might be empty, so
 		   impose a limit on the minimum size */
 
 		special_q_min = MAX(special_q_min, 11);
