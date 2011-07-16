@@ -542,7 +542,7 @@ sieve_lattice_gpu_nosq(msieve_obj *obj, lattice_fb_t *L)
 	if (2 * L->poly->sieve_size > FLT_MAX) {
 		/* sieve_size must fit in float */
 		printf("error: sieve_size too large "
-			"in sieve_lattice_gpu_sq()\n");
+			"in sieve_lattice_gpu_nosq()\n");
 		exit(1);
 	}
 
