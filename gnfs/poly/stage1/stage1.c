@@ -263,8 +263,8 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	poly->p_size_max = p_size_max;
 
 	/* Kleinjung's improved algorithm computes a 'correction'
-	   to m, and the new m will cause a_{d-2} to be small enough
-	   if it is smaller than sieve_size */
+	   to m0, and the coefficient a_{d-2} will be small enough
+	   if the correction is smaller than sieve_size */
 
 	poly->sieve_size = p_size_max * p_size_max * cutoff;
 	mpz_set_d(poly->mp_sieve_size, poly->sieve_size);
