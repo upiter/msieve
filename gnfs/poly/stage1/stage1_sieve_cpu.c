@@ -96,7 +96,6 @@ typedef struct {
 typedef struct {
 	uint32 num_p;
 	uint32 num_roots;
-	uint32 p_size;
 	uint32 p_size_alloc;
 	p_packed_t *curr;
 	p_packed_t *packed_array;
@@ -123,7 +122,7 @@ p_packed_free(p_packed_var_t *s)
 static void
 p_packed_reset(p_packed_var_t *s)
 {
-	s->num_p = s->num_roots = s->p_size = 0;
+	s->num_p = s->num_roots = 0;
 	s->curr = s->packed_array;
 }
 
@@ -144,15 +143,23 @@ store_p_packed(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 	p_packed_var_t *s = (p_packed_var_t *)extra;
 	p_packed_t *curr;
 
-	if ((p_packed_t *)((uint64 *)s->curr + s->p_size) + 1 >=
-			s->packed_array + s->p_size_alloc ) {
+	if ((void *)s->curr >=
+	    (void *)(s->packed_array + s->p_size_alloc - 1)) {
+		void *oldptr = (void *)s->packed_array;
 
+		/* we have to be careful here because reallocating
+		   the array will cause memory to change out from
+		   under s->curr, and we cannot index into the new
+		   array because its entries are stored in
+		   compressed format */
+	   
 		s->p_size_alloc *= 2;
 		s->packed_array = (p_packed_t *)xrealloc(
 						s->packed_array,
 						s->p_size_alloc *
 						sizeof(p_packed_t));
-		s->curr = (p_packed_t *)((uint64 *)s->packed_array + s->p_size);
+		s->curr = (p_packed_t *)((void *)s->packed_array +
+					((void *)s->curr - oldptr));
 	}
 
 	curr = s->curr;
@@ -168,18 +175,9 @@ store_p_packed(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 	curr->mont_w = montmul32_w((uint32)curr->p2);
 	curr->mont_r = montmul64_r(curr->p2);
 
-	/* point to the next structure to fill in. We have to
-	   be careful here because reallocating the array will cause
-	   memory to change out from under s->curr_p, and we cannot
-	   safely index into the new array because its entries are 
-	   stored in compressed format. Instead store the uint64
-	   offset where curr_p should go */
-	   
 	s->num_p++;
 	s->num_roots += num_roots;
 	s->curr = p_packed_next(s->curr);
-	s->p_size = ((uint8 *)s->curr - 
-			(uint8 *)s->packed_array) / sizeof(uint64);
 }
 
 /*------------------------------------------------------------------------*/
