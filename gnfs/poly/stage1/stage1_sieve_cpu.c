@@ -182,9 +182,9 @@ store_p_packed(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 
 /*------------------------------------------------------------------------*/
 static uint32
-handle_special_q(msieve_obj *obj, hashtable_t *hashtable, 
-		p_packed_var_t *hash_array, lattice_fb_t *L, 
-		uint32 special_q, uint64 special_q_root,
+handle_special_q(msieve_obj *obj, hash_entry_t *hashtable,
+		uint32 hashtable_size, p_packed_var_t *hash_array,
+		lattice_fb_t *L, uint32 special_q, uint64 special_q_root,
 		uint64 block_size, uint64 *inv_array)
 {
 	/* perform the hashtable search for a single special-q
@@ -201,6 +201,7 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 	uint64 sieve_size;
 	uint64 sieve_start = 0;
 	uint32 num_blocks = 0;
+	uint32 hashmask = ((uint32)1 << hashtable_size) - 1;
 
 	if (2 * L->poly->sieve_size / special_q2 > (uint64)(-1)) {
 		printf("error: sieve size too large "
@@ -269,7 +270,7 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 
 	/* sieve is ready to go; we proceed with the hashtable
 	   one block at a time. The block size is chosen to be
-	   the minimum value of p in hash_array, so that for each
+	   the minimum value of p2 in hash_array, so that for each
 	   block a given root for a given p contributes at most
 	   one entry to the hashtable. The hashtable is refilled
 	   from scratch when the next block runs */
@@ -279,7 +280,8 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 						sieve_size - sieve_start);
 
 		tmp = hash_array->packed_array;
-		hashtable_reset(hashtable);
+		memset(hashtable, 0, sizeof(hash_entry_t) *
+				((uint32)1 << hashtable_size));
 
 		for (i = 0; i < num_entries; i++) {
 
@@ -289,17 +291,15 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 				uint64 offset = tmp->roots[j].offset;
 
 				if (offset < sieve_end) {
-					hash_entry_t *hit;
-					hash_entry_t curr_entry;
-					uint32 already_seen = 0;
+					uint32 key = offset & hashmask;
 
-					curr_entry.offset = offset;
+					while (hashtable[key].p != 0 &&
+					      hashtable[key].offset != offset) {
 
-					hit = (hash_entry_t *)hashtable_find(
-							hashtable, &curr_entry,
-							NULL, &already_seen);
+						key = (key + 1) & hashmask;
+					}
 
-					if (already_seen) {
+					if (hashtable[key].p != 0) {
 
 						/* collision found! The sieve
 						   offset 'res' is in 'special q
@@ -313,16 +313,16 @@ handle_special_q(msieve_obj *obj, hashtable_t *hashtable,
 						res.w[3] = 0;
 
 						handle_collision(L->poly,
-								hit->p, tmp->p, 
-								special_q,
-								special_q_root,
-							       	res);
+						    tmp->p, hashtable[key].p,
+						    special_q, special_q_root,
+						    res);
 					}
 					else {
-						/* no hit; add p to the table
-						   at this offset */
+						/* no hit; insert this offset
+						   for root j into the table */
 
-						hit->p = tmp->p;
+						hashtable[key].p = tmp->p;
+						hashtable[key].offset = offset;
 					}
 
 					/* compute the next offset 
@@ -402,15 +402,16 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 	uint32 quit = 0;
 	p_packed_var_t specialq_array;
 	p_packed_var_t hash_array;
-	hashtable_t hashtable;
+	hash_entry_t *hashtable;
 	uint32 num_p;
+	uint32 num_roots;
+	uint32 hashtable_size;
 	uint64 block_size;
 	uint64 *invtable = NULL;
 	double cpu_start_time = get_cpu_time();
 
 	p_packed_init(&specialq_array);
 	p_packed_init(&hash_array);
-	hashtable_init(&hashtable, 3, 2);
 	block_size = (uint64)p_min * p_min;
 
 	/* build all the arithmetic progressions */
@@ -422,14 +423,19 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 	}
 
 	num_p = hash_array.num_p;
+	num_roots = hash_array.num_roots;
 #if 1
-	printf("aprogs: %u entries, %u roots\n", num_p, 
-					hash_array.num_roots);
+	printf("aprogs: %u entries, %u roots\n", num_p, num_roots);
 #endif
+
+	hashtable_size = ceil(log(num_roots * 4. / 3.) / M_LN2);
+	hashtable = (hash_entry_t *)xmalloc(sizeof(hash_entry_t) *
+				((uint32)1 << hashtable_size));
+
 	/* handle trivial lattice */
 	if (special_q_min == 1) {
-		quit = handle_special_q(obj, &hashtable, &hash_array,
-				L, 1, 0, block_size, NULL);
+		quit = handle_special_q(obj, hashtable, hashtable_size,
+				&hash_array, L, 1, 0, block_size, NULL);
 		if (quit || special_q_max == 1)
 			goto finished;
 	}
@@ -518,8 +524,8 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 
 			for (j = 0; j < qptr->num_roots; j++) {
 				quit = handle_special_q(obj,
-						&hashtable, &hash_array,
-						L, qptr->p, 
+						hashtable, hashtable_size,
+						&hash_array, L, qptr->p, 
 						qptr->roots[j].start_offset,
 						block_size, invtmp);
 				if (quit)
@@ -539,11 +545,12 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 finished:
 #if 1
 	printf("hashtable: %u entries, %5.2lf MB\n", 
-			hashtable_get_num(&hashtable),
-			(double)hashtable_sizeof(&hashtable) / 1048576);
+			(uint32)1 << hashtable_size,
+			(double)sizeof(hash_entry_t) *
+				((uint32)1 << hashtable_size) / 1048576);
 #endif
 	free(invtable);
-	hashtable_free(&hashtable);
+	free(hashtable);
 	p_packed_free(&specialq_array);
 	p_packed_free(&hash_array);
 	L->deadline -= get_cpu_time() - cpu_start_time;
