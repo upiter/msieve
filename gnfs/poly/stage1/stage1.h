@@ -219,17 +219,17 @@ typedef struct {
 	uint32 num_factors;
 
 	/* index into aprog list for each distinct prime p_i */
-	uint32 factors[MAX_P_FACTORS + 1];
+	uint32 curr_factor[MAX_P_FACTORS + 1];
 
 	/* exponent e_i of each prime p_i */
-	uint32 powers[MAX_P_FACTORS + 1];
+	uint32 curr_power[MAX_P_FACTORS + 1];
 
 	/* the 'running product' of p_1^e_1..p_{i-1}^e_{i-1} for
 	   each i, or 1 if i==1 */
-	uint32 cofactors[MAX_P_FACTORS + 1];
+	uint32 curr_prod[MAX_P_FACTORS + 1];
 
 	/* number of roots in each 'running product' */
-	uint32 cofactor_roots[MAX_P_FACTORS + 1];
+	uint32 curr_num_roots[MAX_P_FACTORS + 1];
 } p_enum_t;
 
 #define ALGO_ENUM  0x1

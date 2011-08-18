@@ -200,6 +200,11 @@ sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 	s->num_roots_max = num_roots_max;
 	s->avail_algos = 0;
 
+	if (num_roots_max == 0) {
+		/* nothing to do */
+		return;
+	}
+
 	/* set up for finding arithmetic progressions by
 	   enumerating combinations of small factors p_i
 	   from the aprog list */
@@ -211,11 +216,11 @@ sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
 
 		/* clear the enum state */
 
-		p_enum->factors[0] = 0;
+		p_enum->curr_factor[0] = 0;
 		p_enum->num_factors = 0;
-		p_enum->powers[0] = 0;
-		p_enum->cofactors[0] = 1;
-		p_enum->cofactor_roots[0] = 1;
+		p_enum->curr_power[0] = 0;
+		p_enum->curr_prod[0] = 1;
+		p_enum->curr_num_roots[0] = 1;
 
 		for (i = 0; i < num_aprogs; i++) {
 			aprog_t *a = aprogs + i;
@@ -296,34 +301,18 @@ lift_roots(sieve_fb_t *s, poly_search_t *poly, uint32 p, uint32 num_roots)
 
 /*------------------------------------------------------------------------*/
 static uint32
-get_enum_roots(sieve_fb_t *s, uint32 p)
+combine_roots(sieve_fb_t *s, uint32 p,
+		uint32 num_factors, uint32 p_i[MAX_P_FACTORS],
+		uint32 num_roots[MAX_P_FACTORS],
+		uint32 roots[MAX_P_FACTORS][MAX_POLYSELECT_DEGREE])
 {
 	/* given a composite p and its factors p_i,
 	   combine the roots mod p_i into roots mod
 	   p using the Chinese Remainder Theorem */
 
-	uint32 i, j, i0, i1, i2, i3, i4, i5, i6;
-	aprog_t *aprogs = s->aprog_data.aprogs;
-	p_enum_t *p_enum = &s->p_enum;
-	uint32 *factors = p_enum->factors;
-	uint32 *powers = p_enum->powers;
-	uint32 num_factors = p_enum->num_factors;
-	uint32 num_roots_max = s->num_roots_max;
-
-	uint32 num_roots[MAX_P_FACTORS];
+	uint32 i, i0, i1, i2, i3, i4, i5, i6;
 	uint32 prod[MAX_P_FACTORS];
-	uint32 roots[MAX_P_FACTORS][MAX_POLYSELECT_DEGREE];
 	uint64 accum[MAX_P_FACTORS + 1];
-
-	for (i = 0; i < num_factors; i++) {
-		aprog_t *a = aprogs + factors[i];
-
-		/* p_i may be a power */
-
-		num_roots[i] = a->num_roots;
-		for (j = 0; j < num_roots[i]; j++)
-			roots[i][j] = a->roots[powers[i]][j];
-	}
 
 	if (num_factors == 1) { 
 		/* no CRT needed */
@@ -331,17 +320,14 @@ get_enum_roots(sieve_fb_t *s, uint32 p)
 		for (i = 0; i < num_roots[0]; i++)
 			s->roots[i] = roots[0][i];
 
-		return MIN(num_roots[0], num_roots_max);
+		return MIN(num_roots[0], s->num_roots_max);
 	}
 
 	/* fill in auxiliary CRT quantities */
 
 	for (i = 0; i < num_factors; i++) {
-		aprog_t *a = aprogs + factors[i];
-
-		prod[i] = p / a->power[powers[i]];
-		prod[i] *= mp_modinv_1(prod[i] % a->power[powers[i]],
-					a->power[powers[i]]);
+		prod[i] = p / p_i[i];
+		prod[i] *= mp_modinv_1(prod[i] % p_i[i], p_i[i]);
 	}
 	accum[i] = 0;
 
@@ -378,13 +364,42 @@ get_enum_roots(sieve_fb_t *s, uint32 p)
 			accum[0] = accum[1] + (uint64)prod[0] * roots[0][i0];
 			s->roots[i++] = accum[0] % p;
 
-			if (i == num_roots_max)
+			if (i == s->num_roots_max)
 				goto finished;
 		}}}}}}}
 	}
 
 finished:
 	return i;
+}
+
+/*------------------------------------------------------------------------*/
+static uint32
+get_enum_roots(sieve_fb_t *s)
+{
+	uint32 i, j;
+	aprog_t *aprogs = s->aprog_data.aprogs;
+	p_enum_t *p_enum = &s->p_enum;
+	uint32 *curr_factor = p_enum->curr_factor;
+	uint32 *curr_power = p_enum->curr_power;
+	uint32 num_factors = p_enum->num_factors;
+	uint32 p = p_enum->curr_prod[num_factors];
+	uint32 p_i[MAX_P_FACTORS];
+	uint32 num_roots[MAX_P_FACTORS];
+	uint32 roots[MAX_P_FACTORS][MAX_POLYSELECT_DEGREE];
+
+	for (i = 0; i < num_factors; i++) {
+		aprog_t *a = aprogs + curr_factor[i];
+
+		/* p_i may be a power */
+
+		p_i[i] = a->power[curr_power[i]];
+		num_roots[i] = a->num_roots;
+		for (j = 0; j < num_roots[i]; j++)
+			roots[i][j] = a->roots[curr_power[i]][j];
+	}
+
+	return combine_roots(s, p, num_factors, p_i, num_roots, roots);
 }
 
 /*------------------------------------------------------------------------*/
@@ -412,36 +427,36 @@ get_next_enum(sieve_fb_t *s)
 	   is necessary */
 
 	p_enum_t *p_enum = &s->p_enum;
-	uint32 *factors = p_enum->factors;
-	uint32 *powers = p_enum->powers;
-	uint32 *cofactors = p_enum->cofactors;
-	uint32 *cofac_roots = p_enum->cofactor_roots;
+	uint32 *curr_factor = p_enum->curr_factor;
+	uint32 *curr_power = p_enum->curr_power;
+	uint32 *curr_prod = p_enum->curr_prod;
+	uint32 *curr_num_roots = p_enum->curr_num_roots;
 
 	while (1) {
 
 		uint32 i = p_enum->num_factors;
-		uint32 power_up = (i && factors[i] == factors[i - 1]);
-		uint32 num_roots = cofac_roots[i];
+		uint32 power_up = (i && curr_factor[i] == curr_factor[i - 1]);
+		uint32 num_roots = curr_num_roots[i];
 		aprog_t *a = NULL;
 
-		if (factors[i] < s->aprog_data.num_aprogs)
-			a = s->aprog_data.aprogs + factors[i];
+		if (curr_factor[i] < s->aprog_data.num_aprogs)
+			a = s->aprog_data.aprogs + curr_factor[i];
 
-		if (a != NULL && cofactors[i] <= a->cofactor_max
-		    && !(power_up && ++powers[i - 1] >= a->max_power)
+		if (a != NULL && curr_prod[i] <= a->cofactor_max
+		    && !(power_up && ++curr_power[i - 1] >= a->max_power)
 		    && (power_up || i < MAX_P_FACTORS)) {
 
-			uint32 p = cofactors[i] * a->p;
+			uint32 p = curr_prod[i] * a->p;
 
 			if (!power_up) {
 				p_enum->num_factors = ++i;
 				num_roots *= a->num_roots;
-				cofac_roots[i] = num_roots;
+				curr_num_roots[i] = num_roots;
 			}
 
-			cofactors[i] = p;
-			factors[i] = 0;
-			powers[i] = 0;
+			curr_prod[i] = p;
+			curr_factor[i] = 0;
+			curr_power[i] = 0;
 
 			if (p >= s->p_min && num_roots >= s->num_roots_min)
 				return p;
@@ -449,8 +464,8 @@ get_next_enum(sieve_fb_t *s)
 		else if (i) {
 
 			i--;
-			factors[i]++;
-			powers[i] = 0;
+			curr_factor[i]++;
+			curr_power[i] = 0;
 			p_enum->num_factors = i;
 		}
 		else {
@@ -481,7 +496,7 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 				continue;
 			}
 
-			num_roots = get_enum_roots(s, p);
+			num_roots = get_enum_roots(s);
 		}
 		else if (s->avail_algos & ALGO_PRIME) {
 
