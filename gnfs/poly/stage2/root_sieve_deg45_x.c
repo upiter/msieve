@@ -358,7 +358,7 @@ xdata_init(sieve_prime_t *lattice_primes, xdata_t *xdata,
 static void
 do_sieving(xdata_t *xdata)
 {
-	uint32 i, j;
+	uint32 i, j, k;
 	uint32 num_powers = xdata->num_powers;
 	uint16 *sieve = xdata->sieve;
 	uint32 sieve_size = xdata->sieve_size;
@@ -378,10 +378,8 @@ do_sieving(xdata_t *xdata)
 			xprog_t *curr_prog = roots + j;
 			uint32 start = curr_prog->start;
 
-			while (start < sieve_size) {
-				sieve[start] += contrib;
-				start += p;
-			}
+			for (k = start; k < sieve_size; k += p)
+				sieve[k] += contrib;
 
 			curr_prog->start = mp_modsub_1(start,
 					curr_prog->stride_y, p);
