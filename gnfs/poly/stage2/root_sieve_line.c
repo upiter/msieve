@@ -228,13 +228,117 @@ prepare_sieve_line(root_sieve_t *rs)
 }
 
 /*-------------------------------------------------------------------------*/
+static void 
+fill_contrib_array(root_sieve_t *rs, sieve_power_t *sp,
+		uint16 *contrib_array, uint32 contrib_array_size,
+		uint32 lattice_mod, uint32 power)
+{
+	uint32 i, j;
+	sieve_x_t *x = &rs->xdata;
+	uint16 *inv = rs->sieve_block;
+	uint32 num_roots = sp->num_roots;
+	uint16 contrib = sp->sieve_contrib;
+	uint32 xmin_mod;
+	uint32 y_mod;
+	uint32 z_mod;
+	uint32 resclass_mod;
+	int32 tmpval;
+
+	resclass_mod = mpz_tdiv_ui(x->resclass, power);
+	xmin_mod = mpz_fdiv_ui(x->x_base, power);
+	y_mod = mpz_fdiv_ui(rs->curr_y, power);
+
+	tmpval = rs->curr_z % power;
+	z_mod = (tmpval < 0) ? tmpval + (int32)power : tmpval;
+
+	for (i = 0, j = resclass_mod; i < power; i++) {
+		inv[j] = i;
+		j = mp_modadd_1(j, lattice_mod, power);
+	}
+
+	for (i = 0; i < num_roots; i++) {
+		sieve_root_t *r = sp->roots + i;
+		uint32 start;
+		uint32 resclass = r->resclass;
+
+		start = mp_modadd_1(y_mod, 
+				    resclass * z_mod % power, 
+				    power);
+		start = mp_modsub_1(r->start, 
+				    resclass * start % power, 
+				    power);
+		start = mp_modsub_1(start, xmin_mod, power);
+		start = inv[start];
+
+		while (start < contrib_array_size) {
+			contrib_array[start] += contrib;
+			start += power;
+		}
+	}
+}
+
+/*-------------------------------------------------------------------------*/
+static void 
+fill_contrib_array_special(root_sieve_t *rs, sieve_power_t *sp,
+		uint16 *contrib_array, uint32 contrib_array_size,
+		uint32 lattice_mod, uint32 power,
+		uint32 common_factor)
+{
+	uint32 i;
+	sieve_x_t *x = &rs->xdata;
+	uint32 num_roots = sp->num_roots;
+	uint16 contrib = sp->sieve_contrib;
+	uint32 xmin_mod;
+	uint32 y_mod;
+	uint32 z_mod;
+	uint32 resclass_mod;
+	uint32 reduced_lattice = lattice_mod / common_factor;
+	uint32 reduced_power = power / common_factor;
+	uint32 inv = mp_modinv_1(reduced_lattice, reduced_power);
+	int32 tmpval;
+
+	resclass_mod = mpz_tdiv_ui(x->resclass, power);
+	xmin_mod = mpz_fdiv_ui(x->x_base, power);
+	y_mod = mpz_fdiv_ui(rs->curr_y, power);
+
+	tmpval = rs->curr_z % power;
+	z_mod = (tmpval < 0) ? tmpval + (int32)power : tmpval;
+
+	for (i = 0; i < num_roots; i++) {
+		sieve_root_t *r = sp->roots + i;
+		uint32 start;
+		uint32 resclass = r->resclass;
+		uint32 quot, rem;
+
+		start = mp_modadd_1(y_mod, 
+				    resclass * z_mod % power, 
+				    power);
+		start = mp_modsub_1(r->start, 
+				    resclass * start % power, 
+				    power);
+		start = mp_modsub_1(start, xmin_mod, power);
+		start = mp_modsub_1(start, resclass_mod, power);
+
+		quot = start / common_factor;
+		rem = start % common_factor;
+		if (rem)
+			continue;
+		start = quot * inv % reduced_power;
+
+		while (start < contrib_array_size) {
+			contrib_array[start] += contrib;
+			start += reduced_power;
+		}
+	}
+}
+
+/*-------------------------------------------------------------------------*/
 static void
 prepare_sieve_lattice(root_sieve_t *rs)
 {
-	uint32 i, j, k, m;
+	uint32 i, j;
 	sieve_prime_t *primes = rs->primes;
 	uint32 num_primes = rs->num_primes;
-	uint16 *inv = rs->sieve_block;
 	sieve_x_t *x = &rs->xdata;
 
 	for (i = 0; i < num_primes; i++) {
@@ -250,72 +354,27 @@ prepare_sieve_lattice(root_sieve_t *rs)
 
 			sieve_power_t *sp = curr_prime->powers + j;
 			uint32 power = sp->power;
-			uint32 num_roots = sp->num_roots;
-			uint16 contrib = sp->sieve_contrib;
-			uint32 mod_lattice = mpz_tdiv_ui(x->mp_lattice_size,
+			uint32 common_factor;
+			uint32 lattice_mod = mpz_tdiv_ui(x->mp_lattice_size,
 							power);
-			uint32 xmin_mod;
-			uint32 y_mod;
-			uint32 z_mod;
-			uint32 resclass_mod;
-			int32 tmpval;
-			uint32 default_step;
 
-			if (mod_lattice == 0)
+			if (lattice_mod == 0)
 				continue;
 
-			resclass_mod = mpz_tdiv_ui(x->resclass, power);
-			xmin_mod = mpz_fdiv_ui(x->x_base, power);
-			y_mod = mpz_fdiv_ui(rs->curr_y, power);
-			tmpval = rs->curr_z % power;
-			z_mod = (tmpval < 0) ? tmpval + (int32)power : tmpval;
+			common_factor = mp_gcd_1(lattice_mod, power);
 
-			default_step = power / mp_gcd_1(mod_lattice, power);
-
-			for (k = 0; k < power; k++)
-				inv[k] = power;
-
-			for (k = resclass_mod, m = 0; m < power; m++) {
-				if (inv[k] == power)
-					inv[k] = m;
-				k = mp_modadd_1(k, mod_lattice, power);
+			if (common_factor == 1) {
+				fill_contrib_array(rs, sp, 
+						contrib_array,
+						contrib_array_size, 
+						lattice_mod, power);
 			}
-
-			for (k = 0; k < num_roots; k++) {
-				sieve_root_t *r = sp->roots + k;
-				uint32 start;
-				uint32 step = r->step;
-				uint32 resclass = r->resclass;
-
-				start = mp_modadd_1(y_mod, 
-						    resclass * z_mod % power, 
-						    power);
-				start = mp_modsub_1(r->start, 
-						    resclass * start % power, 
-						    power);
-				start = mp_modsub_1(start, xmin_mod, power);
-
-				if (step == power) {
-					start = inv[start];
-					if (start == power)
-						continue;
-					step = default_step;
-				}
-				else {
-					uint32 mult = power / step;
-
-					start = start % step;
-					start = inv[mult * start];
-					if (start == power)
-						continue;
-					step /= mp_gcd_1(mod_lattice, step);
-					start = start % step;
-				}
-
-				while (start < contrib_array_size) {
-					contrib_array[start] += contrib;
-					start += step;
-				}
+			else {
+				fill_contrib_array_special(rs, sp, 
+						contrib_array,
+						contrib_array_size, 
+						lattice_mod, power,
+						common_factor);
 			}
 		}
 
