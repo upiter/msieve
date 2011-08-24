@@ -510,6 +510,14 @@ init_ad_sieve(sieve_t *sieve, poly_search_t *poly)
 
 /*------------------------------------------------------------------------*/
 static void
+free_ad_sieve(sieve_t *sieve)
+{
+	free(sieve->primes);
+	free(sieve->sieve_array);
+}
+
+/*------------------------------------------------------------------------*/
+static void
 search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 {
 	uint32 digits = mpz_sizeinbase(poly->N, 10);
@@ -583,6 +591,8 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		if (deadline && cumulative_time > deadline)
 			break;
 	}
+
+	free_ad_sieve(&ad_sieve);
 }
 
 /*------------------------------------------------------------------------*/
