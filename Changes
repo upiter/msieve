@@ -1,9 +1,21 @@
 Version 1.50:
-	- Added a second size optimization pass when searching for
-		degree 6 polynomials. This makes stage 2 much more
-		reliable for very large problems
-	- Patches from Jayson King: use a sieve to find larger leading
-		algebraic coefficients
+	- NFS polynomial selection changes:
+		- Added a second size optimization pass when searching for
+		  degree 6 polynomials. This makes stage 2 much more
+		  reliable for very large problems
+		- Fixed a bug translating the degree 6 root sieve to
+		  degree 5
+		- Fixed a long-standing problem initializing the root
+		  sieve so that it will correctly detect roots modulo
+		  small prime powers
+		- Patches from Jayson King: use a custom hashtable structure
+		  to greatly speed up the stage 1 CPU code
+		- Patches from Jayson King: use a sieve to find larger 
+		  leading algebraic coefficients
+		- Patch from Jayson King: allow stage 2 to be interrupted
+		  with Ctrl-C
+	- Patch from Jayson King: fix longstanding problems that would
+		crop up rarley in tinyQS code
 
 
 Version 1.49: 6/16/11
