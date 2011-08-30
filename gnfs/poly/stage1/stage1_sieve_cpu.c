@@ -145,7 +145,7 @@ store_p_packed(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 
 	if ((void *)s->curr >=
 	    (void *)(s->packed_array + s->p_size_alloc - 1)) {
-		void *oldptr = (void *)s->packed_array;
+		uint32 *oldptr = (uint32 *)s->packed_array;
 
 		/* we have to be careful here because reallocating
 		   the array will cause memory to change out from
@@ -158,8 +158,8 @@ store_p_packed(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 						s->packed_array,
 						s->p_size_alloc *
 						sizeof(p_packed_t));
-		s->curr = (p_packed_t *)((void *)s->packed_array +
-					((void *)s->curr - oldptr));
+		s->curr = (p_packed_t *)((uint32 *)s->packed_array +
+					((uint32 *)s->curr - oldptr));
 	}
 
 	curr = s->curr;
