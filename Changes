@@ -14,6 +14,9 @@ Version 1.50:
 		  leading algebraic coefficients
 		- Patch from Jayson King: allow stage 2 to be interrupted
 		  with Ctrl-C
+		- Fixed a bug that would cause -np1 to generate lots of
+		  spurious hits in the GPU version when the sieve size is
+		  larger than 127 bits
 	- Patch from Jayson King: fix longstanding problems that would
 		crop up rarley in tinyQS code
 
