@@ -16,9 +16,10 @@ $Id$
 #include "gnfs.h"
 
 /*--------------------------------------------------------------------*/
-static uint32 divide_factor_out(mp_t *polyval, uint64 p, 
+static uint32 divide_factor_out(mpz_t polyval, uint64 p, 
 				uint8 *factors, uint32 *array_size_in,
-				uint32 *num_factors, uint32 compress) {
+				uint32 *num_factors, uint32 compress,
+				mpz_t tmp1, mpz_t tmp2, mpz_t tmp3) {
 
 	/* read the rational factors. Note that the following
 	   will work whether a given factor appears only once
@@ -29,26 +30,25 @@ static uint32 divide_factor_out(mp_t *polyval, uint64 p,
 	uint32 multiplicity = 0;
 
 	if (p < ((uint64)1 << 32)) {
-		while (mp_mod_1(polyval, p) == 0) {
-			mp_divrem_1(polyval, p, polyval);
+		while (1) {
+			uint32 rem = mpz_tdiv_q_ui(tmp1, polyval, p);
+			if (rem != 0 || mpz_cmp_ui(tmp1, 0) == 0)
+				break;
+
 			multiplicity++;
+			mpz_swap(tmp1, polyval);
 		}
 	}
 	else {
-		mp_t q, r, den;
-
-		mp_clear(&den);
-		den.nwords = 2;
-		den.val[0] = (uint32)p;
-		den.val[1] = (uint32)(p >> 32);
-
+		uint64_2gmp(p, tmp1);
 		while (1) {
-			mp_divrem(polyval, &den, &q, &r);
-			if (mp_is_zero(&q) || !mp_is_zero(&r))
+			mpz_tdiv_qr(tmp2, tmp3, polyval, tmp1);
+			if (mpz_cmp_ui(tmp3, 0) != 0 || 
+			    mpz_cmp_ui(tmp2, 0) == 0)
 				break;
 
-			mp_copy(&q, polyval);
 			multiplicity++;
+			mpz_swap(tmp2, polyval);
 		}
 	}
 	if (i + multiplicity >= TEMP_FACTOR_LIST_SIZE)
@@ -73,7 +73,7 @@ static uint32 divide_factor_out(mp_t *polyval, uint64 p,
 /*--------------------------------------------------------------------*/
 int32 nfs_read_relation(char *buf, factor_base_t *fb, 
 			relation_t *r, uint32 *array_size_out,
-			uint32 compress) {
+			uint32 compress, mpz_t polyval) {
 
 	/* note that only the polynomials within the factor
 	   base need to be initialized */
@@ -83,7 +83,8 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 	int64 a, atmp;
 	uint32 b;
 	char *tmp, *next_field;
-	signed_mp_t polyval;
+	mpz_poly_t *rpoly = &fb->rfb.poly;
+	mpz_poly_t *apoly = &fb->afb.poly;
 	uint32 num_factors_r;
 	uint32 num_factors_a;
 	uint32 array_size = 0;
@@ -122,15 +123,15 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 		if (p == 0 || p >= ((uint64)1 << 32))
 			return -2;
 
-		num_roots = poly_get_zeros(roots, &fb->rfb.poly,
+		num_roots = poly_get_zeros(roots, rpoly,
 						(uint32)p, &high_coeff, 0);
-		if (num_roots != fb->rfb.poly.degree || high_coeff == 0)
+		if (num_roots != rpoly->degree || high_coeff == 0)
 			return -3;
 		array_size = compress_p(factors, p, array_size);
 
-		num_roots = poly_get_zeros(roots, &fb->afb.poly,
+		num_roots = poly_get_zeros(roots, apoly,
 						(uint32)p, &high_coeff, 0);
-		if (num_roots != fb->afb.poly.degree || high_coeff == 0)
+		if (num_roots != apoly->degree || high_coeff == 0)
 			return -4;
 		for (i = 0; i < num_roots; i++) {
 			array_size = compress_p(factors, (uint64)roots[i], 
@@ -155,12 +156,13 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 
 	/* handle a rational factor of -1 */
 
-	eval_poly(&polyval, a, b, &fb->rfb.poly);
-	if (mp_is_zero(&polyval.num))
+	eval_poly(polyval, a, b, rpoly);
+	if (mpz_cmp_ui(polyval, 0) == 0)
 		return -6;
-	if (polyval.sign == NEGATIVE) {
+	if (mpz_cmp_ui(polyval, 0) < 0) {
 		array_size = compress_p(factors, 0, array_size);
 		num_factors_r++;
+		mpz_abs(polyval, polyval);
 	}
 
 	/* read the rational factors (possibly an empty list) */
@@ -168,9 +170,11 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 	if (isxdigit(tmp[1])) {
 		do {
 			p = strtoull(tmp + 1, &next_field, 16);
-			if (p > 1 && divide_factor_out(&polyval.num, p, 
+			if (p > 1 && divide_factor_out(polyval, p, 
 						factors, &array_size,
-						&num_factors_r, compress)) {
+						&num_factors_r, compress,
+						rpoly->tmp1, rpoly->tmp2,
+						rpoly->tmp3)) {
 				return -8;
 			}
 			tmp = next_field;
@@ -186,30 +190,35 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 	/* if there are rational factors still to be accounted
 	   for, assume they are small and find them by trial division */
 
-	for (i = p = 0; !mp_is_one(&polyval.num) && p < 1000; i++) {
+	for (i = p = 0; mpz_cmp_ui(polyval, 1) != 0 && p < 1000; i++) {
 
 		p += prime_delta[i];
-		if (divide_factor_out(&polyval.num, p, factors, 
-				&array_size, &num_factors_r, compress)) {
+		if (divide_factor_out(polyval, p, factors, 
+				&array_size, &num_factors_r, 
+				compress, rpoly->tmp1, 
+				rpoly->tmp2, rpoly->tmp3)) {
 			return -10;
 		}
 	}
 
-	if (!mp_is_one(&polyval.num))
+	if (mpz_cmp_ui(polyval, 1) != 0)
 		return -11;
 
 	/* read the algebraic factors */
 
-	eval_poly(&polyval, a, b, &fb->afb.poly);
-	if (mp_is_zero(&polyval.num))
+	eval_poly(polyval, a, b, apoly);
+	if (mpz_cmp_ui(polyval, 0) == 0)
 		return -12;
+	mpz_abs(polyval, polyval);
 
 	if (isxdigit(tmp[1])) {
 		do {
 			p = strtoull(tmp + 1, &next_field, 16);
-			if (p > 1 && divide_factor_out(&polyval.num, p, 
+			if (p > 1 && divide_factor_out(polyval, p, 
 						factors, &array_size,
-						&num_factors_a, compress)) {
+						&num_factors_a, compress,
+						apoly->tmp1, apoly->tmp2,
+						apoly->tmp3)) {
 				return -13;
 			}
 			tmp = next_field;
@@ -219,16 +228,18 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 	/* if there are algebraic factors still to be accounted
 	   for, assume they are small and find them by trial division */
 
-	for (i = p = 0; !mp_is_one(&polyval.num) && p < 1000; i++) {
+	for (i = p = 0; mpz_cmp_ui(polyval, 1) != 0 && p < 1000; i++) {
 
 		p += prime_delta[i];
-		if (divide_factor_out(&polyval.num, p, factors, 
-				&array_size, &num_factors_a, compress)) {
+		if (divide_factor_out(polyval, p, factors, 
+				&array_size, &num_factors_a, 
+				compress, apoly->tmp1,
+				apoly->tmp2, apoly->tmp3)) {
 			return -14;
 		}
 	}
 
-	if (!mp_is_one(&polyval.num))
+	if (mpz_cmp_ui(polyval, 1) != 0)
 		return -15;
 	
 	r->num_factors_r = num_factors_r;
@@ -487,6 +498,7 @@ static void nfs_get_cycle_relations(msieve_obj *obj,
 	uint8 tmp_factors[COMPRESSED_P_MAX_SIZE];
 	uint32 factor_size;
 	relation_t tmp_relation;
+	mpz_t scratch;
 
 	tmp_relation.factors = tmp_factors;
 
@@ -549,6 +561,7 @@ static void nfs_get_cycle_relations(msieve_obj *obj,
 	i = (uint32)(-1);
 	j = 0;
 	savefile_read_line(buf, sizeof(buf), savefile);
+	mpz_init(scratch);
 	while (!savefile_eof(savefile) && j < num_unique_relidx) {
 		
 		int32 status;
@@ -569,7 +582,8 @@ static void nfs_get_cycle_relations(msieve_obj *obj,
 		}
 
 		status = nfs_read_relation(buf, fb, &tmp_relation, 
-						&factor_size, compress);
+						&factor_size, compress,
+						scratch);
 		if (status) {
 			/* at this point, if the relation couldn't be
 			   read then the filtering stage should have
@@ -599,6 +613,7 @@ static void nfs_get_cycle_relations(msieve_obj *obj,
 	savefile_close(savefile);
 	hashtable_free(&unique_relidx);
 	*rlist_out = rlist;
+	mpz_clear(scratch);
 }
 
 /*--------------------------------------------------------------------*/

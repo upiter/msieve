@@ -678,22 +678,18 @@ static void get_zeros_rec(uint32 *zeros, uint32 shift,
 }
 
 /*------------------------------------------------------------------*/
-static void poly_reduce_mod_p(poly_t res, mp_poly_t *_f, uint32 p) {
+static void poly_reduce_mod_p(poly_t res, mpz_poly_t *_f, uint32 p) {
 
-	uint32 i, j;
+	uint32 i;
 
 	res->degree = _f->degree;
-	for (i = 0; i <= _f->degree; i++) {
-		j = mp_mod_1(&(_f->coeff[i].num), p);
-		if (j > 0 && _f->coeff[i].sign == NEGATIVE)
-			j = p - j;
-		res->coef[i] = j;
-	}
+	for (i = 0; i <= _f->degree; i++)
+		res->coef[i] = mpz_fdiv_ui(_f->coeff[i], p);
 	poly_fix_degree(res);
 }
 
 /*------------------------------------------------------------------*/
-uint32 poly_get_zeros(uint32 *zeros, mp_poly_t *_f, 
+uint32 poly_get_zeros(uint32 *zeros, mpz_poly_t *_f, 
 			uint32 p, uint32 *high_coeff,
 			uint32 count_only) { 
 
@@ -794,7 +790,7 @@ uint32 poly_get_zeros(uint32 *zeros, mp_poly_t *_f,
 
 /*------------------------------------------------------------------*/
 uint32 poly_get_zeros_and_mult(uint32 *zeros, uint32 *mult,
-				mp_poly_t *_f, uint32 p,
+				mpz_poly_t *_f, uint32 p,
 				uint32 *high_coeff) {
 
 	uint32 i;
@@ -857,7 +853,7 @@ static void poly_xpow_pd(poly_t res, uint32 p, uint32 d, poly_t f) {
 }
 
 /*------------------------------------------------------------------*/
-uint32 is_irreducible(mp_poly_t *poly, uint32 p) {
+uint32 is_irreducible(mpz_poly_t *poly, uint32 p) {
 
 	/* this uses Proposition 3.4.4 of H. Cohen, "A Course
 	   in Computational Algebraic Number Theory". The tests
@@ -909,7 +905,7 @@ uint32 is_irreducible(mp_poly_t *poly, uint32 p) {
 /*------------------------------------------------------------------*/
 #define NUM_ISQRT_RETRIES 10000
 
-uint32 inv_sqrt_mod_q(mp_poly_t *res, mp_poly_t *s_in, mp_poly_t *f_in,
+uint32 inv_sqrt_mod_q(mpz_poly_t *res, mpz_poly_t *s_in, mpz_poly_t *f_in,
 			uint32 q, uint32 *rand_seed1, uint32 *rand_seed2) {
 
 	/* find a polynomial res(x) such that (res * res * s_in(x)) == 1 
@@ -923,7 +919,6 @@ uint32 inv_sqrt_mod_q(mp_poly_t *res, mp_poly_t *s_in, mp_poly_t *f_in,
 	poly_t f, s, y0, y1;
 
 	/* initialize */
-	memset(res, 0, sizeof(mp_poly_t));
 	poly_reduce_mod_p(f, f_in, q);
 	poly_reduce_mod_p(s, s_in, q);
 
@@ -1074,22 +1069,8 @@ uint32 inv_sqrt_mod_q(mp_poly_t *res, mp_poly_t *s_in, mp_poly_t *f_in,
 finished:
 	if (y0->degree == 0 && y0->coef[0] == 1) {
 		res->degree = y1->degree;
-		for (i = 0; i <= y1->degree; i++) {
-			signed_mp_t *coeff = res->coeff + i;
-			coeff->sign = POSITIVE;
-			if (y1->coef[i]) {
-				coeff->num.nwords = 1;
-				coeff->num.val[0] = y1->coef[i];
-			}
-		}
-#if 0
-		if(f->degree > 5) {
-			fprintf(stderr,"\n Found inv.sqrt poly {%d,%d,%d,%d, %d,%d,%d,%d} \n",
-			y1->coef[7],y1->coef[6],y1->coef[5],y1->coef[4],
-			y1->coef[3],y1->coef[2],y1->coef[1],y1->coef[0]);
-			fflush(stderr);
-		}
-#endif
+		for (i = 0; i <= y1->degree; i++)
+			mpz_set_ui(res->coeff[i], y1->coef[i]);
 		return 1;
 	}
 

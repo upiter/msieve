@@ -409,9 +409,11 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 	uint64 block_size;
 	uint64 *invtable = NULL;
 	double cpu_start_time = get_cpu_time();
+	mpz_t qprod;
 
 	p_packed_init(&specialq_array);
 	p_packed_init(&hash_array);
+	mpz_init(qprod);
 	block_size = (uint64)p_min * p_min;
 
 	/* build all the arithmetic progressions */
@@ -453,7 +455,6 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		uint32 num_q;
 		p_packed_t *tmp;
 		uint64 *invtmp;
-		mp_t qprod;
 		uint32 batch_q[SPECIALQ_BATCH_SIZE];
 		uint64 batch_q_inv[SPECIALQ_BATCH_SIZE];
 
@@ -479,12 +480,10 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		   need to reduce the size of invtable, is the main
 		   reason the special-q batch size is not bigger */
 
-		mp_clear(&qprod);
-		qprod.nwords = qprod.val[0] = 1;
-
+		mpz_set_ui(qprod, 1);
 		for (i = 0, tmp = qptr; i < num_q; i++) {
 			batch_q[i] = tmp->p;
-			mp_mul_1(&qprod, tmp->p, &qprod);
+			mpz_mul_ui(qprod, qprod, tmp->p);
 			tmp = p_packed_next(tmp);
 		}
 
@@ -502,7 +501,7 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 
 		for (i = 0, tmp = hash_array.packed_array; i < num_p; i++) {
 
-			if (mp_gcd_1(mp_mod_1(&qprod, tmp->p), tmp->p) == 1)
+			if (mp_gcd_1(mpz_tdiv_ui(qprod, tmp->p), tmp->p) == 1)
 				batch_invert(batch_q, num_q, 
 						batch_q_inv, tmp->p, 
 						tmp->mont_r, tmp->mont_w);
@@ -553,6 +552,7 @@ finished:
 	free(hashtable);
 	p_packed_free(&specialq_array);
 	p_packed_free(&hash_array);
+	mpz_clear(qprod);
 	L->deadline -= get_cpu_time() - cpu_start_time;
 	return quit;
 }

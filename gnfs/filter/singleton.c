@@ -40,6 +40,7 @@ void nfs_write_lp_file(msieve_obj *obj, factor_base_t *fb,
 	relation_t tmp_relation;
 	relation_ideal_t packed_ideal;
 	uint32 have_skip_list = (pass == 0);
+	mpz_t scratch;
 
 	tmp_relation.factors = tmp_factors;
 
@@ -68,6 +69,7 @@ void nfs_write_lp_file(msieve_obj *obj, factor_base_t *fb,
 	curr_relation = (uint32)(-1);
 	next_relation = (uint32)(-1);
 	num_relations = 0;
+	mpz_init(scratch);
 	fread(&next_relation, (size_t)1, 
 			sizeof(uint32), relation_fp);
 	savefile_read_line(buf, sizeof(buf), savefile);
@@ -105,7 +107,8 @@ void nfs_write_lp_file(msieve_obj *obj, factor_base_t *fb,
 		/* read it in */
 
 		status = nfs_read_relation(buf, fb, &tmp_relation, 
-						&tmp_factor_size, 1);
+						&tmp_factor_size, 1,
+						scratch);
 
 		if (status == 0) {
 			relation_lp_t tmp_ideal;
@@ -141,6 +144,7 @@ void nfs_write_lp_file(msieve_obj *obj, factor_base_t *fb,
 		savefile_read_line(buf, sizeof(buf), savefile);
 	}
 
+	mpz_clear(scratch);
 	filter->num_relations = num_relations;
 	filter->num_ideals = hashtable_get_num(&unique_ideals);
 	filter->relation_array = NULL;

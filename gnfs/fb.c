@@ -138,7 +138,7 @@ void free_factor_base(factor_base_t *fb) {
 }
 
 /*------------------------------------------------------------------*/
-int32 read_factor_base(msieve_obj *obj, mp_t *n,
+int32 read_factor_base(msieve_obj *obj, mpz_t n,
 			sieve_param_t *params,
 			factor_base_t *fb) {
 	
@@ -318,7 +318,7 @@ cleanup:
 }
 
 /*------------------------------------------------------------------*/
-void write_factor_base(msieve_obj *obj, mp_t *n,
+void write_factor_base(msieve_obj *obj, mpz_t n,
 			sieve_param_t *params,
 			factor_base_t *fb) {
 	

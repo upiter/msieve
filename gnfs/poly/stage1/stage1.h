@@ -245,6 +245,7 @@ typedef struct {
 	uint32 degree;
 	uint32 p_min, p_max;
 	uint64 roots[MAX_ROOTS];
+	mpz_poly_t tmp_poly;
 
 	aprog_list_t aprog_data;
 

@@ -229,14 +229,14 @@ static uint32 do_partial_filtering(msieve_obj *obj, filter_t *filter,
 }
 
 /*--------------------------------------------------------------------*/
-uint32 nfs_filter_relations(msieve_obj *obj, mp_t *n) {
+uint32 nfs_filter_relations(msieve_obj *obj, mpz_t n) {
 
 	filter_t filter;
 	merge_t merge;
 	uint32 filtmin_r, filtmin_a;
 	uint32 entries_r, entries_a;
 	uint32 num_relations;
-	uint32 relations_needed;
+	uint32 relations_needed = 0;
 	factor_base_t fb;
 	time_t wall_time = time(NULL);
 	uint64 savefile_size = get_file_size(obj->savefile.name);
@@ -252,6 +252,8 @@ uint32 nfs_filter_relations(msieve_obj *obj, mp_t *n) {
 	memset(&filter, 0, sizeof(filter));
 	memset(&merge, 0, sizeof(merge));
 	memset(&fb, 0, sizeof(fb));
+	mpz_poly_init(&fb.rfb.poly);
+	mpz_poly_init(&fb.afb.poly);
 	if (read_poly(obj, n, &fb.rfb.poly, &fb.afb.poly, NULL)) {
 		printf("filtering failed to read polynomials\n");
 		exit(-1);
@@ -300,7 +302,7 @@ uint32 nfs_filter_relations(msieve_obj *obj, mp_t *n) {
 		   big datasets may get to do this */
 
 		if ((relations_needed = do_merge(obj, &filter, &merge)) > 0)
-			return relations_needed;
+			goto finished;
 	}
 	else {  
 		/* dataset is "large", perform multiple singleton passes.
@@ -329,7 +331,7 @@ uint32 nfs_filter_relations(msieve_obj *obj, mp_t *n) {
 			filter_read_lp_file(obj, &filter, 0);
 			if ((relations_needed = do_merge(obj, &filter, 
 							&merge)) > 0) {
-				return relations_needed;
+				goto finished;
 			}
 		}
 		else {
@@ -343,7 +345,7 @@ uint32 nfs_filter_relations(msieve_obj *obj, mp_t *n) {
 			if ((relations_needed = do_partial_filtering(obj,
 						&filter, &merge, entries_r,
 						entries_a)) > 0) {
-				return relations_needed;
+				goto finished;
 			}
 		}
 	}
@@ -360,5 +362,8 @@ uint32 nfs_filter_relations(msieve_obj *obj, mp_t *n) {
 	filter_free_relsets(&merge);
 	wall_time = time(NULL) - wall_time;
 	logprintf(obj, "RelProcTime: %u\n", (uint32)wall_time);
-	return 0;
+finished:
+	mpz_poly_free(&fb.rfb.poly);
+	mpz_poly_free(&fb.afb.poly);
+	return relations_needed;
 }

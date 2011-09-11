@@ -176,7 +176,7 @@ static ideal_t *fill_small_ideals(factor_base_t *fb,
 /*------------------------------------------------------------------*/
 #define QCB_VALS(r) ((r)->rel_index)
 
-static void fill_qcb(msieve_obj *obj, mp_poly_t *apoly, 
+static void fill_qcb(msieve_obj *obj, mpz_poly_t *apoly, 
 			relation_t *rlist, uint32 num_relations) {
 	uint32 i, j;
 	prime_sieve_t sieve;
@@ -482,7 +482,7 @@ static void build_matrix_core(msieve_obj *obj, la_col_t *cycle_list,
 }
 
 /*------------------------------------------------------------------*/
-static void build_matrix(msieve_obj *obj, mp_t *n) {
+static void build_matrix(msieve_obj *obj, mpz_t n) {
 
 	/* read in the relations that contribute to the
 	   initial matrix, and form the quadratic characters
@@ -510,6 +510,8 @@ static void build_matrix(msieve_obj *obj, mp_t *n) {
 	/* read in the NFS polynomials */
 
 	memset(&fb, 0, sizeof(fb));
+	mpz_poly_init(&fb.rfb.poly);
+	mpz_poly_init(&fb.afb.poly);
 	if (read_poly(obj, n, &fb.rfb.poly, &fb.afb.poly, NULL)) {
 		printf("error: failed to read NFS polynomials\n");
 		exit(-1);
@@ -551,10 +553,12 @@ static void build_matrix(msieve_obj *obj, mp_t *n) {
 	free_cycle_list(cycle_list, num_cycles);
 	free(small_ideals);
 	fclose(matrix_fp);
+	mpz_poly_free(&fb.rfb.poly);
+	mpz_poly_free(&fb.afb.poly);
 }
 
 /*------------------------------------------------------------------*/
-void nfs_solve_linear_system(msieve_obj *obj, mp_t *n) {
+void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 
 	/* convert the list of relations from the sieving 
 	   stage into a matrix */

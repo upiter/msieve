@@ -240,30 +240,25 @@ stage2_callback(void *extra, uint32 degree,
 {
 	uint32 i;
 	poly_select_t poly;
-	mp_poly_t *rpoly;
-	mp_poly_t *apoly;
+	mpz_poly_t *rpoly;
+	mpz_poly_t *apoly;
 	stage2_callback_data_t *data = (stage2_callback_data_t *)extra;
 	poly_config_t *config = data->config;
 
 	memset(&poly, 0, sizeof(poly_select_t));
 	rpoly = &poly.rpoly;
 	apoly = &poly.apoly;
+	mpz_poly_init(rpoly);
+	mpz_poly_init(apoly);
 
 	rpoly->degree = 1;
-	for (i = 0; i <= 1; i++) {
-		gmp2mp(coeff2[i], &rpoly->coeff[i].num);
-		rpoly->coeff[i].sign = POSITIVE;
-		if (mpz_sgn(coeff2[i]) < 0)
-			rpoly->coeff[i].sign = NEGATIVE;
-	}
+	for (i = 0; i <= 1; i++)
+		mpz_set(rpoly->coeff[i], coeff2[i]);
 
 	apoly->degree = degree;
-	for (i = 0; i <= degree; i++) {
-		gmp2mp(coeff1[i], &apoly->coeff[i].num);
-		apoly->coeff[i].sign = POSITIVE;
-		if (mpz_sgn(coeff1[i]) < 0)
-			apoly->coeff[i].sign = NEGATIVE;
-	}
+	for (i = 0; i <= degree; i++)
+		mpz_set(apoly->coeff[i], coeff1[i]);
+
 	poly.root_score = root_score;
 	poly.size_score = size_score;
 	poly.combined_score = combined_score;
@@ -277,25 +272,19 @@ stage2_callback(void *extra, uint32 degree,
 		"# norm %le alpha %lf e %.3le rroots %u\nskew: %.2lf\n", 
 		size_score, root_score, combined_score, 
 		num_real_roots, skewness);
-	for (i = 0; i <= degree; i++) {
-		fprintf(data->all_poly_file, "c%u: %s", i,
-				mpz_sgn(coeff1[i]) >= 0 ? " " : "");
-		mpz_out_str(data->all_poly_file, 10, coeff1[i]);
-		fprintf(data->all_poly_file, "\n");
-	}
-	for (i = 0; i <= 1; i++) {
-		fprintf(data->all_poly_file, "Y%u: %s", i,
-				mpz_sgn(coeff2[i]) >= 0 ? " " : "");
-		mpz_out_str(data->all_poly_file, 10, coeff2[i]);
-		fprintf(data->all_poly_file, "\n");
-	}
+	for (i = 0; i <= degree; i++)
+		gmp_fprintf(data->all_poly_file, "c%u: %Zd\n", i, coeff1[i]);
+	for (i = 0; i <= 1; i++)
+		gmp_fprintf(data->all_poly_file, "Y%u: %Zd\n", i, coeff2[i]);
 	fflush(data->all_poly_file);
 
 	save_poly(config, &poly);
+	mpz_poly_free(rpoly);
+	mpz_poly_free(apoly);
 }
 
 /*------------------------------------------------------------------*/
-static void find_poly_core(msieve_obj *obj, mp_t *n,
+static void find_poly_core(msieve_obj *obj, mpz_t n,
 			poly_config_t *config,
 			uint32 degree, uint32 deadline) {
 
@@ -315,7 +304,7 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 
 	/* get poly select parameters */
 
-	digits = mp_log(n) / log(10.0);
+	digits = log(mpz_get_d(n)) / log(10.0);
 
 	switch (degree) {
 	case 4:
@@ -368,7 +357,7 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 
 		/* fill stage 1 data */
 
-		mp2gmp(n, stage1_data.gmp_N);
+		mpz_set(stage1_data.gmp_N, n);
 		stage1_data.degree = degree;
 		stage1_data.norm_max = params.stage1_norm;
 		stage1_data.deadline = deadline;
@@ -419,7 +408,7 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 
 		/* fill stage 2 data */
 
-		mp2gmp(n, stage2_data.gmp_N);
+		mpz_set(stage2_data.gmp_N, n);
 		stage2_data.degree = degree;
 		stage2_data.max_norm = params.stage2_norm;
 		stage2_data.min_e = params.final_norm;
@@ -510,13 +499,13 @@ static void find_poly_core(msieve_obj *obj, mp_t *n,
 }
 
 /*------------------------------------------------------------------*/
-void find_poly_skew(msieve_obj *obj, mp_t *n,
+void find_poly_skew(msieve_obj *obj, mpz_t n,
 			poly_config_t *config,
 			uint32 deadline) {
 
 	/* search for NFS polynomials */
 
-	uint32 bits = mp_bits(n);
+	uint32 bits = mpz_sizeinbase(n, 2);
 
 	if (bits < 363) {		/* <= 110 digits */
 		find_poly_core(obj, n, config, 4, deadline);

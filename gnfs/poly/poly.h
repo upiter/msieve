@@ -27,15 +27,15 @@ extern "C" {
 #endif
 
 /* used if polynomials will ever be generated in parallel */
-#define POLY_HEAP_SIZE 5
+#define POLY_HEAP_SIZE 1
 
 /* when analyzing a polynomial's root properties, the
    bound on factor base primes that are checked */
 #define PRIME_BOUND 2000
 
 typedef struct {
-	mp_poly_t rpoly;
-	mp_poly_t apoly;
+	mpz_poly_t rpoly;
+	mpz_poly_t apoly;
 	double size_score;
 	double root_score;
 	double combined_score;
@@ -60,7 +60,7 @@ void poly_config_free(poly_config_t *config);
 
 /* main routine */
 
-void find_poly_skew(msieve_obj *obj, mp_t *n,
+void find_poly_skew(msieve_obj *obj, mpz_t n,
 			poly_config_t *config,
 			uint32 deadline);
 
@@ -84,10 +84,10 @@ uint32 analyze_poly_murphy(integrate_t *integ_aux, dickman_t *dickman_aux,
 			double skewness, double *result,
 			uint32 *num_real_roots);
 
-uint32 analyze_poly_roots(mp_poly_t *poly, uint32 prime_bound,
+uint32 analyze_poly_roots(mpz_poly_t *poly, uint32 prime_bound,
 				double *result);
 
-uint32 analyze_poly_roots_projective(mp_poly_t *poly, 
+uint32 analyze_poly_roots_projective(mpz_poly_t *poly, 
 				uint32 prime_bound,
 				double *result);
 

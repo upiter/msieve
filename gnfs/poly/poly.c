@@ -44,16 +44,17 @@ static const poly_deadline_t time_limits[] = {
 #define NUM_TIME_LIMITS sizeof(time_limits)/sizeof(time_limits[0])
 
 /*------------------------------------------------------------------*/
-int32 read_poly(msieve_obj *obj, mp_t *n,
-	       mp_poly_t *rat_poly,
-	       mp_poly_t *alg_poly,
+int32 read_poly(msieve_obj *obj, mpz_t n,
+	       mpz_poly_t *rat_poly,
+	       mpz_poly_t *alg_poly,
 	       double *skewness) {
 	
-	int32 i;
+	uint32 i;
 	FILE *fp;
 	char buf[LINE_BUF_SIZE];
-	mp_t read_n;
-	signed_mp_t val, rpow, tmp;
+	mpz_t read_n;
+	mpz_t val, rpow;
+	int32 status = 0;
 
 	fp = fopen(obj->nfs_fbfile_name, "r");
 	if (fp == NULL)
@@ -70,12 +71,17 @@ int32 read_poly(msieve_obj *obj, mp_t *n,
 	/* check that the polynomial is for the 
 	   right number */
 
-	mp_str2mp(buf + 2, &read_n, 10);
-	if (mp_cmp(&read_n, n)) {
+	mpz_init(read_n);
+	mpz_init(val);
+	mpz_init(rpow);
+
+	gmp_sscanf(buf + 2, "%Zd", read_n);
+	if (mpz_cmp(read_n, n) != 0) {
 		fclose(fp);
 		logprintf(obj, "warning: NFS input not found in "
 				"factor base file\n");
-		return -1;
+		status = -1;
+		goto finished;
 	}
 
 	/* read in skewness if present */
@@ -94,7 +100,7 @@ int32 read_poly(msieve_obj *obj, mp_t *n,
 	   for rational coefficients, 'A<number>' for algebraic */
 
 	while ((buf[0] == 'R' || buf[0] == 'A') && isdigit(buf[1])) {
-		signed_mp_t *read_coeff;
+		mpz_t *read_coeff;
 		char *tmp;
 
 		i = buf[1] - '0';
@@ -114,31 +120,24 @@ int32 read_poly(msieve_obj *obj, mp_t *n,
 		while (isspace(*tmp))
 			tmp++;
 
-		if (*tmp == '-') {
-			read_coeff->sign = NEGATIVE;
-			tmp++;
-		}
-		else {
-			read_coeff->sign = POSITIVE;
-		}
-		mp_str2mp(tmp, &read_coeff->num, 10);
+		gmp_sscanf(tmp, "%Zd", *read_coeff);
 		if (fgets(buf, (int)sizeof(buf), fp) == NULL)
 			break;
 	}
 
-	for (i = MAX_POLY_DEGREE; i >= 0; i--) {
-		if (!mp_is_zero(&rat_poly->coeff[i].num))
+	for (i = MAX_POLY_DEGREE + 1; i; i--) {
+		if (mpz_cmp_ui(rat_poly->coeff[i-1], 0) != 0)
 			break;
 	}
-	if (i > 0)
-		rat_poly->degree = i;
+	if (i)
+		rat_poly->degree = i - 1;
 
-	for (i = MAX_POLY_DEGREE; i >= 0; i--) {
-		if (!mp_is_zero(&alg_poly->coeff[i].num))
+	for (i = MAX_POLY_DEGREE + 1; i; i--) {
+		if (mpz_cmp_ui(alg_poly->coeff[i-1], 0) != 0)
 			break;
 	}
-	if (i > 0)
-		alg_poly->degree = i;
+	if (i)
+		alg_poly->degree = i - 1;
 
 	fclose(fp);
 
@@ -156,47 +155,43 @@ int32 read_poly(msieve_obj *obj, mp_t *n,
 	   algebraic polynomial */
 
 	i = alg_poly->degree;
-	signed_mp_copy(alg_poly->coeff + i, &val);
-	signed_mp_copy(rat_poly->coeff + 1, &rpow);
+	mpz_set(val, alg_poly->coeff[i]);
+	mpz_set(rpow, rat_poly->coeff[1]);
+	mpz_neg(rat_poly->coeff[0], rat_poly->coeff[0]);
 
-	for (i--; i >= 0; i--) {
-		signed_mp_mul(&val, rat_poly->coeff + 0, &tmp);
-		tmp.sign = (tmp.sign == POSITIVE) ? NEGATIVE : POSITIVE;
-		signed_mp_copy(&tmp, &val);
-
-		signed_mp_mul(alg_poly->coeff + i, &rpow, &tmp);
-		signed_mp_add(&val, &tmp, &val);
-
-		signed_mp_mul(rat_poly->coeff + 1, &rpow, &tmp);
-		signed_mp_copy(&tmp, &rpow);
+	while (--i) {
+		mpz_mul(val, val, rat_poly->coeff[0]);
+		mpz_addmul(val, alg_poly->coeff[i], rpow);
+		mpz_mul(rpow, rpow, rat_poly->coeff[1]);
 	}
+	mpz_mul(val, val, rat_poly->coeff[0]);
+	mpz_addmul(val, alg_poly->coeff[i], rpow);
+	mpz_neg(rat_poly->coeff[0], rat_poly->coeff[0]);
 
-	/* verify that |result| >= N, and that result % N == 0. 
+	/* verify that result % N == 0. 
+
 	   The only place where we do any mod-N arithmetic is the 
 	   NFS square root, which will not work if N has additional 
 	   factors that are not reflected in the polynomials */
 
-	if ((i = mp_cmp(&val.num, n)) < 0) {
+	mpz_mod(val, val, n);
+	if (mpz_cmp_ui(val, 0) != 0) {
 		logprintf(obj, "error: NFS input does not match polynomials\n");
 		logprintf(obj, "check that input doesn't have small factors\n");
 		exit(-1);
 	}
-	else if (i > 0) {
-		mp_mod(&val.num, n, &read_n);
-		if (!mp_is_zero(&read_n)) {
-			logprintf(obj, "error: NFS input does not "
-					"match polynomials\n");
-			exit(-1);
-		}
-	}
 
+finished:
+	mpz_clear(read_n);
+	mpz_clear(val);
+	mpz_clear(rpow);
 	return 0;
 }
 
 /*------------------------------------------------------------------*/
-void write_poly(msieve_obj *obj, mp_t *n,
-	       mp_poly_t *rat_poly,
-	       mp_poly_t *alg_poly,
+void write_poly(msieve_obj *obj, mpz_t n,
+	       mpz_poly_t *rat_poly,
+	       mpz_poly_t *alg_poly,
 	       double skewness) {
 	
 	/* log a generated polynomial to the factor base file */
@@ -211,27 +206,19 @@ void write_poly(msieve_obj *obj, mp_t *n,
 		exit(-1);
 	}
 
-	fprintf(fp, "N %s\n", mp_sprintf(n, 10, obj->mp_sprintf_buf));
+	gmp_fprintf(fp, "N %Zd\n", n);
 	if (skewness > 0)
 		fprintf(fp, "SKEW %.2lf\n", skewness);
 
-	for (i = 0; i <= rat_poly->degree; i++) {
-		fprintf(fp, "R%u %c%s\n", i,
-			(rat_poly->coeff[i].sign == POSITIVE? ' ' : '-'),
-			mp_sprintf(&rat_poly->coeff[i].num, 10,
-						obj->mp_sprintf_buf));
-	}
-	for (i = 0; i <= alg_poly->degree; i++) {
-		fprintf(fp, "A%u %c%s\n", i,
-			(alg_poly->coeff[i].sign == POSITIVE? ' ' : '-'),
-			mp_sprintf(&alg_poly->coeff[i].num, 10,
-						obj->mp_sprintf_buf));
-	}
+	for (i = 0; i <= rat_poly->degree; i++)
+		gmp_fprintf(fp, "R%u %Zd\n", i, rat_poly->coeff[i]);
+	for (i = 0; i <= alg_poly->degree; i++)
+		gmp_fprintf(fp, "A%u %Zd\n", i, alg_poly->coeff[i]);
 	fclose(fp);
 }
 
 /*------------------------------------------------------------------*/
-int32 find_poly(msieve_obj *obj, mp_t *n) {
+int32 find_poly(msieve_obj *obj, mpz_t n) {
 
 	/* external entry point for NFS polynomial generation */
 
@@ -253,7 +240,7 @@ int32 find_poly(msieve_obj *obj, mp_t *n) {
 
 	/* figure out how long poly selection should take */
 
-	i = mp_bits(n);
+	i = mpz_sizeinbase(n, 2);
 	for (j = 0; j < NUM_TIME_LIMITS; j++) {
 		if (i < time_limits[j].bits)
 			break;

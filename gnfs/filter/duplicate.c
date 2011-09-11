@@ -260,6 +260,7 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 	uint32 blob[2];
 	uint32 log2_hashtable1_size;
 	double rel_size = estimate_rel_size(savefile);
+	mpz_t scratch;
 
 	uint8 *free_relation_bits;
 	uint32 *free_relations;
@@ -334,6 +335,7 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 	num_relations = 0;
 	num_collisions = 0;
 	num_skipped_b = 0;
+	mpz_init(scratch);
 	savefile_read_line(buf, sizeof(buf), savefile);
 	while (!savefile_eof(savefile)) {
 
@@ -354,7 +356,8 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 		if (max_relations && curr_relation >= max_relations)
 			break;
 
-		status = nfs_read_relation(buf, fb, &tmp_rel, &array_size, 1);
+		status = nfs_read_relation(buf, fb, &tmp_rel, 
+					&array_size, 1, scratch);
 		if (status != 0) {
 
 			/* save the line number of bad relations (hopefully
@@ -453,6 +456,7 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 		savefile_read_line(buf, sizeof(buf), savefile);
 	}
 
+	mpz_clear(scratch);
 	free(hashtable);
 	savefile_close(savefile);
 	fclose(bad_relation_fp);

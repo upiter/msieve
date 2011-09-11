@@ -49,36 +49,37 @@ sieve_fb_free(sieve_fb_t *s)
 	mpz_clear(s->tmp2);
 	mpz_clear(s->tmp3);
 	mpz_clear(s->gmp_root);
+	mpz_poly_free(&s->tmp_poly);
 }
 
 /*------------------------------------------------------------------------*/
 static uint32
-get_prime_roots(poly_search_t *poly, uint32 p, uint32 *roots)
+get_prime_roots(poly_search_t *poly, uint32 p, uint32 *roots,
+		mpz_poly_t *tmp_poly)
 {
-	/* find all nonzero degree_th roots of the transformed 
-	   version of N modulo p. */
+	/* find all nonzero roots of (N' - x^d) mod p, where 
+	   d is the desired polynomial degree and N' is the 
+	   transformed version of N modulo p. We throw out roots
+	   of zero because a zero root implies p divides the
+	   degree or the leading algebraic poly coefficient, and
+	   neither of these is allowed in later stages */
 
-	mp_poly_t tmp_poly;
-	mp_t *low_coeff;
-	uint32 high_coeff;
-	uint32 degree = poly->degree;
+	uint32 i, high_coeff;
 
-	memset(&tmp_poly, 0, sizeof(mp_poly_t));
+	mpz_tdiv_r_ui(tmp_poly->coeff[0], poly->trans_N, p);
 
-	low_coeff = &tmp_poly.coeff[0].num;
-	low_coeff->nwords = 1;
-	low_coeff->val[0] = mpz_tdiv_ui(poly->trans_N, (mp_limb_t)p);
-
-	if (low_coeff->val[0] == 0)
+	if (mpz_cmp_ui(tmp_poly->coeff[0], 0) == 0) {
 		/* when p divides trans_N, only a root of zero
 		   exists, so skip this p */
 		return 0;
+	}
+	for (i = 1; i < poly->degree; i++)
+		mpz_set_ui(tmp_poly->coeff[i], 0);
 
-	tmp_poly.degree = degree;
-	tmp_poly.coeff[degree].num.nwords = 1;
-	tmp_poly.coeff[degree].num.val[0] = p - 1;
+	tmp_poly->degree = i;
+	mpz_set_ui(tmp_poly->coeff[i], p - 1);
 
-	return poly_get_zeros(roots, &tmp_poly, p, &high_coeff, 0);
+	return poly_get_zeros(roots, tmp_poly, p, &high_coeff, 0);
 }
 
 /*------------------------------------------------------------------------*/
@@ -107,7 +108,7 @@ sieve_add_aprog(sieve_fb_t *s, poly_search_t *poly, uint32 p,
 
 	a = list->aprogs + list->num_aprogs;
 	a->p = p;
-	num_roots = get_prime_roots(poly, p, roots);
+	num_roots = get_prime_roots(poly, p, roots, &s->tmp_poly);
 
 	if (num_roots == 0 ||
 	    num_roots < fb_roots_min ||
@@ -160,6 +161,7 @@ sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
 	mpz_init(s->tmp2);
 	mpz_init(s->tmp3);
 	mpz_init(s->gmp_root);
+	mpz_poly_init(&s->tmp_poly);
 
 	if (factor_max <= factor_min)
 		return;
@@ -511,7 +513,8 @@ sieve_fb_next(sieve_fb_t *s, poly_search_t *poly,
 				continue;
 			}
 
-			num_roots = get_prime_roots(poly, p, roots);
+			num_roots = get_prime_roots(poly, p, roots,
+						    &s->tmp_poly);
 			num_roots = MIN(num_roots, s->num_roots_max);
 
 			if (num_roots == 0 ||

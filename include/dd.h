@@ -21,6 +21,7 @@ $Id$
 
 #include <util.h>
 #include <mp.h>
+#include <gmp_xface.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -375,6 +376,19 @@ static INLINE dd_t dd_signed_mp2dd(signed_mp_t *x) {
 		return dd_neg(dd_mp2dd(&x->num));
 	else
 		return dd_mp2dd(&x->num);
+}
+
+static INLINE dd_t dd_gmp2dd(mpz_t x) {
+
+	signed_mp_t mpx;
+
+	gmp2mp(x, &mpx.num);
+
+	mpx.sign = POSITIVE;
+	if (mpz_sgn(x) < 0)
+		mpx.sign = NEGATIVE;
+
+	return dd_signed_mp2dd(&mpx);
 }
 
 static INLINE void dd_dd2mp(dd_t d, mp_t *x) {
