@@ -17,6 +17,11 @@ Version 1.50:
 		- Fixed a bug that would cause -np1 to generate lots of
 		  spurious hits in the GPU version when the sieve size is
 		  larger than 127 bits
+	- Patch from Ilya Popovyan: make all MPI processes contribute to
+		a single vector-vector operation in the liner algebra,
+		instead of just the MPI processes in a single grid row.
+		This makes the entire Lanczos iteration up to 20% faster
+		for very large problems and grid sizes
 	- Patch from Jayson King: fix longstanding problems that would
 		crop up rarley in tinyQS code
 

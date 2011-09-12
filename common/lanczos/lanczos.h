@@ -175,6 +175,13 @@ typedef struct {
 	int32 col_offsets[MAX_MPI_GRID_DIM]; 
 	int32 row_counts[MAX_MPI_GRID_DIM];
 	int32 row_offsets[MAX_MPI_GRID_DIM];
+	int32 subcol_counts[MAX_MPI_GRID_DIM];
+	int32 subcol_offsets[MAX_MPI_GRID_DIM];    
+	int32 subrow_counts[MAX_MPI_GRID_DIM];
+	int32 subrow_offsets[MAX_MPI_GRID_DIM]; 
+
+	uint32 nsubcols;
+	uint32 nsubrows;
 #endif
 
 } packed_matrix_t;
@@ -217,6 +224,18 @@ void tmul_64xN_Nx64(packed_matrix_t *A, uint64 *x, uint64 *y,
 void global_xor(uint64 *send_buf, uint64 *recv_buf, 
 		uint32 bufsize, uint32 mpi_nodes, 
 		uint32 mpi_rank, MPI_Comm comm);
+
+void global_chunk_info(uint32 total_size, uint32 num_nodes, 
+		uint32 my_id, uint32 *chunk_size, uint32 *chunk_start);
+
+void global_allgather(uint64 *send_buf, uint64 *recv_buf, 
+                        uint32 bufsize, uint32 mpi_nodes, 
+                        uint32 mpi_rank, MPI_Comm comm);
+
+void global_xor_scatter(uint64 *send_buf, uint64 *recv_buf, 
+			uint64 *scratch, uint32 bufsize, 
+			uint32 mpi_nodes, uint32 mpi_rank, 
+			MPI_Comm comm);
 #endif
 
 /* single-threaded */

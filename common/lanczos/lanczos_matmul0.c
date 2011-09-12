@@ -856,13 +856,15 @@ size_t packed_matrix_sizeof(packed_matrix_t *p) {
 /*-------------------------------------------------------------------*/
 void mul_MxN_Nx64(packed_matrix_t *A, uint64 *x, 
 			uint64 *b, uint64 *scratch) {
-
+    
 	/* Multiply the vector x[] by the matrix A (stored
 	   columnwise) and put the result in b[]. The MPI 
 	   version needs a scratch array because MPI reduction
 	   operations apparently cannot be performed in-place */
 
 #ifdef HAVE_MPI
+	uint64 *scratch2 = scratch + MAX(A->ncols, A->nrows);
+
 	if (A->mpi_size <= 1) {
 #endif
 		if (A->unpacked_cols)
@@ -872,11 +874,19 @@ void mul_MxN_Nx64(packed_matrix_t *A, uint64 *x,
 #ifdef HAVE_MPI
 		return;
 	}
-
-	mul_packed(A, x, scratch);
-
-	global_xor(scratch, b, A->nrows, A->mpi_ncols,
+    
+	/* make each MPI column gather its own part of x */
+	
+	global_allgather(x, scratch, A->ncols, A->mpi_nrows, 
+			A->mpi_la_row_rank, A->mpi_la_col_grid);
+		
+	mul_packed(A, scratch, scratch2);
+	
+	/* make each MPI row combine and scatter its own part of A^T * A*x */
+	
+	global_xor_scatter(scratch2, b, scratch, A->nrows, A->mpi_ncols,
 			A->mpi_la_col_rank, A->mpi_la_row_grid);
+
 #endif
 }
 
@@ -890,6 +900,8 @@ void mul_sym_NxN_Nx64(packed_matrix_t *A, uint64 *x,
 	   be distinct from scratch */
 
 #ifdef HAVE_MPI
+	uint64 *scratch2 = scratch + MAX(A->ncols, A->nrows);
+        
 	if (A->mpi_size <= 1) {
 #endif
 		if (A->unpacked_cols) {
@@ -903,20 +915,24 @@ void mul_sym_NxN_Nx64(packed_matrix_t *A, uint64 *x,
 #ifdef HAVE_MPI
 		return;
 	}
-
-	mul_packed(A, x, scratch);
-
-	/* make each MPI row combine its own part of A*x */
-
-	global_xor(scratch, b, A->nrows, A->mpi_ncols,
-			A->mpi_la_col_rank, A->mpi_la_row_grid);
-
-	mul_trans_packed(A, b, scratch);
-
-	/* make each MPI column combine its own part of A^T * A*x */
-
-	global_xor(scratch, b, A->ncols, A->mpi_nrows, 
+    
+	/* make each MPI column gather its own part of x */
+	 
+	global_allgather(x, scratch, A->ncols, A->mpi_nrows, 
 			A->mpi_la_row_rank, A->mpi_la_col_grid);
-
+	
+	mul_packed(A, scratch, scratch2);
+		
+	/* make each MPI row combine its own part of A*x */
+	
+	global_xor(scratch2, scratch, A->nrows, A->mpi_ncols,
+			   A->mpi_la_col_rank, A->mpi_la_row_grid);
+		
+	mul_trans_packed(A, scratch, scratch2);
+		
+	/* make each MPI row combine and scatter its own part of A^T * A*x */
+		
+	global_xor_scatter(scratch2, b, scratch,  A->ncols, A->mpi_nrows, 
+			A->mpi_la_row_rank, A->mpi_la_col_grid);
 #endif
 }

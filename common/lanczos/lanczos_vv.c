@@ -471,7 +471,12 @@ void tmul_64xN_Nx64(packed_matrix_t *matrix,
 	global_xor(xy, xytmp, 64, matrix->mpi_ncols,
 			matrix->mpi_la_col_rank,
 			matrix->mpi_la_row_grid);
-	memcpy(xy, xytmp, sizeof(xytmp));
+
+	/* combine the results across an entire MPI column */
+    
+	global_xor(xytmp, xy, 64, matrix->mpi_nrows,
+			matrix->mpi_la_row_rank,
+			matrix->mpi_la_col_grid);    
 #endif
 }
 
