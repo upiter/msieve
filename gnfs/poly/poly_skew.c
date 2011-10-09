@@ -139,8 +139,8 @@ static const poly_param_t prebuilt_params_deg6[] = {
 
  	{200, 1.00E+026, 1.00E+025, 8.0e-018},
  	{205, 1.00E+027, 1.00E+026, 6.0e-019},
- 	{230, 3.00E+029, 1.00E+029, 6.0e-019},
- 	{235, 1.50E+030, 3.00E+029, 6.0e-019},
+ 	{230, 3.00E+029, 3.00E+029, 6.0e-019},
+ 	{235, 1.50E+030, 8.00E+029, 6.0e-019},
 };
 
 /*--------------------------------------------------------------------*/
@@ -216,6 +216,7 @@ static void get_poly_params(double digits, poly_param_t *params,
 static void stage1_callback(mpz_t high_coeff, mpz_t p, mpz_t m, 
 				double coeff_bound, void *extra) {
 	
+	gmp_printf("%Zd %Zd %Zd\n", high_coeff, p, m);
 	poly_stage2_run((poly_stage2_t *)extra, high_coeff, p, m, 
 			coeff_bound, NULL);
 }
@@ -225,6 +226,7 @@ static void stage1_callback_log(mpz_t high_coeff, mpz_t p, mpz_t m,
 				double coeff_bound, void *extra) {
 	
 	FILE *mfile = (FILE *)extra;
+	gmp_printf("%Zd %Zd %Zd\n", high_coeff, p, m);
 	gmp_fprintf(mfile, "%Zd %Zd %Zd\n",
 			high_coeff, p, m);
 	fflush(mfile);
@@ -480,6 +482,9 @@ static void find_poly_core(msieve_obj *obj, mpz_t n,
 			}
 			if (gmp_sscanf(tmp, "%Zd %Zd", p, m) != 2)
 				continue;
+
+			if (arg == NULL)
+				gmp_printf("poly %Zd %Zd %Zd\n", ad, p, m);
 
 			poly_stage2_run(&stage2_data, ad, p, m, 1e100, arg);
 
