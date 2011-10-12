@@ -44,6 +44,25 @@ static void poly_fix_degree(poly_t op) {
 }
 
 /*------------------------------------------------------------------*/
+static void poly_make_monic(poly_t res, poly_t a, uint32 p) {
+
+	uint32 i;
+	uint32 d = a->degree;
+	uint32 msw = a->coef[d];
+
+	if (msw != 1) {
+		msw = mp_modinv_1(msw, p);
+		res->degree = d;
+		res->coef[d] = 1;
+		for (i = 0; i < d; i++)
+			res->coef[i] = mp_modmul_1(msw, a->coef[i], p);
+	}
+	else {
+		poly_cp(res, a);
+	}
+}
+
+/*------------------------------------------------------------------*/
 static void poly_add(poly_t res, poly_t a, poly_t b, uint32 p) {
 
 	uint32 i;
@@ -80,20 +99,9 @@ static void poly_mod(poly_t res, poly_t op, poly_t _mod, uint32 p) {
 		memset(res, 0, sizeof(res[0]));
 		return;
 	}
-	poly_cp(mod, _mod);
 	poly_cp(tmp, op);
+	poly_make_monic(mod, _mod, p);
 
-	/* make "mod" monic */
-
-	msw = mod->coef[mod->degree];
-	if (msw != 1) {
-		msw = mp_modinv_1(msw, p);
-		mod->coef[mod->degree] = 1;
-		for (i = mod->degree-1; i >= 0; i--) {
-			mod->coef[i] = mp_modmul_1(msw, mod->coef[i], p);
-		}
-	}
-	 
 	while (tmp->degree >= mod->degree) {
 
 		/* tmp <-- tmp - msw * mod * x^{deg(tmp)- deg(mod)} */
@@ -134,6 +142,7 @@ static void poly_modmul(poly_t res, poly_t a, poly_t b,
 	poly_mod(res, prod, mod, p);
 }
 
+/*------------------------------------------------------------------*/
 	/* The following routines are highly performance-critical 
 	   for factor base generation. 
 	
@@ -502,19 +511,8 @@ static void poly_xpow(poly_t res, uint32 shift, uint32 n,
 	uint32 buf[2*NUM_POLY_COEFFS] = {0};
 	uint64 psq;
 
-	/* make 'mod' monic. Doing this once up front is the
-	   single most effective optimization possible for this
-	   routine */
-
-	poly_cp(modnorm, mod);
+	poly_make_monic(modnorm, mod, p);
 	d = modnorm->degree;
-	msw = modnorm->coef[d];
-	if (msw != 1) {
-		msw = mp_modinv_1(msw, p);
-		modnorm->coef[d] = 1;
-		for (i = d - 1; (int32)i >= 0; i--)
-			modnorm->coef[i] = mp_modmul_1(msw,modnorm->coef[i],p);
-	}
 
 	OP1(0) = shift;
 	OP1(1) = 1;
@@ -830,26 +828,24 @@ static void poly_xpow_pd(poly_t res, uint32 p, uint32 d, poly_t f) {
 	/* compute x^(p^d) mod f */
 
 	uint32 i;
-	mp_t exponent;
+	mpz_t exponent;
 	poly_t x;
+
+	mpz_init_set_ui(exponent, p);
+	mpz_pow_ui(exponent, exponent, d);
 
 	x->degree = 1;
 	x->coef[0] = 0;
 	x->coef[1] = 1;
 
-	mp_clear(&exponent);
-	exponent.nwords = 1;
-	exponent.val[0] = p;
-	for (i = 1; i < d; i++)
-		mp_mul_1(&exponent, p, &exponent);
-
 	poly_cp(res, x);
-	for (i = mp_bits(&exponent) - 2; (int32)i >= 0; i--) {
+	for (i = mpz_sizeinbase(exponent, 2) - 2; (int32)i >= 0; i--) {
 		poly_modmul(res, res, res, f, p);
-		if (exponent.val[i / 32] & ((uint32)1 << (i % 32))) {
+		if (mpz_tstbit(exponent, i))
 			poly_modmul(res, res, x, f, p);
-		}
 	}
+
+	mpz_clear(exponent);
 }
 
 /*------------------------------------------------------------------*/
@@ -863,8 +859,9 @@ uint32 is_irreducible(mpz_poly_t *poly, uint32 p) {
 	poly_t f, tmp;
 
 	poly_reduce_mod_p(f, poly, p);
+	poly_make_monic(f, f, p);
 
-	/* in practice, the degree of f will be 6 or less,
+	/* in practice, the degree of f will be 8 or less,
 	   and we want to compute GCDs for all prime numbers
 	   that divide the degree. For this limited range
 	   the loop below avoids duplicated code */
@@ -903,7 +900,7 @@ uint32 is_irreducible(mpz_poly_t *poly, uint32 p) {
 }
 
 /*------------------------------------------------------------------*/
-#define NUM_ISQRT_RETRIES 10000
+#define NUM_ISQRT_RETRIES 1000
 
 uint32 inv_sqrt_mod_q(mpz_poly_t *res, mpz_poly_t *s_in, mpz_poly_t *f_in,
 			uint32 q, uint32 *rand_seed1, uint32 *rand_seed2) {
@@ -915,12 +912,14 @@ uint32 inv_sqrt_mod_q(mpz_poly_t *res, mpz_poly_t *s_in, mpz_poly_t *f_in,
 	   that it is a variation on Cantor-Zassenhaus */
 
 	uint32 i, j;
-	mp_t exponent;
+	mpz_t exponent;
 	poly_t f, s, y0, y1;
 
 	/* initialize */
+
 	poly_reduce_mod_p(f, f_in, q);
 	poly_reduce_mod_p(s, s_in, q);
+	poly_make_monic(f, f, q);
 
 	/* none of this will work if s(x) has zero degree */
 
@@ -928,12 +927,9 @@ uint32 inv_sqrt_mod_q(mpz_poly_t *res, mpz_poly_t *s_in, mpz_poly_t *f_in,
 		return 0;
 
 	/* compute q ^ (degree(f)) */
-	mp_clear(&exponent);
-	exponent.nwords = 1;
-	exponent.val[0] = q;
-	for (i = 1; i < f->degree; i++) {
-		mp_mul_1(&exponent, q, &exponent);
-	}
+
+	mpz_init_set_ui(exponent, q);
+	mpz_pow_ui(exponent, exponent, f->degree);
 
 	/* the algorithm is probabilistic; try a few different
 	   initial values, then give up if no answer is found */
@@ -964,7 +960,7 @@ uint32 inv_sqrt_mod_q(mpz_poly_t *res, mpz_poly_t *s_in, mpz_poly_t *f_in,
 
 		poly_cp(y0, r0);
 		poly_cp(y1, r1);
-		for (j = mp_bits(&exponent) - 2; j; j--) {
+		for (j = mpz_sizeinbase(exponent, 2) - 2; j; j--) {
 
 			poly_t p0, p1, p2;
 
@@ -979,7 +975,7 @@ uint32 inv_sqrt_mod_q(mpz_poly_t *res, mpz_poly_t *s_in, mpz_poly_t *f_in,
 			poly_cp(y0, p0);
 			poly_cp(y1, p1);
 
-			if (!(exponent.val[j / 32] & ((uint32)1 << (j % 32))))
+			if (!mpz_tstbit(exponent, j))
 				continue;
 
 			/* multiply (y0, y1) by (r0, r1) */
@@ -1003,6 +999,8 @@ uint32 inv_sqrt_mod_q(mpz_poly_t *res, mpz_poly_t *s_in, mpz_poly_t *f_in,
 			break;
 	}
 
+	mpz_clear(exponent);
+
 	/* if no inverse square root was found and q is small enough,
 	   attempt to find an inverse square root by brute force,
 	   trying all q^d elements of the finite field.
@@ -1010,8 +1008,7 @@ uint32 inv_sqrt_mod_q(mpz_poly_t *res, mpz_poly_t *s_in, mpz_poly_t *f_in,
 	   We can save half the time by avoiding polynomials that 
 	   are the negative of polynomials already searched */
 	  
-
-	 if (i == NUM_ISQRT_RETRIES && q < 150) {
+	if (i == NUM_ISQRT_RETRIES && q < 150) {
 		uint32 c0, c1, c2, c3, c4, c5, c6, c7;
 		uint32 start[MAX_POLY_DEGREE];
  
