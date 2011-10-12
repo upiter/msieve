@@ -386,13 +386,15 @@ static void find_poly_core(msieve_obj *obj, mpz_t n,
 			logprintf(obj, "time limit set to %.2f CPU-hours\n",
 				stage1_data.deadline / 3600.0);
 
-		if(digits >= 110) {
-			/* SB: tried L[1/3,c] fit; it is no better than this */
-			double e0 = exp(-log(10) * (0.0607 * digits + 2.25));
+		{ /* SB: tried L[1/3,c] fit; it is no better than this */
+			double e0 = (digits >= 121) ? (0.0607 * digits + 2.25):
+				                      (0.0526 * digits + 3.23);
+			if (degree == 4) e0 = 0.0625 * digits + 1.69;
+			e0 = exp(-log(10) * e0); 
 			logprintf(obj, "expecting poly E from %.2le to %.2le\n",
 				e0, 1.15 * e0);
 			/* seen exceptional polys with +40% but that's */
-			/* very rare. The fit is good for 110..232 digits */
+			/* very rare. The fit is good for 88..232 digits */
 		}
  
 		logprintf(obj, "searching leading coefficients from "
