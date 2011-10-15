@@ -25,7 +25,7 @@ ifs_rectangular(double *a, uint32 degree, double s)
 	double norm;
 
 	if (s < 1)
-		return 1e100;
+		return 1e200;
 
 	a0 = a[0];
 	a1 = a[1] * s;
@@ -70,7 +70,7 @@ ifs_rectangular(double *a, uint32 degree, double s)
 		return norm / s6;
 	}
 
-	return 1e100;
+	return 1e200;
 }
 
 static double
@@ -81,7 +81,7 @@ ifs_radial(double *a, uint32 degree, double s)
 	double norm;
 
 	if (s < 1)
-		return 1e100;
+		return 1e200;
 
 	a0 = a[0];
 	a1 = a[1] * s;
@@ -126,7 +126,7 @@ ifs_radial(double *a, uint32 degree, double s)
 		return norm / s6;
 	}
 
-	return 1e100;
+	return 1e200;
 }
  
 /*----------------------------------------------------------------------*/
@@ -293,7 +293,7 @@ static double poly_rotate_callback(double *v, void *extra)
 	double r1 = opt->drpoly->coeff[1];
 
 	if (s < 1.0)
-		return 1e100;
+		return 1e200;
 
 	for (i = 0; i <= opt->rotate_dim; i++) {
 		double c = floor(v[ROTATE0 + i] + 0.5);
@@ -372,7 +372,7 @@ optimize_initial(poly_stage2_t *data, double *pol_norm,
 		printf("preopt %.7e skew %lf\n", score, best[SKEWNESS]);
 	}
 
-	score = 1e100;
+	score = 1e200;
 	tol = 1e-5;
 	rpoly.degree = 1;
 	for (i = 0; i <= 1; i++)

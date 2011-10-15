@@ -417,7 +417,7 @@ ifs_radial(double *a, uint32 degree, double s)
 	double norm;
 
 	if (s < 1)
-		return 1e100;
+		return 1e200;
 
 	a0 = a[0];
 	a1 = a[1] * s;
@@ -462,7 +462,7 @@ ifs_radial(double *a, uint32 degree, double s)
 		return norm / s6;
 	}
 
-	return 1e100;
+	return 1e200;
 }
  
 /*--------------------------------------------------------------------*/
@@ -538,7 +538,7 @@ callback(double v[MAX_VARS], void *extra)
 	double r1 = data->params[1];
 
 	if (s < 1.0)
-		return 1e100;
+		return 1e200;
 
 	for (i = 0; i <= 6; i++)
 		apoly[i] = data->params[i+2];
@@ -716,12 +716,12 @@ optimize_initial_deg6(double best[MAX_VARS],
 	for (i = 0; i <= 1; i++)
 		mpz_set(c->gmp_linc[i], c->gmp_lina[i]);
 
-	best_score = 1e100;
+	best_score = 1e200;
 	memset(best, 0, MAX_VARS * sizeof(double));
 
 	for (i = 0; i < (1 << (num_vars - 1)); i++) {
 
-		double curr_score = 1e100;
+		double curr_score = 1e200;
 		double last_score;
 
 		for (j = 0; j <= degree; j++)

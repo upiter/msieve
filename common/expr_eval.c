@@ -392,8 +392,8 @@ int32 evaluate_expression(char *expr, mp_t *res) {
 		tmp++;
 	}
 	if (*tmp == 0) {
-		if (tmp - expr >= 308) {
-			printf("input integers must be under 308 digits\n");
+		if (tmp - expr >= 311) {
+			printf("input integers must be under 311 digits\n");
 			return INTEGER_OVERFLOW;
 		}
 		mp_str2mp(expr, res, 0);
