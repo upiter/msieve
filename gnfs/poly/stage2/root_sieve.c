@@ -349,10 +349,11 @@ void root_sieve_init(root_sieve_t *rs)
 		curr_prime->num_powers = num_powers;
 		curr_prime->powers = (sieve_power_t *)xmalloc(num_powers *
 						sizeof(sieve_power_t));
-		curr_prime->contrib_array_size = power;
+		curr_prime->contrib_array_size = power * 
+					(MAX_SIEVE_PRIME_POWER / power);
 		curr_prime->contrib_array = (uint16 *)aligned_malloc(
-						power * UNROLL * 
-						sizeof(uint16), 64);
+					UNROLL * sizeof(uint16) * 
+					curr_prime->contrib_array_size, 64);
 
 		for (j = 0, power = p; j < num_powers; j++, power *= p) {
 
