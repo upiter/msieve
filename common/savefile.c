@@ -55,7 +55,7 @@ void savefile_free(savefile_t *s) {
 /*--------------------------------------------------------------------*/
 void savefile_open(savefile_t *s, uint32 flags) {
 	
-#if defined(WIN32) || defined(_WIN64)
+#if defined(NO_ZLIB) && (defined(WIN32) || defined(_WIN64))
 	DWORD access_arg, open_arg;
 
 	if (flags & SAVEFILE_READ)
@@ -166,7 +166,7 @@ void savefile_open(savefile_t *s, uint32 flags) {
 /*--------------------------------------------------------------------*/
 void savefile_close(savefile_t *s) {
 	
-#if defined(WIN32) || defined(_WIN64)
+#if defined(NO_ZLIB) && (defined(WIN32) || defined(_WIN64))
 	CloseHandle(s->file_handle);
 	s->file_handle = INVALID_HANDLE_VALUE;
 #else
@@ -178,7 +178,7 @@ void savefile_close(savefile_t *s) {
 /*--------------------------------------------------------------------*/
 uint32 savefile_eof(savefile_t *s) {
 	
-#if defined(WIN32) || defined(_WIN64)
+#if defined(NO_ZLIB) && (defined(WIN32) || defined(_WIN64))
 	return (s->buf_off == s->read_size && s->eof);
 #else
 	return (s->is_a_FILE ? feof((FILE *)s->fp) : gzeof(s->fp));
@@ -200,7 +200,7 @@ uint32 savefile_exists(savefile_t *s) {
 /*--------------------------------------------------------------------*/
 void savefile_read_line(char *buf, size_t max_len, savefile_t *s) {
 
-#if defined(WIN32) || defined(_WIN64)
+#if defined(NO_ZLIB) && (defined(WIN32) || defined(_WIN64))
 	size_t i, j;
 	char *sbuf = s->buf;
 
@@ -255,7 +255,7 @@ void savefile_write_line(savefile_t *s, char *buf) {
 /*--------------------------------------------------------------------*/
 void savefile_flush(savefile_t *s) {
 
-#if defined(WIN32) || defined(_WIN64)
+#if defined(NO_ZLIB) && (defined(WIN32) || defined(_WIN64))
 	if (s->buf_off) {
 		DWORD num_write; /* required because of NULL arg below */
 		WriteFile(s->file_handle, s->buf, 
@@ -278,7 +278,7 @@ void savefile_flush(savefile_t *s) {
 /*--------------------------------------------------------------------*/
 void savefile_rewind(savefile_t *s) {
 
-#if defined(WIN32) || defined(_WIN64)
+#if defined(NO_ZLIB) && (defined(WIN32) || defined(_WIN64))
 	LARGE_INTEGER fileptr;
 	fileptr.QuadPart = 0;
 	SetFilePointerEx(s->file_handle, fileptr, NULL, FILE_BEGIN);

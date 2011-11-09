@@ -93,7 +93,7 @@ enum msieve_flags {
 
 typedef struct {
 
-#if defined(WIN32) || defined(_WIN64)
+#if defined(NO_ZLIB) && (defined(WIN32) || defined(_WIN64))
 	HANDLE file_handle;
 	uint32 read_size;
 	uint32 eof;

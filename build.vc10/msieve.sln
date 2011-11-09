@@ -14,6 +14,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mpqs", "mpqs\mpqs.vcxproj",
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "msieve", "msieve\msieve.vcxproj", "{89995A7B-6709-40C7-ADDC-806680CE8B64}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5E46272C-7B16-4E84-9303-64F5D69C97CF} = {5E46272C-7B16-4E84-9303-64F5D69C97CF}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zlib", "zlib\zlib.vcxproj", "{5E46272C-7B16-4E84-9303-64F5D69C97CF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -55,6 +60,14 @@ Global
 		{89995A7B-6709-40C7-ADDC-806680CE8B64}.Release|Win32.Build.0 = Release|Win32
 		{89995A7B-6709-40C7-ADDC-806680CE8B64}.Release|x64.ActiveCfg = Release|x64
 		{89995A7B-6709-40C7-ADDC-806680CE8B64}.Release|x64.Build.0 = Release|x64
+		{5E46272C-7B16-4E84-9303-64F5D69C97CF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5E46272C-7B16-4E84-9303-64F5D69C97CF}.Debug|Win32.Build.0 = Debug|Win32
+		{5E46272C-7B16-4E84-9303-64F5D69C97CF}.Debug|x64.ActiveCfg = Debug|x64
+		{5E46272C-7B16-4E84-9303-64F5D69C97CF}.Debug|x64.Build.0 = Debug|x64
+		{5E46272C-7B16-4E84-9303-64F5D69C97CF}.Release|Win32.ActiveCfg = Release|Win32
+		{5E46272C-7B16-4E84-9303-64F5D69C97CF}.Release|Win32.Build.0 = Release|Win32
+		{5E46272C-7B16-4E84-9303-64F5D69C97CF}.Release|x64.ActiveCfg = Release|x64
+		{5E46272C-7B16-4E84-9303-64F5D69C97CF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

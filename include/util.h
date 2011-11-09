@@ -22,18 +22,17 @@ $Id$
 #endif
 
 #if defined(WIN32) || defined(_WIN64)
-
 	#include <windows.h>
 	#include <process.h>
-
 #else
-
 	#include <fcntl.h>
 	#include <unistd.h>
 	#include <errno.h>
 	#include <pthread.h>
 	#include <sys/resource.h>
 	#include <float.h>
+#endif
+
 #ifdef NO_ZLIB
 	#define gzFile   FILE
 	#define gzopen   fopen
@@ -46,8 +45,6 @@ $Id$
 	#define gzflush(f,b)  fflush(f)
 #else
 	#include <zlib.h>
-#endif
-
 #endif
 
 /* system-independent header files ------------------------------------*/
