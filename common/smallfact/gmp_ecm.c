@@ -67,7 +67,7 @@ typedef struct {
 #define NUM_TABLE_ENTRIES (sizeof(work_table) / sizeof(work_t))
 
 #define NUM_PM1_TRIALS 1
-#define NUM_PP1_TRIALS 3
+#define NUM_PP1_TRIALS 1
 #define NUM_NON_ECM (NUM_PM1_TRIALS + NUM_PP1_TRIALS)
 
 /* the number of times we can tolerate any algorithm
