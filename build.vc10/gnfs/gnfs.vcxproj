@@ -44,7 +44,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="..\vsyasm.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -159,7 +159,6 @@
     <ClCompile Include="..\..\gnfs\poly\size_score.c" />
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1.c" />
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_roots.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\optimize.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\stage2.c" />
@@ -191,13 +190,14 @@
     <ClInclude Include="..\..\include\util.h" />
   </ItemGroup>
   <ItemGroup>
-    <YASM Include="..\x64_support.asm">
+    <MASM Include="..\x64_support_masm.asm">
+      <FileType>Document</FileType>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </YASM>
+    </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\vsyasm.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

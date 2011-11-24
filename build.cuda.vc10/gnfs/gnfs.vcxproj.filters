@@ -195,8 +195,8 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <YASM Include="..\x64_support.asm">
-      <Filter>Source Files\poly</Filter>
-    </YASM>
+    <MASM Include="..\x64_support_masm.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

@@ -104,9 +104,6 @@
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_roots.c">
       <Filter>Source Files\poly\Stage1</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile> 
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg45_x.c">
       <Filter>Source Files\poly\Stage2</Filter>
     </ClCompile>
@@ -189,8 +186,8 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <YASM Include="..\x64_support.asm">
+    <MASM Include="..\x64_support_masm.asm">
       <Filter>Source Files\poly</Filter>
-    </YASM>
+    </MASM>
   </ItemGroup>
 </Project>
