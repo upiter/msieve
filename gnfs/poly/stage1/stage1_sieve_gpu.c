@@ -39,6 +39,75 @@ $Id$
    reasonable size but the collisions found are still over the
    original, impractically large range. */
 
+enum {
+	GPU_TRANS = 0,
+	GPU_SORT,
+	GPU_MERGE,
+	GPU_MERGE1,
+	GPU_FINAL,
+	NUM_GPU_FUNCTIONS /* must be last */
+};
+
+static const char * gpu_kernel_names[] = 
+{
+	"sieve_kernel_trans",
+	"sieve_kernel_sort",
+	"sieve_kernel_merge",
+	"sieve_kernel_merge1",
+	"sieve_kernel_final",
+};
+
+static const gpu_arg_type_list_t gpu_kernel_args[] = 
+{
+	/* sieve_kernel_trans */
+	{ 8,
+		{
+		  GPU_ARG_PTR,
+		  GPU_ARG_UINT32,
+		  GPU_ARG_PTR,
+		  GPU_ARG_UINT32,
+		  GPU_ARG_PTR,
+		  GPU_ARG_PTR,
+		  GPU_ARG_UINT32,
+		  GPU_ARG_UINT32,
+		}
+	},
+	/* sieve_kernel_sort */
+	{ 2,
+		{
+		  GPU_ARG_PTR,
+		  GPU_ARG_PTR,
+		}
+	},
+	/* sieve_kernel_merge */
+	{ 3,
+		{
+		  GPU_ARG_PTR,
+		  GPU_ARG_PTR,
+		  GPU_ARG_UINT32,
+		}
+	},
+	/* sieve_kernel_merge1 */
+	{ 4,
+		{
+		  GPU_ARG_PTR,
+		  GPU_ARG_PTR,
+		  GPU_ARG_UINT32,
+		  GPU_ARG_UINT32,
+		}
+	},
+	/* sieve_kernel_final */
+	{ 5,
+		{
+		  GPU_ARG_PTR,
+		  GPU_ARG_PTR,
+		  GPU_ARG_UINT32,
+		  GPU_ARG_UINT32,
+		  GPU_ARG_PTR,
+		}
+	},
+};
+
 /*------------------------------------------------------------------------*/
 
 typedef struct {
@@ -232,9 +301,7 @@ typedef struct {
 
 	uint32 num_entries;
 
-	CUfunction *gpu_kernel;
-	uint32 *threads_per_block;
-
+	gpu_launch_t *launch;
 	CUdeviceptr gpu_p_array;
 	CUdeviceptr gpu_q_array;
 	CUdeviceptr gpu_found_array;
@@ -296,13 +363,6 @@ check_found_array(poly_search_t *poly, device_data_t *d)
 #define MAX_SPECIAL_Q ((uint32)(-1))
 #define MAX_OTHER ((uint32)1 << 27)
 
-#define NUM_GPU_FUNCTIONS 5
-#define GPU_TRANS 0
-#define GPU_SORT 1
-#define GPU_MERGE 2
-#define GPU_MERGE1 3
-#define GPU_FINAL 4
-
 #define SHARED_ELEM_SIZE (sizeof(uint32) + sizeof(uint64))
 
 /*------------------------------------------------------------------------*/
@@ -312,12 +372,11 @@ handle_special_q_batch(msieve_obj *obj, poly_search_t *poly,
 			uint32 num_specialq)
 {
 	uint32 i, j, k;
-	uint32 j_offset, k_offset;
 	uint32 quit = 0;
 	p_soa_array_t *p_array = d->p_array;
 	uint32 num_blocks;
 	float elapsed_ms;
-	void *gpu_ptr;
+	gpu_arg_t gpu_args[GPU_MAX_KERNEL_ARGS];
 
 	CUDA_TRY(cuEventRecord(d->start, 0))
 
@@ -333,164 +392,79 @@ handle_special_q_batch(msieve_obj *obj, poly_search_t *poly,
 		p_soa_var_t *soa = p_array->soa + i;
 		uint32 num = soa->num_p;
 
-		j = 0;
-		gpu_ptr = (void *)(size_t)soa->dev_p;
-		CUDA_ALIGN_PARAM(j, __alignof(gpu_ptr));
-		CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_TRANS], (int)j,
-				&gpu_ptr, sizeof(gpu_ptr)))
-		j += sizeof(gpu_ptr);
+		gpu_args[0].ptr_arg = (void *)(size_t)soa->dev_p;
+		gpu_args[1].uint32_arg = num;
+		gpu_args[2].ptr_arg = (void *)(size_t)soa->dev_start_roots;
+		gpu_args[3].uint32_arg = soa->num_roots;
+		gpu_args[4].ptr_arg = (void *)(size_t)soa->dev_p_entry;
+		gpu_args[5].ptr_arg = (void *)(size_t)soa->dev_root_entry;
+		gpu_args[6].uint32_arg = num_specialq;
+		gpu_args[7].uint32_arg = d->num_entries;
+		gpu_launch_set(d->launch + GPU_TRANS, gpu_args);
 
-		CUDA_ALIGN_PARAM(j, __alignof(uint32));
-		CUDA_TRY(cuParamSeti(d->gpu_kernel[GPU_TRANS], (int)j,
-				(int)num))
-		j += sizeof(uint32);
-
-		gpu_ptr = (void *)(size_t)soa->dev_start_roots;
-		CUDA_ALIGN_PARAM(j, __alignof(gpu_ptr));
-		CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_TRANS], (int)j,
-				&gpu_ptr, sizeof(gpu_ptr)))
-		j += sizeof(gpu_ptr);
-
-		CUDA_ALIGN_PARAM(j, __alignof(uint32));
-		CUDA_TRY(cuParamSeti(d->gpu_kernel[GPU_TRANS], (int)j,
-				(int)soa->num_roots))
-		j += sizeof(uint32);
-
-		gpu_ptr = (void *)(size_t)soa->dev_p_entry;
-		CUDA_ALIGN_PARAM(j, __alignof(gpu_ptr));
-		CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_TRANS], (int)j,
-				&gpu_ptr, sizeof(gpu_ptr)))
-		j += sizeof(gpu_ptr);
-
-		gpu_ptr = (void *)(size_t)soa->dev_root_entry;
-		CUDA_ALIGN_PARAM(j, __alignof(gpu_ptr));
-		CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_TRANS], (int)j,
-				&gpu_ptr, sizeof(gpu_ptr)))
-		j += sizeof(gpu_ptr);
-
-		CUDA_ALIGN_PARAM(j, __alignof(uint32));
-		CUDA_TRY(cuParamSeti(d->gpu_kernel[GPU_TRANS], (int)j,
-				(int)num_specialq))
-		j += sizeof(uint32);
-
-		CUDA_ALIGN_PARAM(j, __alignof(uint32));
-		CUDA_TRY(cuParamSeti(d->gpu_kernel[GPU_TRANS], (int)j,
-				(int)d->num_entries))
-		j += sizeof(uint32);
-
-		CUDA_TRY(cuParamSetSize(d->gpu_kernel[GPU_TRANS], j))
-
-		num_blocks = (num - 1) /
-				d->threads_per_block[GPU_TRANS] + 1;
-		CUDA_TRY(cuLaunchGridAsync(d->gpu_kernel[GPU_TRANS],
+		num_blocks = 1 + (num - 1) /
+				d->launch[GPU_TRANS].threads_per_block;
+		CUDA_TRY(cuLaunchGridAsync(
+				d->launch[GPU_TRANS].kernel_func,
 				num_blocks, 1, soa->stream))
 	}
 
-	j = 0;
-	gpu_ptr = (void *)(size_t)d->gpu_p_array;
-	CUDA_ALIGN_PARAM(j, __alignof(gpu_ptr));
-	CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_SORT], (int)j,
-			&gpu_ptr, sizeof(gpu_ptr)))
-	CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_MERGE], (int)j,
-			&gpu_ptr, sizeof(gpu_ptr)))
-	CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_MERGE1], (int)j,
-			&gpu_ptr, sizeof(gpu_ptr)))
-	j += sizeof(gpu_ptr);
+	gpu_args[0].ptr_arg = (void *)(size_t)d->gpu_p_array;
+	gpu_args[1].ptr_arg = (void *)(size_t)d->gpu_root_array;
+	gpu_launch_set(d->launch + GPU_SORT, gpu_args);
 
-	gpu_ptr = (void *)(size_t)d->gpu_root_array;
-	CUDA_ALIGN_PARAM(j, __alignof(gpu_ptr));
-	CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_SORT], (int)j,
-			&gpu_ptr, sizeof(gpu_ptr)))
-	CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_MERGE], (int)j,
-			&gpu_ptr, sizeof(gpu_ptr)))
-	CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_MERGE1], (int)j,
-			&gpu_ptr, sizeof(gpu_ptr)))
-	j += sizeof(gpu_ptr);
+	num_blocks = d->num_entries / 
+			d->launch[GPU_SORT].threads_per_block / 2;
 
-	CUDA_TRY(cuParamSetSize(d->gpu_kernel[GPU_SORT], j))
-
-	CUDA_ALIGN_PARAM(j, __alignof(uint32));
-	j_offset = j;
-	j += sizeof(uint32);
-
-	CUDA_TRY(cuParamSetSize(d->gpu_kernel[GPU_MERGE], j))
-
-	CUDA_ALIGN_PARAM(j, __alignof(uint32));
-	k_offset = j;
-	j += sizeof(uint32);
-
-	CUDA_TRY(cuParamSetSize(d->gpu_kernel[GPU_MERGE1], j))
-
-	num_blocks = d->num_entries / d->threads_per_block[GPU_SORT] / 2;
-
-	CUDA_TRY(cuLaunchGrid(d->gpu_kernel[GPU_SORT],
+	CUDA_TRY(cuLaunchGrid(d->launch[GPU_SORT].kernel_func,
 			num_blocks, num_specialq))
 
-	j = 2 * d->threads_per_block[GPU_SORT];
+	j = 2 * d->launch[GPU_SORT].threads_per_block;
 	for (; j < d->num_entries; j *= 2) {
 
-		CUDA_TRY(cuParamSeti(d->gpu_kernel[GPU_MERGE],
-				(int)j_offset, j))
-		CUDA_TRY(cuParamSeti(d->gpu_kernel[GPU_MERGE1],
-				(int)j_offset, j))
-
-		num_blocks = d->num_entries /
-				d->threads_per_block[GPU_MERGE1] / 2;
-
-		for (k = j; k > d->threads_per_block[GPU_MERGE];
+		for (k = j; k > d->launch[GPU_MERGE].threads_per_block;
 							k /= 2) {
 
-			CUDA_TRY(cuParamSeti(d->gpu_kernel[GPU_MERGE1],
-					(int)k_offset, k))
+			gpu_args[0].ptr_arg = (void *)(size_t)d->gpu_p_array;
+			gpu_args[1].ptr_arg = (void *)(size_t)d->gpu_root_array;
+			gpu_args[2].uint32_arg = j;
+			gpu_args[3].uint32_arg = k;
+			gpu_launch_set(d->launch + GPU_MERGE1, gpu_args);
 
-			CUDA_TRY(cuLaunchGrid(d->gpu_kernel[GPU_MERGE1],
+			num_blocks = d->num_entries /
+				d->launch[GPU_MERGE1].threads_per_block / 2;
+
+			CUDA_TRY(cuLaunchGrid(
+					d->launch[GPU_MERGE1].kernel_func,
 					num_blocks, num_specialq))
 		}
 
-		num_blocks = d->num_entries /
-				d->threads_per_block[GPU_MERGE] / 2;
+		gpu_args[0].ptr_arg = (void *)(size_t)d->gpu_p_array;
+		gpu_args[1].ptr_arg = (void *)(size_t)d->gpu_root_array;
+		gpu_args[2].uint32_arg = j;
+		gpu_launch_set(d->launch + GPU_MERGE, gpu_args);
 
-		CUDA_TRY(cuLaunchGrid(d->gpu_kernel[GPU_MERGE],
+		num_blocks = d->num_entries /
+				d->launch[GPU_MERGE].threads_per_block / 2;
+
+		CUDA_TRY(cuLaunchGrid(d->launch[GPU_MERGE].kernel_func,
 				num_blocks, num_specialq))
 	}
 
-	j = 0;
-	gpu_ptr = (void *)(size_t)d->gpu_p_array;
-	CUDA_ALIGN_PARAM(j, __alignof(gpu_ptr));
-	CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_FINAL], (int)j,
-			&gpu_ptr, sizeof(gpu_ptr)))
-	j += sizeof(gpu_ptr);
+	gpu_args[0].ptr_arg = (void *)(size_t)(d->gpu_p_array);
+	gpu_args[1].ptr_arg = (void *)(size_t)(d->gpu_root_array);
+	gpu_args[2].uint32_arg = d->num_entries;
+	gpu_args[3].uint32_arg = num_specialq;
+	gpu_args[4].ptr_arg = (void *)(size_t)(d->gpu_found_array);
+	gpu_launch_set(d->launch + GPU_FINAL, gpu_args);
 
-	gpu_ptr = (void *)(size_t)d->gpu_root_array;
-	CUDA_ALIGN_PARAM(j, __alignof(gpu_ptr));
-	CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_FINAL], (int)j,
-			&gpu_ptr, sizeof(gpu_ptr)))
-	j += sizeof(gpu_ptr);
-
-	CUDA_ALIGN_PARAM(j, __alignof(uint32));
-	CUDA_TRY(cuParamSeti(d->gpu_kernel[GPU_FINAL], (int)j,
-			d->num_entries))
-	j += sizeof(uint32);
-
-	CUDA_ALIGN_PARAM(j, __alignof(uint32));
-	CUDA_TRY(cuParamSeti(d->gpu_kernel[GPU_FINAL], (int)j,
-			num_specialq))
-	j += sizeof(uint32);
-
-	gpu_ptr = (void *)(size_t)d->gpu_found_array;
-	CUDA_ALIGN_PARAM(j, __alignof(gpu_ptr));
-	CUDA_TRY(cuParamSetv(d->gpu_kernel[GPU_FINAL], (int)j,
-			&gpu_ptr, sizeof(gpu_ptr)))
-	j += sizeof(gpu_ptr);
-
-	CUDA_TRY(cuParamSetSize(d->gpu_kernel[GPU_FINAL], j))
-
-	num_blocks = (d->num_entries * num_specialq - 1) /
-			d->threads_per_block[GPU_FINAL] + 1;
+	num_blocks = 1 + (d->num_entries * num_specialq - 1) /
+			d->launch[GPU_FINAL].threads_per_block;
 	if (num_blocks > (uint32)poly->gpu_info->num_compute_units)
 		num_blocks = poly->gpu_info->num_compute_units;
 
-	CUDA_TRY(cuLaunchGrid(d->gpu_kernel[GPU_FINAL], num_blocks, 1))
+	CUDA_TRY(cuLaunchGrid(d->launch[GPU_FINAL].kernel_func, 
+				num_blocks, 1))
 
 	CUDA_TRY(cuEventRecord(d->end, 0))
 	CUDA_TRY(cuEventSynchronize(d->end))
@@ -606,70 +580,57 @@ sieve_specialq_64(msieve_obj *obj, poly_search_t *poly,
 	CUDA_TRY(cuEventCreate(&data.start, CU_EVENT_BLOCKING_SYNC))
 	CUDA_TRY(cuEventCreate(&data.end, CU_EVENT_BLOCKING_SYNC))
 
-	data.gpu_kernel = (CUfunction *)xmalloc(NUM_GPU_FUNCTIONS *
-				sizeof(CUfunction));
-	data.threads_per_block = (uint32 *)xmalloc(NUM_GPU_FUNCTIONS *
-				sizeof(uint32));
+	data.launch = (gpu_launch_t *)xmalloc(NUM_GPU_FUNCTIONS *
+				sizeof(gpu_launch_t));
 
-	CUDA_TRY(cuModuleGetFunction(&data.gpu_kernel[GPU_TRANS],
-				gpu_module, "sieve_kernel_trans"))
-	CUDA_TRY(cuFuncGetAttribute((int *)&i,
-				CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
-				data.gpu_kernel[GPU_TRANS]))
-	data.threads_per_block[GPU_TRANS] = MIN(i, 256);
-	CUDA_TRY(cuFuncSetBlockShape(data.gpu_kernel[GPU_TRANS],
-				data.threads_per_block[GPU_TRANS], 1, 1))
+	for (i = 0; i < NUM_GPU_FUNCTIONS; i++) {
+		gpu_launch_init(gpu_module, gpu_kernel_names[i],
+				gpu_kernel_args + i,
+				data.launch + i);
+	}
 
-	CUDA_TRY(cuModuleGetFunction(&data.gpu_kernel[GPU_FINAL],
-				gpu_module, "sieve_kernel_final"))
-	CUDA_TRY(cuFuncGetAttribute((int *)&i,
-				CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
-				data.gpu_kernel[GPU_FINAL]))
-	data.threads_per_block[GPU_FINAL] = MIN(i, 256);
-	CUDA_TRY(cuFuncSetBlockShape(data.gpu_kernel[GPU_FINAL],
-				data.threads_per_block[GPU_FINAL], 1, 1))
+	i = data.launch[GPU_TRANS].threads_per_block;
+	i = MIN(i, 256);
+	data.launch[GPU_TRANS].threads_per_block = i;
+	CUDA_TRY(cuFuncSetBlockShape(data.launch[GPU_TRANS].kernel_func,
+				i, 1, 1))
 
-	CUDA_TRY(cuModuleGetFunction(&data.gpu_kernel[GPU_SORT],
-				gpu_module, "sieve_kernel_sort"))
-	CUDA_TRY(cuFuncGetAttribute((int *)&i,
-				CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
-				data.gpu_kernel[GPU_SORT]))
+	i = data.launch[GPU_FINAL].threads_per_block;
+	i = MIN(i, 256);
+	data.launch[GPU_FINAL].threads_per_block = i;
+	CUDA_TRY(cuFuncSetBlockShape(data.launch[GPU_FINAL].kernel_func,
+				i, 1, 1))
+
+	i = data.launch[GPU_SORT].threads_per_block;
 	i = MIN(i, data.num_entries / 2);
 	i = MIN(i, (poly->gpu_info->shared_mem_size - 4096) /
 			SHARED_ELEM_SIZE / 2);
-	data.threads_per_block[GPU_SORT] = next_2pow(i + 1) / 2;
-	CUDA_TRY(cuFuncSetBlockShape(data.gpu_kernel[GPU_SORT],
-				data.threads_per_block[GPU_SORT], 1, 1))
-	CUDA_TRY(cuFuncSetSharedSize(data.gpu_kernel[GPU_SORT],
-				2 * data.threads_per_block[GPU_SORT] *
-				SHARED_ELEM_SIZE))
+	i = next_2pow(i + 1) / 2;
+	data.launch[GPU_SORT].threads_per_block = i;
+	CUDA_TRY(cuFuncSetBlockShape(data.launch[GPU_SORT].kernel_func,
+				i, 1, 1))
+	CUDA_TRY(cuFuncSetSharedSize(data.launch[GPU_SORT].kernel_func,
+				2 * i * SHARED_ELEM_SIZE))
 
-	CUDA_TRY(cuModuleGetFunction(&data.gpu_kernel[GPU_MERGE],
-				gpu_module, "sieve_kernel_merge"))
-	CUDA_TRY(cuFuncGetAttribute((int *)&i,
-				CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
-				data.gpu_kernel[GPU_MERGE]))
-	i = MIN(i, 2 * data.threads_per_block[GPU_SORT]);
+	i = data.launch[GPU_MERGE].threads_per_block;
+	i = MIN(i, 2 * data.launch[GPU_SORT].threads_per_block);
 	i = MIN(i, (poly->gpu_info->shared_mem_size - 4096) /
 			SHARED_ELEM_SIZE / 2);
-	data.threads_per_block[GPU_MERGE] = next_2pow(i + 1) / 2;
-	CUDA_TRY(cuFuncSetBlockShape(data.gpu_kernel[GPU_MERGE],
-				data.threads_per_block[GPU_MERGE], 1, 1))
-	CUDA_TRY(cuFuncSetSharedSize(data.gpu_kernel[GPU_MERGE],
-				2 * data.threads_per_block[GPU_MERGE] *
-				SHARED_ELEM_SIZE))
+	i = next_2pow(i + 1) / 2;
+	data.launch[GPU_MERGE].threads_per_block = i;
+	CUDA_TRY(cuFuncSetBlockShape(data.launch[GPU_MERGE].kernel_func,
+				i, 1, 1))
+	CUDA_TRY(cuFuncSetSharedSize(data.launch[GPU_MERGE].kernel_func,
+				2 * i * SHARED_ELEM_SIZE))
 
-	CUDA_TRY(cuModuleGetFunction(&data.gpu_kernel[GPU_MERGE1],
-				gpu_module, "sieve_kernel_merge1"))
-	CUDA_TRY(cuFuncGetAttribute((int *)&i,
-				CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
-				data.gpu_kernel[GPU_MERGE1]))
-	i = MIN(i, 2 * data.threads_per_block[GPU_SORT]);
-	data.threads_per_block[GPU_MERGE1] = MIN(next_2pow(i + 1) / 2, 256);
-	CUDA_TRY(cuFuncSetBlockShape(data.gpu_kernel[GPU_MERGE1],
-				data.threads_per_block[GPU_MERGE1], 1, 1))
+	i = data.launch[GPU_MERGE1].threads_per_block;
+	i = MIN(i, 2 * data.launch[GPU_SORT].threads_per_block);
+	i = MIN(next_2pow(i + 1) / 2, 256);
+	data.launch[GPU_MERGE1].threads_per_block = i;
+	CUDA_TRY(cuFuncSetBlockShape(data.launch[GPU_MERGE1].kernel_func,
+				i, 1, 1))
 
-	data.found_array_size = data.threads_per_block[GPU_FINAL] *
+	data.found_array_size = data.launch[GPU_FINAL].threads_per_block *
 			poly->gpu_info->num_compute_units;
 	CUDA_TRY(cuMemAlloc(&data.gpu_found_array, sizeof(found_t) *
 			data.found_array_size))
@@ -738,8 +699,7 @@ sieve_specialq_64(msieve_obj *obj, poly_search_t *poly,
 		CUDA_TRY(cuStreamDestroy(soa->stream));
 	}
 	free(data.found_array);
-	free(data.gpu_kernel);
-	free(data.threads_per_block);
+	free(data.launch);
 	p_soa_array_free(&p_array);
 	CUDA_TRY(cuEventDestroy(data.start))
 	CUDA_TRY(cuEventDestroy(data.end))
