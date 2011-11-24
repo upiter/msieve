@@ -168,8 +168,7 @@
     <ClCompile Include="..\..\gnfs\ffpoly.c" />
     <ClCompile Include="..\..\gnfs\gf2.c" />
     <ClCompile Include="..\..\gnfs\gnfs.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu_nosq.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu_sq.c" />
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\optimize_deg6.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg45_x.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg5_xy.c" />
@@ -189,7 +188,6 @@
     <ClCompile Include="..\..\gnfs\poly\size_score.c" />
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1.c" />
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_roots.c" />
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\optimize.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve.c" />
     <ClCompile Include="..\..\gnfs\poly\stage2\stage2.c" />

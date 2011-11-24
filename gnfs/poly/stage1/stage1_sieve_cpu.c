@@ -53,14 +53,16 @@ $Id$
    problems, e.g. 200-digit GNFS */
 
 
+#define P_BITS 27
+#define HASHITER_BITS (32 - P_BITS)
+
 /* one element of the hashtable. The table is keyed by the
-   offset ito the sieve interval, i.e. by the first field below.
-   We arbitrarily assume the offset will not exceed 2^64 and
-   choose special-q to force this */
+   offset ito the sieve interval, i.e. by the first field below. */
 
 typedef struct {
-	uint64 offset;
-	uint32 p;
+	int64 offset;
+	uint32 p : P_BITS;
+	uint32 iter : HASHITER_BITS;
 } hash_entry_t;
 
 /* every progression keeps a running count of the current sieve
@@ -68,7 +70,7 @@ typedef struct {
 
 typedef struct {
 	uint64 start_offset;
-	uint64 offset;
+	int64 offset;
 } hash_list_t;
 
 /* structure for a single progression */
@@ -79,11 +81,15 @@ typedef struct {
 	uint32 pad;
 	uint32 mont_w;
 	uint64 mont_r;
-	uint64 p2;
+	uint64 pp;
+	uint64 ss_mod_pp;
 	hash_list_t roots[MAX_ROOTS];
 } p_packed_t;
 
-#define P_PACKED_HEADER_WORDS 4
+/* P_PACKED_HEADER_WORDS is the number of uint64 sized elements
+   preceding hash_list_t roots in the above structure */
+
+#define P_PACKED_HEADER_WORDS 5
 
 /*------------------------------------------------------------------------*/
 
@@ -97,6 +103,8 @@ typedef struct {
 	uint32 num_p;
 	uint32 num_roots;
 	uint32 p_size_alloc;
+	uint64 sieve_size;
+	uint32 curr_hashiter;
 	p_packed_t *curr;
 	p_packed_t *packed_array;
 } p_packed_var_t;
@@ -168,24 +176,31 @@ store_p_packed(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 	curr->num_roots = num_roots;
 	for (i = 0; i < num_roots; i++)
 		curr->roots[i].start_offset = roots[i];
-	curr->p2 = (uint64)p * p;
+	curr->pp = (uint64)p * p;
 
 	/* set up Montgomery arithmetic */
 
-	curr->mont_w = montmul32_w((uint32)curr->p2);
-	curr->mont_r = montmul64_r(curr->p2);
+	curr->mont_w = montmul32_w((uint32)curr->pp);
+	curr->mont_r = montmul64_r(curr->pp);
+
+	curr->ss_mod_pp = s->sieve_size % curr->pp;
 
 	s->num_p++;
 	s->num_roots += num_roots;
 	s->curr = p_packed_next(s->curr);
 }
 
+#define SIEVE_MAX 9223372036854775807ULL
+
+#define MAX_SPECIAL_Q ((uint32)(-1))
+#define MAX_OTHER (((uint32)1 << P_BITS) - 1)
+
 /*------------------------------------------------------------------------*/
 static uint32
-handle_special_q(msieve_obj *obj, hash_entry_t *hashtable,
-		uint32 hashtable_size, p_packed_var_t *hash_array,
-		lattice_fb_t *L, uint32 special_q, uint64 special_q_root,
-		uint64 block_size, uint64 *inv_array)
+handle_special_q(msieve_obj *obj, poly_search_t *poly,
+		hash_entry_t *hashtable, uint32 hashtable_size_log2,
+		p_packed_var_t *hash_array, uint32 special_q,
+		uint64 special_q_root, uint64 block_size, uint64 *inv_array)
 {
 	/* perform the hashtable search for a single special-q
 
@@ -197,34 +212,35 @@ handle_special_q(msieve_obj *obj, hash_entry_t *hashtable,
 	uint32 quit = 0;
 	p_packed_t *tmp;
 	uint32 num_entries = hash_array->num_p;
-	uint64 special_q2 = (uint64)special_q * special_q;
-	uint64 sieve_size;
-	uint64 sieve_start = 0;
+	uint64 sieve_size = hash_array->sieve_size;
+	int64 sieve_start = -sieve_size;
 	uint32 num_blocks = 0;
-	uint32 hashmask = ((uint32)1 << hashtable_size) - 1;
+	uint32 hashtable_count;
+	uint32 hashtable_size = (uint32)1 << hashtable_size_log2;
+	uint32 hashmask = hashtable_size - 1;
 
-	if (2 * L->poly->sieve_size / special_q2 > (uint64)(-1)) {
-		printf("error: sieve size too large "
-			"in handle_special_q\n");
-		return 0;
+	if (sieve_start > 0) {
+		printf("error: sieve size must fit in signed int "
+			"in handle_special_q()\n");
+		exit(1);
 	}
-
-	sieve_size = 2 * L->poly->sieve_size / special_q2;
 
 	tmp = hash_array->packed_array;
 
 	if (special_q == 1) {
 
-		/* without a special-q, hash_array is ready to go
-		   immediately */
-
 		for (i = 0; i < num_entries; i++) {
+			uint64 pp = tmp->pp;
 			uint32 num_roots = tmp->num_roots;
 
 			for (j = 0; j < num_roots; j++) {
-				tmp->roots[j].offset =
-						tmp->roots[j].start_offset;
+				uint64 proot = tmp->roots[j].start_offset;
+
+				proot = mp_modsub_2(proot,
+						pp - tmp->ss_mod_pp, pp);
+				tmp->roots[j].offset = proot - sieve_size;
 			}
+
 			tmp = p_packed_next(tmp);
 		}
 	}
@@ -232,9 +248,9 @@ handle_special_q(msieve_obj *obj, hash_entry_t *hashtable,
 		/* for each progression p */
 
 		for (i = 0; i < num_entries; i++) {
-			uint64 p2 = tmp->p2;
+			uint64 pp = tmp->pp;
 			uint32 num_roots = tmp->num_roots;
-			uint32 p2_w = tmp->mont_w;
+			uint32 pp_w = tmp->mont_w;
 			uint64 qinv = inv_array[i];
 
 			/* check if calling code determined that p and
@@ -245,7 +261,7 @@ handle_special_q(msieve_obj *obj, hash_entry_t *hashtable,
 
 			if (qinv == 0) {
 				for (j = 0; j < num_roots; j++)
-					tmp->roots[j].offset = (uint64)(-1);
+					tmp->roots[j].offset = SIEVE_MAX;
 				tmp = p_packed_next(tmp);
 				continue;
 			}
@@ -258,10 +274,13 @@ handle_special_q(msieve_obj *obj, hash_entry_t *hashtable,
 
 			for (j = 0; j < num_roots; j++) {
 				uint64 proot = tmp->roots[j].start_offset;
-				tmp->roots[j].offset = montmul64(
-						mp_modsub_2(proot,
-							special_q_root % p2,
-						       	p2), qinv, p2, p2_w);
+
+				proot = mp_modsub_2(proot,
+						special_q_root % pp, pp);
+				proot = montmul64(proot, qinv, pp, pp_w);
+				proot = mp_modsub_2(proot,
+						pp - tmp->ss_mod_pp, pp);
+				tmp->roots[j].offset = proot - sieve_size;
 			}
 
 			tmp = p_packed_next(tmp);
@@ -270,79 +289,103 @@ handle_special_q(msieve_obj *obj, hash_entry_t *hashtable,
 
 	/* sieve is ready to go; we proceed with the hashtable
 	   one block at a time. The block size is chosen to be
-	   the minimum value of p2 in hash_array, so that for each
+	   the minimum value of p^2 in hash_array, so that for each
 	   block a given root for a given p contributes at most
 	   one entry to the hashtable. The hashtable is refilled
 	   from scratch when the next block runs */
 
-	while (sieve_start < sieve_size) {
-		uint64 sieve_end = sieve_start + MIN(block_size,
+	while (sieve_start < (int64)sieve_size) {
+		uint32 iter = hash_array->curr_hashiter;
+		int64 sieve_end = sieve_start + MIN(block_size,
 						sieve_size - sieve_start);
 
 		tmp = hash_array->packed_array;
-		memset(hashtable, 0, sizeof(hash_entry_t) *
-				((uint32)1 << hashtable_size));
+		hashtable_count = 0;
+
+		/* only reset the hashtable memory when the iteration
+		   count loops back to zero. In other cases, we can
+		   ignore stale data in the hashtable by checking its
+		   iteration count, and save a memset here */
+
+		if (iter == 0) {
+			memset(hashtable, 0, sizeof(hash_entry_t) *
+							hashtable_size);
+		}
 
 		for (i = 0; i < num_entries; i++) {
 
 			uint32 num_roots = tmp->num_roots;
 
 			for (j = 0; j < num_roots; j++) {
-				uint64 offset = tmp->roots[j].offset;
+				int64 offset = tmp->roots[j].offset;
+				uint32 key;
 
-				if (offset < sieve_end) {
-					uint32 key = offset & hashmask;
+				if (offset >= sieve_end)
+					continue;
 
-					while (hashtable[key].p != 0 &&
-					      hashtable[key].offset != offset) {
+				key = offset & hashmask;
 
-						key = (key + 1) & hashmask;
-					}
+				while (hashtable[key].iter == iter &&
+				      hashtable[key].p != 0 &&
+				      hashtable[key].offset != offset) {
 
-					if (hashtable[key].p != 0) {
+					key = (key + 1) & hashmask;
+				}
+
+				if (hashtable[key].iter == iter &&
+				   hashtable[key].p != 0) {
+
+					if (mp_gcd_1(hashtable[key].p,
+							tmp->p) == 1) {
 
 						/* collision found! The sieve
-						   offset 'res' is in 'special q
+						   offset is in 'special q
 						   coordinates' */
 
-						uint128 res;
+						uint64 p;
 
-						res.w[0] = (uint32)offset;
-						res.w[1] = (uint32)(offset >> 32);
-						res.w[2] = 0;
-						res.w[3] = 0;
+						p = tmp->p;
+						p = p * hashtable[key].p;
 
-						handle_collision(L->poly,
-						    tmp->p, hashtable[key].p,
-						    special_q, special_q_root,
-						    res);
+						handle_collision(poly,
+							p, special_q,
+							special_q_root,
+							offset);
 					}
-					else {
-						/* no hit; insert this offset
-						   for root j into the table */
-
-						hashtable[key].p = tmp->p;
-						hashtable[key].offset = offset;
-					}
-
-					/* compute the next offset 
-					   for root j */
-
-					offset += tmp->p2;
-
-					if (offset < sieve_start)
-						/* handle overflow */
-						offset = (uint64)(-1);
-
-					tmp->roots[j].offset = offset;
 				}
+				else {
+					/* no hit; insert this offset
+					   for root j into the table */
+
+					hashtable[key].iter = iter;
+					hashtable[key].p = tmp->p;
+					hashtable[key].offset = offset;
+
+					if (++hashtable_count == hashtable_size)
+						goto next_hashtable;
+				}
+
+				/* compute the next offset 
+				   for root j */
+
+				offset += tmp->pp;
+
+				if (offset < sieve_end)
+					/* handle overflow */
+					offset = SIEVE_MAX;
+
+				tmp->roots[j].offset = offset;
 			}
 
 			tmp = p_packed_next(tmp);
 		}
 
+next_hashtable:
 		sieve_start = sieve_end;
 		num_blocks++;
+
+		hash_array->curr_hashiter++;
+		hash_array->curr_hashiter %= ((uint32)1 << HASHITER_BITS);
 
 		/* check for interrupt after every block */
 
@@ -361,7 +404,7 @@ handle_special_q(msieve_obj *obj, hash_entry_t *hashtable,
 
 static void
 batch_invert(uint32 *qlist, uint32 num_q, uint64 *invlist,
-		uint32 p, uint64 p2_r, uint32 p2_w)
+		uint32 p, uint64 pp_r, uint32 pp_w)
 {
 	/* use Montgomery's batch modular inversion algorithm
 	   to compute the inverse of many special q modulo a
@@ -370,57 +413,59 @@ batch_invert(uint32 *qlist, uint32 num_q, uint64 *invlist,
 	   they didn't start that way */
 
 	uint32 i;
-	uint64 q2[SPECIALQ_BATCH_SIZE];
+	uint64 qq[SPECIALQ_BATCH_SIZE];
 	uint64 invprod;
-	uint64 p2 = (uint64)p * p;
+	uint64 pp = (uint64)p * p;
 
 	invlist[0] = invprod = (uint64)qlist[0] * qlist[0];
 	for (i = 1; i < num_q; i++) {
-		q2[i] = (uint64)qlist[i] * qlist[i];
-		invlist[i] = invprod = montmul64(invprod, q2[i], p2, p2_w);
+		qq[i] = (uint64)qlist[i] * qlist[i];
+		invlist[i] = invprod = montmul64(invprod, qq[i], pp, pp_w);
 	}
 
-	invprod = mp_modinv_2(invprod % p2, p2);
-	invprod = montmul64(invprod, p2_r, p2, p2_w);
+	invprod = mp_modinv_2(invprod % pp, pp);
+	invprod = montmul64(invprod, pp_r, pp, pp_w);
 	for (i = num_q - 1; i; i--) {
-		invlist[i] = montmul64(invprod, invlist[i-1], p2, p2_w);
-		invprod = montmul64(invprod, q2[i], p2, p2_w);
+		invlist[i] = montmul64(invprod, invlist[i-1], pp, pp_w);
+		invprod = montmul64(invprod, qq[i], pp, pp_w);
 	}
 	invlist[i] = invprod;
 }
 
 /*------------------------------------------------------------------------*/
 static uint32
-sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L, 
+sieve_specialq_64(msieve_obj *obj, poly_search_t *poly, int64 sieve_size,
 		sieve_fb_t *sieve_special_q, sieve_fb_t *sieve_p, 
 		uint32 special_q_min, uint32 special_q_max, 
-		uint32 p_min, uint32 p_max)
+		uint32 p_min, uint32 p_max, double deadline, double *elapsed)
 {
 	/* core search code */
 
 	uint32 i, j;
 	uint32 quit = 0;
+	p_packed_t *tmp;
 	p_packed_var_t specialq_array;
 	p_packed_var_t hash_array;
 	hash_entry_t *hashtable;
 	uint32 num_p;
 	uint32 num_roots;
-	uint32 hashtable_size;
+	uint32 hashtable_size_log2;
 	uint64 block_size;
 	uint64 *invtable = NULL;
+	double calc_hashtable_size;
 	double cpu_start_time = get_cpu_time();
 	mpz_t qprod;
 
 	p_packed_init(&specialq_array);
 	p_packed_init(&hash_array);
 	mpz_init(qprod);
-	block_size = (uint64)p_min * p_min;
+	hash_array.sieve_size = sieve_size;
 
 	/* build all the arithmetic progressions */
 
 	sieve_fb_reset(sieve_p, p_min, p_max, 1, MAX_ROOTS);
-	while (sieve_fb_next(sieve_p, L->poly, 
-			store_p_packed, &hash_array) != P_SEARCH_DONE) {
+	while (sieve_fb_next(sieve_p, poly, store_p_packed,
+			&hash_array) != P_SEARCH_DONE) {
 		;
 	}
 
@@ -430,14 +475,31 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 	printf("aprogs: %u entries, %u roots\n", num_p, num_roots);
 #endif
 
-	hashtable_size = ceil(log(num_roots * 4. / 3.) / M_LN2);
+	block_size = (uint64)p_min * p_min;
+	block_size = MIN(block_size, (uint64)2 * sieve_size);
+
+	/* estimate how many entries each hashtable will contain,
+	   in order to allocate just enough memory to hold all the
+	   entries */
+
+	calc_hashtable_size = 0;
+	for (i = 0, tmp = hash_array.packed_array; i < num_p; i++) {
+
+		calc_hashtable_size += (double)block_size / tmp->pp *
+							tmp->num_roots;
+
+		tmp = p_packed_next(tmp);
+	}
+
+	hashtable_size_log2 = ceil(log(calc_hashtable_size * 5. / 3.) / M_LN2);
 	hashtable = (hash_entry_t *)xmalloc(sizeof(hash_entry_t) *
-				((uint32)1 << hashtable_size));
+				((uint32)1 << hashtable_size_log2));
 
 	/* handle trivial lattice */
 	if (special_q_min == 1) {
-		quit = handle_special_q(obj, hashtable, hashtable_size,
-				&hash_array, L, 1, 0, block_size, NULL);
+		quit = handle_special_q(obj, poly, hashtable,
+				hashtable_size_log2, &hash_array,
+				1, 0, block_size, NULL);
 		if (quit || special_q_max == 1)
 			goto finished;
 	}
@@ -453,7 +515,6 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 	while (1) {
 		p_packed_t *qptr = specialq_array.packed_array;
 		uint32 num_q;
-		p_packed_t *tmp;
 		uint64 *invtmp;
 		uint32 batch_q[SPECIALQ_BATCH_SIZE];
 		uint64 batch_q_inv[SPECIALQ_BATCH_SIZE];
@@ -462,7 +523,7 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		   roots they use */
 
 		p_packed_reset(&specialq_array);
-		while (sieve_fb_next(sieve_special_q, L->poly, store_p_packed,
+		while (sieve_fb_next(sieve_special_q, poly, store_p_packed,
 					&specialq_array) != P_SEARCH_DONE) {
 			if (specialq_array.num_p == SPECIALQ_BATCH_SIZE)
 				break;
@@ -522,16 +583,16 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 		for (i = 0; i < num_q; i++) {
 
 			for (j = 0; j < qptr->num_roots; j++) {
-				quit = handle_special_q(obj,
-						hashtable, hashtable_size,
-						&hash_array, L, qptr->p, 
+				quit = handle_special_q(obj, poly,
+						hashtable, hashtable_size_log2,
+						&hash_array, qptr->p, 
 						qptr->roots[j].start_offset,
 						block_size, invtmp);
 				if (quit)
 					goto finished;
 			}
 
-			if (get_cpu_time() - cpu_start_time > L->deadline) {
+			if (get_cpu_time() - cpu_start_time > deadline) {
 				quit = 1;
 				goto finished;
 			}
@@ -544,64 +605,136 @@ sieve_specialq_64(msieve_obj *obj, lattice_fb_t *L,
 finished:
 #if 1
 	printf("hashtable: %u entries, %5.2lf MB\n", 
-			(uint32)1 << hashtable_size,
+			(uint32)1 << hashtable_size_log2,
 			(double)sizeof(hash_entry_t) *
-				((uint32)1 << hashtable_size) / 1048576);
+				((uint32)1 << hashtable_size_log2) / 1048576);
 #endif
 	free(invtable);
 	free(hashtable);
 	p_packed_free(&specialq_array);
 	p_packed_free(&hash_array);
 	mpz_clear(qprod);
-	L->deadline -= get_cpu_time() - cpu_start_time;
+	*elapsed = get_cpu_time() - cpu_start_time;
 	return quit;
 }
 
 /*------------------------------------------------------------------------*/
-uint32 
-sieve_lattice_cpu(msieve_obj *obj, lattice_fb_t *L, 
-		sieve_fb_t *sieve_special_q,
-		uint32 special_q_min, uint32 special_q_max)
+double
+sieve_lattice_cpu(msieve_obj *obj, poly_search_t *poly, double deadline)
 {
-	/* main driver for collision search */
-
-	uint32 quit;
-	sieve_fb_t sieve_p;
+	uint32 i;
+	uint32 degree = poly->degree;
 	uint32 p_min, p_max;
-	uint32 degree = L->poly->degree;
-	double p_size_max = L->poly->p_size_max;
+	uint32 special_q_min, special_q_max;
+	uint32 special_q_fb_max;
+	double p_size_max = poly->p_size_max;
+	double sieve_bound = poly->coeff_max / poly->m0 / degree;
+	double elapsed_total = 0;
+	sieve_fb_t sieve_p, sieve_special_q;
 
-	p_size_max /= special_q_max;
-	if (sqrt(p_size_max * P_SCALE) > (uint32)1 << 27) {
-		printf("error: invalid parameters for rational coefficient "
-			"in sieve_lattice_cpu()\n");
-		return 0;
-	}
+	/* size the problem; we choose p_min so that we will get
+	   to use a small number of each progression's offsets in
+	   the hashtable search, while respecting the bound on
+	   a_{d-2}. Choosing larger p implies that we can use more
+	   of its offsets while choosing smaller p means we must
+	   use fewer (or sometimes none) of its offsets. Larger p
+	   also implies that each pair of p are less likely to
+	   yield a collision, which makes the search more
+	   difficult */
 
-	/* size the problem; because special-q can have any factors,
-	   we require that the progressions we generate use p that
-	   have somewhat large factors. This minimizes the chance
-	   that a given special-q has factors in common with many
-	   progressions in the set */
+	p_min = MIN(MAX_OTHER / P_SCALE, sqrt(2.5 / sieve_bound));
+	p_min = MIN(p_min, pow((double)SIEVE_MAX / sieve_bound, 1. / 4.) - 1);
+	p_min = MIN(p_min, sqrt(p_size_max) / P_SCALE);
 
-	p_max = sqrt(p_size_max * P_SCALE);
-	p_min = p_max / P_SCALE;
+	p_max = p_min * P_SCALE;
 
-	gmp_printf("coeff %Zd specialq %u - %u other %u - %u\n",
-			L->poly->high_coeff,
-			special_q_min, special_q_max,
-			p_min, p_max);
+	special_q_min = 1;
+	special_q_max = MIN(MAX_SPECIAL_Q, p_size_max / p_max / p_max);
 
-	sieve_fb_init(&sieve_p, L->poly, 
-			100, 5000,
+	/* set up the special q factory; special-q may have 
+	   arbitrary factors, but many small factors are 
+	   preferred since that will allow for many more roots
+	   per special q, so we choose the factors to be as 
+	   small as possible */
+
+	special_q_fb_max = MIN(100000, special_q_max);
+	sieve_fb_init(&sieve_special_q, poly,
+			5, special_q_fb_max,
+			1, degree,
+			0);
+
+	/* because special-q can have any factors, we require that
+	   the progressions we generate use p that have somewhat
+	   large factors. This minimizes the chance that a given
+	   special-q has factors in common with many progressions
+	   in the set */
+
+	sieve_fb_init(&sieve_p, poly, 
+			35, 5000,
 			1, degree,
 		       	0);
 
-	quit = sieve_specialq_64(obj, L,
-			sieve_special_q, &sieve_p,
-			special_q_min, special_q_max,
-			p_min, p_max);
+	for (i = 0; i < 2; i++) {
+		uint32 quit;
+		uint32 num_pieces;
+		uint32 special_q_min2, special_q_max2;
+		double elapsed = 0;
+		int64 sieve_size = MIN(sieve_bound * pow((double)p_min, 4.),
+					SIEVE_MAX);
 
+		if (sieve_size == SIEVE_MAX && i > 0)
+			break;
+
+		/* large search problems can be randomized so that
+		   multiple runs over the same range of leading
+		   a_d will likely generate different results */
+
+		num_pieces = (double)special_q_max * p_max
+				/ log(special_q_max) / log(p_max)
+				/ 3e9;
+		num_pieces = MIN(num_pieces, 450);
+
+		if (num_pieces > 1) { /* randomize the special_q range */
+			uint32 piece_length = (special_q_max - special_q_min)
+					/ num_pieces;
+			uint32 piece = get_rand(&obj->seed1, &obj->seed2)
+					% num_pieces;
+
+			printf("randomizing rational coefficient: "
+				"using piece #%u of %u\n",
+				piece + 1, num_pieces);
+
+			special_q_min2 = special_q_min + piece * piece_length;
+			special_q_max2 = special_q_min2 + piece_length;
+		}
+		else {
+			special_q_min2 = special_q_min;
+			special_q_max2 = special_q_max;
+		}
+
+		gmp_printf("coeff %Zd specialq %u - %u other %u - %u\n",
+				poly->high_coeff,
+				special_q_min2, special_q_max2,
+				p_min, p_max);
+
+		quit = sieve_specialq_64(obj, poly, sieve_size,
+				&sieve_special_q, &sieve_p,
+				special_q_min2, special_q_max2,
+				p_min, p_max, deadline, &elapsed);
+
+		elapsed_total += elapsed;
+		deadline -= elapsed;
+
+		if (quit || special_q_max < 250 ||
+		    p_max >= MAX_OTHER / P_SCALE)
+			break;
+
+		p_min = p_max;
+		p_max *= P_SCALE;
+		special_q_max /= (P_SCALE * P_SCALE);
+	}
+
+	sieve_fb_free(&sieve_special_q);
 	sieve_fb_free(&sieve_p);
-	return quit;
+	return elapsed_total;
 }

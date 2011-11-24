@@ -12,48 +12,37 @@ benefit from your work.
 $Id$
 --------------------------------------------------------------------*/
 
-#ifndef _STAGE1_CORE_NOSQ_H_
-#define _STAGE1_CORE_NOSQ_H_
+#ifndef _STAGE1_CORE_GPU_3PROG_H_
+#define _STAGE1_CORE_GPU_3PROG_H_
 
 #ifdef __CUDACC__
 #include "cuda_intrinsics.h"
-#define MAX_ROOTS 128
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* structure indicating a collision */
+#define BATCH_SPECIALQ_MAX 128
 
 typedef struct {
-	uint32 p;
+	uint32 p1;
+	uint32 p2;
 	uint32 q;
-	uint64 offset;
-	uint64 proot;
+	uint32 pad;
+	uint64 qroot;
+	int64 offset;
 } found_t;
 
-#define P_ARRAY_WORDS 1000
-
-#define P_PACKED_HEADER_WORDS 2
-
 typedef struct {
 	uint32 p;
-	float lattice_size;
-	uint32 num_roots;
 	uint32 pad;
-	uint64 roots[MAX_ROOTS];
-} p_packed_t;
-
-#define Q_SOA_BATCH_SIZE (3*30*384)
-
-typedef struct {
-	uint32 p[Q_SOA_BATCH_SIZE];
-	uint64 roots[MAX_ROOTS][Q_SOA_BATCH_SIZE];
-} q_soa_t;
+	uint64 root;
+} specialq_t;
 
 #ifdef __cplusplus
 }
+
 #endif
 
-#endif /* !_STAGE1_CORE_NOSQ_H_ */
+#endif /* !_STAGE1_CORE_GPU_3PROG_H_ */

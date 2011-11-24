@@ -19,7 +19,7 @@ typedef struct {
 	uint32 score;
 } line_score_t;
 
-#define LINE_HEAP_SIZE 10
+#define LINE_HEAP_SIZE 25
 
 typedef struct {
 	uint32 num_entries;

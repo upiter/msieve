@@ -18,7 +18,7 @@ $Id$
 
 /*------------------------------------------------------------------------*/
 static void
-stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
+stage1_bounds_update(poly_search_t *poly)
 {
 	/* determine the parametrs for the collision search,
 	   given one leading algebraic coefficient a_d */
@@ -27,12 +27,7 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	double N = mpz_get_d(poly->N);
 	double high_coeff = mpz_get_d(poly->high_coeff);
 	double m0 = pow(N / high_coeff, 1./degree);
-	double skewness_min, coeff_max, p_size_max, cutoff;
-	double special_q_min, special_q_max;
-	uint32 num_pieces;
-#ifndef HAVE_CUDA
-	double hash_iters;
-#endif
+	double skewness_min, coeff_max;
 
 	/* we don't know the optimal skewness for this polynomial
 	   but at least can bound the skewness. The value of the
@@ -60,6 +55,10 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 		exit(-1);
 	}
 
+	poly->m0 = m0;
+	poly->coeff_max = coeff_max;
+	poly->p_size_max = coeff_max / skewness_min;
+
 	/* we perform the collision search on a transformed version
 	   of N and the low-order rational coefficient m. In the
 	   transformed coordinates, a_d is 1 and a_{d-1} is 0. When
@@ -71,203 +70,82 @@ stage1_bounds_update(msieve_obj *obj, poly_search_t *poly)
 	mpz_mul_ui(poly->trans_N, poly->trans_N, (mp_limb_t)degree);
 	mpz_mul(poly->trans_N, poly->trans_N, poly->N);
 	mpz_root(poly->trans_m0, poly->trans_N, (mp_limb_t)degree);
+}
 
-	/* for leading rational coefficient l, the sieve size
-	   will be l^2*cutoff. This is based on the norm limit
-	   given above, and largely determines how difficult
-	   it will be to find acceptable collisions in the
-	   search */
+/*------------------------------------------------------------------------*/
+void
+handle_collision(poly_search_t *poly, uint64 p, uint32 special_q,
+		uint64 special_q_root, int64 res)
+{
+	/* the proposed rational coefficient is p*special_q;
+	   p and special_q must be coprime. The 'trivial
+	   special q' has special_q = 1 and special_q_root = 0 */
 
-	cutoff = coeff_max / m0 / degree;
+	uint64_2gmp(p, poly->p);
+	mpz_gcd_ui(poly->tmp1, poly->p, (unsigned long)special_q);
+	if (mpz_cmp_ui(poly->tmp1, (unsigned long)1))
+		return;
 
-#ifdef HAVE_CUDA
-	/* the GPU code doesn't care how large the sieve 
-	   size is, so favor smaller special-q and try 
-	   to make the range of other rational factors large */
+	mpz_mul_ui(poly->p, poly->p, (unsigned long)special_q);
 
-#define MAX_SPECIAL_Q ((uint32)(-1))
-#define MAX_OTHER ((uint32)(-1))
-#define SPECIAL_Q_SCALE 16
+	/* the corresponding correction to trans_m0 is 
+	   special_q_root + res * special_q^2, and can be
+	   positive or negative */
 
-	p_size_max = MIN(coeff_max / skewness_min,
-			 (double)(MAX_SPECIAL_Q / SPECIAL_Q_SCALE) *
-				 (MAX_OTHER / P_SCALE - 1) *
-				 (MAX_OTHER / P_SCALE - 1));
+	uint64_2gmp(special_q_root, poly->tmp1);
+	int64_2gmp(res, poly->tmp2);
+	mpz_set_ui(poly->tmp3, (unsigned long)special_q);
 
-	/* 2*sieve_size must fit in a float */
-	p_size_max = MIN(p_size_max, sqrt(FLT_MAX / cutoff / 2.001));
+	mpz_mul(poly->tmp3, poly->tmp3, poly->tmp3);
+	mpz_addmul(poly->tmp1, poly->tmp2, poly->tmp3);
+	mpz_add(poly->m, poly->trans_m0, poly->tmp1);
 
-	special_q_min = MIN(MAX_SPECIAL_Q / SPECIAL_Q_SCALE,
-				p_size_max / 7200000 / 7200000);
-	if (special_q_min > 1) {
-		special_q_min = MAX(special_q_min, 251);
-		special_q_max = special_q_min * SPECIAL_Q_SCALE;
-	}
-	else {
-		special_q_min = special_q_max = 1;
-	}
+	/* a lot can go wrong before this function is called!
+	   Check that Kleinjung's modular condition is satisfied */
 
-	/* very large problems are split into pieces, and we
-	   randomly choose one to search. This allows multiple
-	   machines to search the same a_d */
-
-	num_pieces = (special_q_max - special_q_min)
-			/ (log(special_q_max) - 1)
-			/ 1000;
-	num_pieces = MIN(num_pieces, 2000);
-
-#else
-	/* the CPU code is different; its runtime is
-	   directly proportional to the sieve size. So 
-	   choose the special-q size to limit the number 
-	   of times the CPU hashtable code must run. 
-	   The parametrization is chosen to favor larger
-	   special q for larger inputs, adjusted implictly 
-	   for the polynomial degree */
-
-#define MAX_SPECIAL_Q ((uint32)(-1))
-#define MAX_OTHER ((uint32)1 << 27)
-#define SPECIAL_Q_SCALE 5
-
-	/* hash_iters determines how often the hashtable code
-	   will run. This is the most important factor in the
-	   speed of the hashtable code, and is used to control
-	   the limits for the special-q. A larger value of
-	   hash_iters will result in smaller special-q being
-	   selected and thus more sieve offsets being hashed.
-	   Up to a point, smaller hash_iters will be faster,
-	   but values which are far too small may cause
-	   performance to degrade slightly as the 'birthday
-	   effect' is reduced. Somewhere, a 'sweet spot'
-	   exists, but this depends greatly on the size of
-	   problem being sieved. The values suggested below
-	   appear to yield decent results for problems
-	   currently supported by msieve */
-
-	/* note: don't make hash_iters too small here. At the
-	   high end of the special-q range, the number of
-	   hashtable iterations drops by a factor of
-	   SPECIAL_Q_SCALE, so set hash_iters at least twice
-	   SPECIAL_Q_SCALE for best performance */
-
-	/* start with a baseline value */
-
-	if (degree < 5)
-		hash_iters = 1000; /* be generous for deg4 */
-	else
-		hash_iters = 50; /* seems reasonable */
-
-	/* make sure we'll have plenty of progressions to
-	   hash. The size of special-q is inversely
-	   proportional to the size of hash_iters, and we
-	   want that the size of the 'other' factors
-	   remaining in the leading rational coefficient
-	   (after taking out special-q) will be large
-	   enough. If, for instance, the norm max or the
-	   high coeff is extremely large, a poor selection
-	   of hash_iters may leave us with few or no
-	   progressions to use. Consequently, we limit
-	   special-q to be about as large as the product of
-	   the 'other' factors */
-
-	p_size_max = coeff_max / skewness_min;
-	hash_iters = MAX(hash_iters, sqrt(p_size_max) * cutoff);
-
-	/* we need to be sure that the parameters with the
-	   specified value of hash_iters will 'work'. There
-	   are at least two things to check:
-
-		(1) l/special_q must be small enough to keep
-		    the hashtable size manageable
-		(2) 2*(l/special_q)^2*cutoff must fit in a
-		    64bit unsigned integer 
-
-	   these conditions kick in only for the largest
-	   problems, and this is just a way to keep the
-	   search from blowing up on us unexpectedly */
-
-	/* first limit hash_iters to keep l/special_q small.
-	   The below limits the size of 'other' factors to
-	   be smaller than MAX_OTHER, though this is
-	   deliberately over-estimated */
-
-	hash_iters = MIN(hash_iters, (double)MAX_OTHER * MAX_OTHER * cutoff);
-
-	/* next limit hash_iters to keep 2*(l/special_q)^2*cutoff
-	   small. Again, we over-estimate a little bit */
-
-	hash_iters = MIN(hash_iters, sqrt((double)(uint64)(-1) *
-						  cutoff));
-
-	/* the factor of 2 below comes from the fact that the
-	   total length of the line sieved is 2*sieve_size, since
-	   both sides of the origin are sieved at once */
-
-	special_q_min = 2 * P_SCALE * P_SCALE * cutoff *
-			p_size_max / hash_iters;
-
-	/* special-q must be < MAX_SPECIAL_Q. If it is too
-	   big, we can reduce the problem size a bit further
-	   to compensate */
-
-	if (special_q_min > MAX_SPECIAL_Q / SPECIAL_Q_SCALE) {
-
-		p_size_max *= MAX_SPECIAL_Q / SPECIAL_Q_SCALE / special_q_min;
-		special_q_min = MAX_SPECIAL_Q / SPECIAL_Q_SCALE;
+	mpz_pow_ui(poly->tmp1, poly->m, (mp_limb_t)poly->degree);
+	mpz_mul(poly->tmp2, poly->p, poly->p);
+	mpz_sub(poly->tmp1, poly->trans_N, poly->tmp1);
+	mpz_tdiv_r(poly->tmp3, poly->tmp1, poly->tmp2);
+	if (mpz_cmp_ui(poly->tmp3, (mp_limb_t)0)) {
+		gmp_printf("poly %Zd %Zd %Zd\n",
+				poly->high_coeff, poly->p, poly->m);
+		printf("crap\n");
+		return;
 	}
 
-	if (special_q_min > 1) {
-		/* very small ranges of special-q might be empty, so
-		   impose a limit on the minimum size */
+	/* the pair works, now translate the computed m back
+	   to the original polynomial. We have
 
-		special_q_min = MAX(special_q_min, 11);
-		special_q_max = special_q_min * SPECIAL_Q_SCALE;
-	}
-	else {
-		/* only trivial lattice */
+	   computed_m = degree * high_coeff * real_m +
+	   			(second_highest_coeff) * p
 
-		special_q_min = special_q_max = 1;
-	}
+	   and need to solve for real_m and second_highest_coeff.
+	   Per the CADO code: reducing the above modulo
+	   degree*high_coeff causes the first term on the right
+	   to disappear, so second_highest_coeff can be found
+	   modulo degree*high_coeff and real_m then follows */
 
-	num_pieces = (special_q_max - special_q_min)
-			/ (log(special_q_max) - 1)
-			/ 110000;
-	num_pieces = MIN(num_pieces,
-				sqrt(p_size_max / special_q_max) /
-				(log(p_size_max / special_q_max) / 2 - 1) /
-				(P_SCALE / (P_SCALE - 1)) /
-				10);
+	mpz_mul_ui(poly->tmp1, poly->high_coeff, (mp_limb_t)poly->degree);
+	mpz_tdiv_r(poly->tmp2, poly->m, poly->tmp1);
+	mpz_invert(poly->tmp3, poly->p, poly->tmp1);
+	mpz_mul(poly->tmp2, poly->tmp3, poly->tmp2);
+	mpz_tdiv_r(poly->tmp2, poly->tmp2, poly->tmp1);
 
-#endif
+	/* make second_highest_coeff as small as possible in
+	   absolute value */
 
-	if (num_pieces > 1) { /* randomize the special_q range */
-
-		double piece_ratio = pow((double)special_q_max / special_q_min,
-					 (double)1 / num_pieces);
-		uint32 piece = get_rand(&obj->seed1,
-					&obj->seed2) % num_pieces;
-
-		printf("randomizing rational coefficient: "
-			"using piece #%u of %u\n",
-			piece + 1, num_pieces);
-
-		special_q_min *= pow(piece_ratio, (double)piece);
-		special_q_max = special_q_min * piece_ratio;
+	mpz_tdiv_q_2exp(poly->tmp3, poly->tmp1, 1);
+	if (mpz_cmp(poly->tmp2, poly->tmp3) > 0) {
+		mpz_sub(poly->tmp2, poly->tmp2, poly->tmp1);
 	}
 
-	poly->special_q_min = (uint32)special_q_min;
-	poly->special_q_max = (uint32)special_q_max;
-	poly->special_q_fb_max = MIN((uint32)special_q_max, 100000);
+	/* solve for real_m */
+	mpz_submul(poly->m, poly->tmp2, poly->p);
+	mpz_tdiv_q(poly->m, poly->m, poly->tmp1);
 
-	poly->coeff_max = coeff_max;
-	poly->p_size_max = p_size_max;
-
-	/* Kleinjung's improved algorithm computes a 'correction'
-	   to m0, and the coefficient a_{d-2} will be small enough
-	   if the correction is smaller than sieve_size */
-
-	poly->sieve_size = p_size_max * p_size_max * cutoff;
-	mpz_set_d(poly->mp_sieve_size, poly->sieve_size);
+	poly->callback(poly->high_coeff, poly->p, poly->m,
+			poly->coeff_max, poly->callback_data);
 }
 
 /*------------------------------------------------------------------------*/
@@ -278,7 +156,6 @@ poly_search_init(poly_search_t *poly, poly_stage1_t *data)
 	mpz_init(poly->high_coeff);
 	mpz_init(poly->trans_N);
 	mpz_init(poly->trans_m0);
-	mpz_init(poly->mp_sieve_size);
 	mpz_init(poly->m);
 	mpz_init(poly->p);
 	mpz_init(poly->tmp1);
@@ -306,10 +183,7 @@ poly_search_init(poly_search_t *poly, poly_stage1_t *data)
 	   collision search and one for ordinary collision 
 	   search */
 
-	CUDA_TRY(cuModuleLoad(&poly->gpu_module_sq, 
-				"stage1_core_sq.ptx"))
-	CUDA_TRY(cuModuleLoad(&poly->gpu_module_nosq, 
-				"stage1_core_nosq.ptx"))
+	CUDA_TRY(cuModuleLoad(&poly->gpu_module, "stage1_core.ptx"))
 #endif
 }
 
@@ -321,7 +195,6 @@ poly_search_free(poly_search_t *poly)
 	mpz_clear(poly->high_coeff);
 	mpz_clear(poly->trans_N);
 	mpz_clear(poly->trans_m0);
-	mpz_clear(poly->mp_sieve_size);
 	mpz_clear(poly->m);
 	mpz_clear(poly->p);
 	mpz_clear(poly->tmp1);
@@ -577,12 +450,17 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		/* recalculate internal parameters used
 		   for search */
 
-		stage1_bounds_update(obj, poly);
+		stage1_bounds_update(poly);
 
 		/* finally, sieve for polynomials using
 		   Kleinjung's improved algorithm */
 
-		elapsed = sieve_lattice(obj, poly, deadline_per_coeff);
+#ifdef HAVE_CUDA
+		elapsed = sieve_lattice_gpu(obj, poly, deadline_per_coeff);
+#else
+		elapsed = sieve_lattice_cpu(obj, poly, deadline_per_coeff);
+#endif
+
 		cumulative_time += elapsed;
 
 		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)

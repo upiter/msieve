@@ -104,9 +104,6 @@
     <ClCompile Include="..\..\gnfs\poly\stage1\stage1_roots.c">
       <Filter>Source Files\poly\Stage1</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg45_x.c">
       <Filter>Source Files\poly\Stage2</Filter>
     </ClCompile>
@@ -122,10 +119,7 @@
     <ClCompile Include="..\..\gnfs\poly\stage2\root_sieve_deg5_xy.c">
       <Filter>Source Files\poly\Stage2</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu_nosq.c">
-      <Filter>Source Files\poly\Stage1</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu_sq.c">
+    <ClCompile Include="..\..\gnfs\poly\stage1\stage1_sieve_gpu.c">
       <Filter>Source Files\poly\Stage1</Filter>
     </ClCompile>
   </ItemGroup>

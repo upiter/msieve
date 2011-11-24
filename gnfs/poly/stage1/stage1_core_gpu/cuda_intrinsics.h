@@ -26,6 +26,7 @@ extern "C"
 
 typedef unsigned int uint32;
 typedef unsigned long long uint64;
+typedef long long int64;
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
@@ -104,6 +105,23 @@ modsub64(uint64 a, uint64 b, uint64 p)
 	      "r"(p0), "r"(p1));
 
 	return (uint64)r1 << 32 | r0;
+}
+
+/*------------------------------- GCD --------------------------------*/
+
+__device__  uint32
+gcd32(uint32 x, uint32 y) {
+	uint32 tmp;
+
+	if (y < x) {
+		tmp = x; x = y; y = tmp;
+	}
+
+	while (y > 0) {
+		x = x % y;
+		tmp = x; x = y; y = tmp;
+	}
+	return x;
 }
 
 /*-------------------------- Modular inverse -------------------------*/

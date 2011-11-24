@@ -1,5 +1,7 @@
 Version 1.50:
 	- NFS polynomial selection changes:
+		- Added a massive overhaul of the stage 1 GPU code by Jayson
+		  King, making it both much simpler and much faster
 		- Added a second size optimization pass when searching for
 		  degree 6 polynomials. This makes stage 2 much more
 		  reliable for very large problems
@@ -14,16 +16,13 @@ Version 1.50:
 		  leading algebraic coefficients
 		- Patch from Jayson King: allow stage 2 to be interrupted
 		  with Ctrl-C
-		- Fixed a bug that would cause -np1 to generate lots of
-		  spurious hits in the GPU version when the sieve size is
-		  larger than 127 bits
 	- Patch from Ilya Popovyan: make all MPI processes contribute to
 		a single vector-vector operation in the liner algebra,
 		instead of just the MPI processes in a single grid row.
 		This makes the entire Lanczos iteration up to 20% faster
 		for very large problems and grid sizes
 	- Patch from Jayson King: fix longstanding problems that would
-		crop up rarley in tinyQS code
+		crop up rarely in tinyQS code
 
 
 Version 1.49: 6/16/11

@@ -56,8 +56,8 @@ ifeq ($(CUDA),1)
 	CFLAGS += -I"$(CUDA_INC_DIR)" -DHAVE_CUDA
 
 	# the CUDA driver library has a different name in linux
-	LIBS += "$(CUDA_LIB_DIR)/cuda.lib"
-	# LIBS += -lcuda
+	# LIBS += "$(CUDA_LIB_DIR)/cuda.lib"
+	LIBS += -lcuda
 endif
 ifeq ($(MPI),1)
 	CC = mpicc -D_FILE_OFFSET_BITS=64
@@ -177,8 +177,7 @@ QS_CORE_OBJS_X86_64 = \
 #---------------------------------- GPU file lists -------------------------
 
 GPU_OBJS = \
-	stage1_core_nosq.ptx \
-	stage1_core_sq.ptx
+	stage1_core.ptx
 
 #---------------------------------- NFS file lists -------------------------
 
@@ -195,8 +194,7 @@ NFS_HDR = \
 
 NFS_GPU_HDR = \
 	gnfs/poly/stage1/stage1_core_gpu/cuda_intrinsics.h \
-	gnfs/poly/stage1/stage1_core_gpu/stage1_core_sq.h \
-	gnfs/poly/stage1/stage1_core_gpu/stage1_core_nosq.h
+	gnfs/poly/stage1/stage1_core_gpu/stage1_core.h
 
 NFS_NOGPU_HDR =
 
@@ -208,7 +206,6 @@ NFS_SRCS = \
 	gnfs/poly/size_score.c \
 	gnfs/poly/stage1/stage1.c \
 	gnfs/poly/stage1/stage1_roots.c \
-	gnfs/poly/stage1/stage1_sieve.c \
 	gnfs/poly/stage2/optimize.c \
 	gnfs/poly/stage2/optimize_deg6.c \
 	gnfs/poly/stage2/root_sieve.c \
@@ -236,8 +233,7 @@ NFS_SRCS = \
 NFS_OBJS = $(NFS_SRCS:.c=.no)
 
 NFS_GPU_SRCS = \
-	gnfs/poly/stage1/stage1_sieve_gpu_nosq.c \
-	gnfs/poly/stage1/stage1_sieve_gpu_sq.c
+	gnfs/poly/stage1/stage1_sieve_gpu.c
 
 NFS_GPU_OBJS = $(NFS_GPU_SRCS:.c=.no)
 
