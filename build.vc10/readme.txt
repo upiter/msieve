@@ -39,7 +39,7 @@ GMP-ECM is assumed to be:
         
 (although the name of the msieve directory doesn't matter). If the 
 MPIR and GMP-ECM directories are named and/or located differently
-it will then be necessary to rename thyese directories as above 
+it will then be necessary to rename these directories as above 
 or modify the gmp_ecm_config.vsprops properties file so that it
 uses the revised names.  The 'Additional Include Directories'
 (under Properties|C/C++) and the 'Additional Dependencies' (under
