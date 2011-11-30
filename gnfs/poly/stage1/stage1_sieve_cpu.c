@@ -689,10 +689,9 @@ sieve_lattice_cpu(msieve_obj *obj, poly_search_t *poly, double deadline)
 		   multiple runs over the same range of leading
 		   a_d will likely generate different results */
 
-		num_pieces = (double)special_q_max * p_max
-				/ log(special_q_max) / log(p_max)
-				/ 3e9;
-		num_pieces = MIN(num_pieces, 450);
+		num_pieces = MIN(450, (double)special_q_max * p_max
+					/ log(special_q_max) / log(p_max)
+					/ 3e9);
 
 		if (num_pieces > 1) { /* randomize the special_q range */
 			uint32 piece_length = (special_q_max - special_q_min)

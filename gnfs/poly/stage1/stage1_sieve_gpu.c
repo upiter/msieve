@@ -761,10 +761,9 @@ sieve_lattice_gpu(msieve_obj *obj, poly_search_t *poly, double deadline)
 			1, degree,
 		       	0);
 
-	num_pieces = (double)special_q_max * p_max
-			/ log(special_q_max) / log(p_max)
-			/ 3e9;
-	num_pieces = MIN(num_pieces, 450);
+	num_pieces = MIN(450, (double)special_q_max * p_max
+				/ log(special_q_max) / log(p_max)
+				/ 3e9);
 
 	/* large search problems can be randomized so that
 	   multiple runs over the same range of leading
