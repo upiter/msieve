@@ -212,6 +212,8 @@ p_soa_array_free(p_soa_array_t *s)
 
 	for (i = 0; i < s->num_arrays; i++)
 		p_soa_var_free(s->soa + i);
+
+	free(s->soa);
 }
 
 static void
