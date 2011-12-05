@@ -274,12 +274,34 @@ store_p_soa(uint32 p, uint32 num_roots, uint64 *roots, void *extra)
 	}
 }
 
+/*------------------------------------------------------------------------*/
+
 #define NUM_SPECIALQ_ALLOC (BATCH_SPECIALQ_MAX * 5)
 
 typedef struct {
 	uint32 num_specialq;
-	specialq_t specialq[NUM_SPECIALQ_ALLOC];
+	specialq_t *specialq;
 } specialq_array_t;
+
+static void
+specialq_array_init(specialq_array_t *q_array)
+{
+	memset(q_array, 0, sizeof(specialq_array_t));
+	q_array->specialq = (specialq_t *)xmalloc(NUM_SPECIALQ_ALLOC *
+						sizeof(specialq_t));
+}
+
+static void
+specialq_array_free(specialq_array_t *q_array)
+{
+	free(q_array->specialq);
+}
+
+static void
+specialq_array_reset(specialq_array_t *q_array)
+{
+	q_array->num_specialq = 0;
+}
 
 static void
 store_specialq(uint32 q, uint32 num_roots, uint64 *roots, void *extra)
@@ -515,6 +537,7 @@ sieve_specialq_64(msieve_obj *obj, poly_search_t *poly,
 
 	data.p_array = &p_array;
 	p_soa_array_init(&p_array, degree);
+	specialq_array_init(&q_array);
 
 	/* build all the arithmetic progressions */
 
@@ -642,7 +665,7 @@ sieve_specialq_64(msieve_obj *obj, poly_search_t *poly,
 	CUDA_TRY(cuMemsetD8(data.gpu_found_array, 0,
 		data.found_array_size * sizeof(found_t)))
 
-	q_array.num_specialq = 0;
+	specialq_array_reset(&q_array);
 	if (special_q_min == 1) {
 
 		q_array.specialq[0].p = 1;
@@ -679,7 +702,7 @@ sieve_specialq_64(msieve_obj *obj, poly_search_t *poly,
 				i += curr_num_specialq;
 			}
 
-			q_array.num_specialq = 0;
+			specialq_array_reset(&q_array);
 
 			*elapsed = get_cpu_time() - cpu_start_time +
 					data.gpu_elapsed;
@@ -703,6 +726,7 @@ sieve_specialq_64(msieve_obj *obj, poly_search_t *poly,
 	free(data.found_array);
 	free(data.launch);
 	p_soa_array_free(&p_array);
+	specialq_array_free(&q_array);
 	CUDA_TRY(cuEventDestroy(data.start))
 	CUDA_TRY(cuEventDestroy(data.end))
 	return quit;
