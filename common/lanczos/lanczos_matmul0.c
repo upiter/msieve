@@ -732,16 +732,31 @@ void packed_matrix_init(msieve_obj *obj,
 
 	for (i = num_nonzero = 0; i < ncols; i++)
 		num_nonzero += A[i].weight;
-	num_nonzero_per_thread = num_nonzero / num_threads + 1000;
+	num_nonzero_per_thread = num_nonzero / num_threads + 1;
 
 	/* divide the matrix into groups of columns, one group
 	   per thread, and pack each group separately */
 
 	for (i = j = k = num_nonzero = 0; i < ncols; i++) {
 
+		if (k + 1 == p->num_threads) { /* last thread get the rest */
+			thread_data_t *t = p->thread_data + k;
+
+			t->my_oid = k++;
+			t->initial_cols = A;
+			t->col_min = j;
+			t->col_max = ncols - 1;
+			t->nrows_in = nrows;
+			t->block_size = block_size;
+			t->first_block_size = first_block_size;
+			t->num_dense_rows = num_dense_rows;
+			break;
+		}
+
 		num_nonzero += A[i].weight;
 
-		if (i == ncols - 1 || num_nonzero >= num_nonzero_per_thread) {
+		if (i == ncols - 1 ||
+		    num_nonzero >= (k + 1) * num_nonzero_per_thread) {
 			thread_data_t *t = p->thread_data + k;
 
 			t->my_oid = k++;
@@ -753,7 +768,6 @@ void packed_matrix_init(msieve_obj *obj,
 			t->first_block_size = first_block_size;
 			t->num_dense_rows = num_dense_rows;
 			j = i + 1;
-			num_nonzero = 0;
 		}
 	}
 
