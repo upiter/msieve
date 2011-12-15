@@ -767,7 +767,7 @@ void packed_matrix_init(msieve_obj *obj,
 			t->block_size = block_size;
 			t->first_block_size = first_block_size;
 			t->num_dense_rows = num_dense_rows;
-			if(num_nonzero - A[i].weight / 2 > k * num_nonzero_per_thread)
+			if(num_nonzero - A[i].weight / 2 > (k + 0.1) * num_nonzero_per_thread)
 				t->col_max--;
 			j = t->col_max + 1;
 		}
