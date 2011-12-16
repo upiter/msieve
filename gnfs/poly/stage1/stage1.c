@@ -235,9 +235,7 @@ sieve_ad_block(sieve_t *sieve, poly_search_t *poly)
 
 	target = mpz_get_d(poly->gmp_high_coeff_begin) /
 				HIGH_COEFF_MULTIPLIER;
-
-	if (HIGH_COEFF_SIEVE_LIMIT < target)
-		target = HIGH_COEFF_SIEVE_LIMIT;
+	target = MIN(target, HIGH_COEFF_SIEVE_LIMIT);
 
 	log_target = floor(log(target) / M_LN2 + 0.5);
 	memset(sieve->sieve_array, (int)(log_target - 4),
@@ -261,6 +259,7 @@ static int
 find_next_ad(sieve_t *sieve, poly_search_t *poly)
 {
 	uint32 i, j, p, k;
+	double td_test;
 	uint8 *sieve_array = sieve->sieve_array;
 
 	while (1) {
@@ -283,8 +282,9 @@ find_next_ad(sieve_t *sieve, poly_search_t *poly)
 			/* trial divide the a_d and skip it if it
 			   does not have enough small factors */
 
-			mpz_cdiv_q_ui(poly->tmp2, poly->tmp1,
-				(mp_limb_t)HIGH_COEFF_SIEVE_LIMIT);
+			td_test = ceil(mpz_get_d(poly->tmp1) /
+						HIGH_COEFF_SIEVE_LIMIT);
+
 			for (j = p = 0; j < PRECOMPUTED_NUM_PRIMES; j++) {
 				p += prime_delta[j];
 
@@ -301,7 +301,7 @@ find_next_ad(sieve_t *sieve, poly_search_t *poly)
 						break;
 				}
 			}
-			if (mpz_cmp(poly->tmp1, poly->tmp2) > 0)
+			if (mpz_get_d(poly->tmp1) > td_test)
 				continue;
 
 			/* a_d is okay, search it */
