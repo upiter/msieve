@@ -6,11 +6,11 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\mpir\build.vc10\lib\$(IntDir);..\..\..\gmp-ecm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\mpir\lib\$(IntDir);..\..\..\gmp-ecm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;HAVE_GMP_ECM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>..\..\..\mpir\build.vc10\lib\$(IntDir)mpir.lib;..\..\..\gmp-ecm\build.vc10\$(IntDir)libecm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\..\..\mpir\lib\$(IntDir)mpir.lib;..\..\..\gmp-ecm\lib\$(IntDir)libecm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup />
