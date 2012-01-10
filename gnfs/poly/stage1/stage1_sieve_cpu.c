@@ -624,9 +624,12 @@ sieve_lattice_cpu(msieve_obj *obj, poly_search_t *poly, double deadline)
 {
 	uint32 i;
 	uint32 degree = poly->degree;
+	uint32 num_pieces;
 	uint32 p_min, p_max;
 	uint32 special_q_min, special_q_max;
+	uint32 special_q_min2, special_q_max2;
 	uint32 special_q_fb_max;
+	uint32 num_passes;
 	double p_size_max = poly->p_size_max;
 	double sieve_bound = poly->coeff_max / poly->m0 / degree;
 	double elapsed_total = 0;
@@ -674,24 +677,27 @@ sieve_lattice_cpu(msieve_obj *obj, poly_search_t *poly, double deadline)
 			1, degree,
 		       	0);
 
-	for (i = 0; i < 2; i++) {
+	/* large search problems can be randomized so that
+	   multiple runs over the same range of leading
+	   a_d will likely generate different results */
+
+	num_pieces = MIN(450, (double)special_q_max * p_max
+				/ log(special_q_max) / log(p_max)
+				/ 3e9);
+
+	if (degree == 5)
+		num_passes = 2;
+	else
+		num_passes = 1;
+
+	for (i = 0; i < num_passes; i++) {
 		uint32 quit;
-		uint32 num_pieces;
-		uint32 special_q_min2, special_q_max2;
 		double elapsed = 0;
 		int64 sieve_size = MIN(sieve_bound * pow((double)p_min, 4.),
 					SIEVE_MAX);
 
 		if (sieve_size == SIEVE_MAX && i > 0)
 			break;
-
-		/* large search problems can be randomized so that
-		   multiple runs over the same range of leading
-		   a_d will likely generate different results */
-
-		num_pieces = MIN(450, (double)special_q_max * p_max
-					/ log(special_q_max) / log(p_max)
-					/ 3e9);
 
 		if (num_pieces > 1) { /* randomize the special_q range */
 			uint32 piece_length = (special_q_max - special_q_min)
