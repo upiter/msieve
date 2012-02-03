@@ -1,4 +1,4 @@
-Version 1.50:
+Version 1.50: 2/3/12
 	- NFS polynomial selection changes:
 		- Added a massive overhaul of the stage 1 GPU code by Jayson
 		  King, making it both much simpler and much faster
@@ -16,11 +16,16 @@ Version 1.50:
 		  leading algebraic coefficients
 		- Patch from Jayson King: allow stage 2 to be interrupted
 		  with Ctrl-C
+	- Modified the NFS code to remove almost all dependencies on mp_t
+		functions, using GMP instead
 	- Patch from Ilya Popovyan: make all MPI processes contribute to
 		a single vector-vector operation in the liner algebra,
 		instead of just the MPI processes in a single grid row.
 		This makes the entire Lanczos iteration up to 20% faster
 		for very large problems and grid sizes
+	- Patch from Brian Gladman: add ZLIB code to windows build
+	- Patches from Brian Gladman: lots of changes to the Visual Studio
+		projects; only MSVC10 is supported now
 	- Patch from Jayson King: fix longstanding problems that would
 		crop up rarely in tinyQS code
 
