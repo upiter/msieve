@@ -1,3 +1,6 @@
+Version 1.51:
+
+
 Version 1.50: 2/3/12
 	- NFS polynomial selection changes:
 		- Added a massive overhaul of the stage 1 GPU code by Jayson
