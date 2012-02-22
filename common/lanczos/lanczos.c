@@ -986,7 +986,8 @@ static uint64 * block_lanczos_core(msieve_obj *obj,
 	}
 
 	if (dump_interval) {
-		next_dump = (dim_solved / dump_interval + 1) * 
+		/* avoid check (at dump) within 4*64 dim + some cushion */
+		next_dump = ((dim_solved + 400) / dump_interval + 1) * 
 					dump_interval;
 		check_interval = 10000;
 		/* avoid next_check within 4*64 dim + some cushion */
@@ -1116,7 +1117,7 @@ static uint64 * block_lanczos_core(msieve_obj *obj,
 				}
 			}
 			/* check passed */
-			next_check = (dim_solved / check_interval + 1) * 
+			next_check = ((dim_solved + 400) / check_interval + 1) * 
 							check_interval;
 			memcpy(v0, vnext, n * sizeof(uint64));
 		}
@@ -1295,7 +1296,7 @@ static uint64 * block_lanczos_core(msieve_obj *obj,
 				MPI_TRY(MPI_Bcast(&dump_interval, 1, 
 						MPI_INT, 0, obj->mpi_la_grid))
 #endif
-				next_dump = (dim_solved / dump_interval + 1) * 
+				next_dump = ((dim_solved + 400) / dump_interval + 1) * 
 							dump_interval;
 				continue;
 			}
@@ -1311,7 +1312,7 @@ static uint64 * block_lanczos_core(msieve_obj *obj,
 						   vt_a_v, vt_a2_v, winv, 
 						   n, max_n, dim_solved, 
 						   iter, s, dim1);
-				next_dump = (dim_solved / dump_interval + 1) * 
+				next_dump = ((dim_solved + 400) / dump_interval + 1) * 
 							dump_interval;
 			}
 			if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
