@@ -33,10 +33,10 @@
  */
 
 #include <stdio.h>
-#include "..\zutil.h"
-#include "..\inftrees.h"
-#include "..\inflate.h"
-#include "..\inffast.h"
+#include "zutil.h"
+#include "inftrees.h"
+#include "inflate.h"
+#include "inffast.h"
 
 /* Mark Adler's comments from inffast.c: */
 
