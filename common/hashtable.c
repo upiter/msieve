@@ -85,9 +85,9 @@ void *hashtable_find(hashtable_t *h, void *blob,
 		h->match_array_alloc *= 2;
 		match_array = h->match_array = (uint32 *)xrealloc(
 						h->match_array,
+						sizeof(uint32) *
 						h->match_array_alloc *
-						(blob_words + 1) *
-						sizeof(uint32));
+						(blob_words + 1));
 	}
 
 	/* pre-emptively grow the hashtable size if it's
