@@ -346,10 +346,7 @@ check_found_array(poly_search_t *poly, device_data_t *d)
 {
 	uint32 i;
 	uint32 found_array_size = d->found_array_size;
-	float elapsed_ms;
 	found_t *found_array = d->found_array;
-
-	CUDA_TRY(cuEventRecord(d->start, 0))
 
 	CUDA_TRY(cuMemcpyDtoH(found_array, d->gpu_found_array,
 			d->found_array_size * sizeof(found_t)))
@@ -377,11 +374,6 @@ check_found_array(poly_search_t *poly, device_data_t *d)
 			}
 		}
 	}
-
-	CUDA_TRY(cuEventRecord(d->end, 0))
-	CUDA_TRY(cuEventSynchronize(d->end))
-	CUDA_TRY(cuEventElapsedTime(&elapsed_ms, d->start, d->end))
-	d->gpu_elapsed += elapsed_ms / 1000;
 }
 
 #define MAX_SPECIAL_Q ((uint32)(-1))
@@ -493,7 +485,12 @@ handle_special_q_batch(msieve_obj *obj, poly_search_t *poly,
 	CUDA_TRY(cuEventRecord(d->end, 0))
 	CUDA_TRY(cuEventSynchronize(d->end))
 	CUDA_TRY(cuEventElapsedTime(&elapsed_ms, d->start, d->end))
-	d->gpu_elapsed += elapsed_ms / 1000;
+	if (elapsed_ms < 60000) {
+		/* this function should execute in under a second. If
+		   it takes a very long time, assume that the system
+		   was in hibernation and don't let it count. */
+		d->gpu_elapsed += elapsed_ms / 1000;
+	}
 
 	if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
 		quit = 1;
