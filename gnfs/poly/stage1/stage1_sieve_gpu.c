@@ -485,7 +485,7 @@ handle_special_q_batch(msieve_obj *obj, poly_search_t *poly,
 	CUDA_TRY(cuEventRecord(d->end, 0))
 	CUDA_TRY(cuEventSynchronize(d->end))
 	CUDA_TRY(cuEventElapsedTime(&elapsed_ms, d->start, d->end))
-	if (elapsed_ms < 60000) {
+	if (elapsed_ms < 60000 && elapsed_ms > 0) {
 		/* this function should execute in under a second. If
 		   it takes a very long time, assume that the system
 		   was in hibernation and don't let it count. */
