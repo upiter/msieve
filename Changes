@@ -1,6 +1,7 @@
 Version 1.51:
 	- Fixed a potential 32-bit overflow in the hashtable code, that could
 		occur for extremely large problems (thanks Paul Zimmermann)
+	- Fixed a line sieve initialization problem (thanks Ilya Popovyan)
 
 
 Version 1.50: 2/3/12
