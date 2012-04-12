@@ -396,7 +396,10 @@ static void find_poly_core(msieve_obj *obj, mpz_t n,
 				                      (0.0526 * digits + 3.23);
 			if (degree == 4) e0 = 0.0625 * digits + 1.69;
 			e0 = exp(-log(10) * e0); 
-			logprintf(obj, "expecting poly E from %.2le to %.2le\n",
+#ifdef HAVE_CUDA
+			e0 *= 1.15;
+#endif
+			logprintf(obj, "expecting poly E from %.2le to > %.2le\n",
 				e0, 1.15 * e0);
 			/* seen exceptional polys with +40% but that's */
 			/* very rare. The fit is good for 88..232 digits */
