@@ -137,7 +137,7 @@ static double minimize_line_core(double *base, double *search_dir,
 	x = w = v = b_in;
 	fx = fw = fv = fb_in;
 
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < 300; i++) {
 		double xm = 0.5 * (a + b);
 		double tol1 = tol * fabs(x) + 1e-20;
 		double tol2 = 2.0 * tol1;
@@ -210,7 +210,7 @@ static double minimize_line_core(double *base, double *search_dir,
 		}
 	}
 
-	printf("too many line iterations\n");
+	printf(":"); // "too many line iterations\n");
 	*min_out = x;
 	*status = 1;
 	return fx;
