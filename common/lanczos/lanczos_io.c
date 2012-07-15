@@ -349,6 +349,80 @@ static int compare_uint32(const void *x, const void *y) {
 }
 
 /*--------------------------------------------------------------------*/
+#define FILE_CACHE_WORDS 20000
+
+typedef struct {
+	uint32 read_ptr;
+	uint32 num_valid;
+	uint32 *cache;
+} file_cache_t;
+
+static void file_cache_init(file_cache_t *f) {
+
+	f->read_ptr = 0;
+	f->num_valid = 0;
+	f->cache = (uint32 *)xmalloc(FILE_CACHE_WORDS * sizeof(uint32));
+}
+
+static void file_cache_free(file_cache_t *f) {
+
+	free(f->cache);
+}
+
+static void file_cache_get_next(msieve_obj *obj, FILE *fp,
+				file_cache_t *f, uint32 dense_row_words, 
+				uint32 *num_out, uint32 *entries,
+				uint32 read_submatrix) {
+
+	uint32 num;
+	uint32 words_left = f->num_valid - f->read_ptr;
+
+	if (words_left < dense_row_words + 1 ||
+	    f->cache[f->read_ptr] + dense_row_words + 1 > words_left) {
+
+		memmove(f->cache, f->cache + f->read_ptr, 
+				words_left * sizeof(uint32));
+#ifdef HAVE_MPI
+		/* only the top MPI row reads from disk */
+
+		if (obj->mpi_la_row_rank == 0) {
+#endif
+		f->num_valid = words_left +
+			fread(f->cache + words_left, sizeof(uint32),
+				FILE_CACHE_WORDS - words_left, fp);
+#ifdef HAVE_MPI
+		}
+
+		if (read_submatrix && obj->mpi_nrows > 1) {
+			/* broadcast the new cache size and new data 
+			   (if any) down the column */
+
+			MPI_TRY(MPI_Bcast(&f->num_valid, 1, MPI_INT, 0, 
+						obj->mpi_la_col_grid))
+
+			if (f->num_valid > words_left) {
+				MPI_TRY(MPI_Bcast(f->cache + words_left,
+						f->num_valid - words_left,
+						MPI_INT, 0, obj->mpi_la_col_grid))
+			}
+		}
+#endif
+		f->read_ptr = 0;
+	}
+
+	num = f->cache[f->read_ptr];
+	if (num + dense_row_words > MAX_COL_IDEALS) {
+		printf("error: column too large; corrupt file?\n");
+		exit(-1);
+	}
+
+	*num_out = num;
+	memcpy(entries, f->cache + f->read_ptr + 1,
+			(num + dense_row_words) * sizeof(uint32));
+	f->read_ptr += num + dense_row_words + 1;
+}
+
+/*--------------------------------------------------------------------*/
 void read_matrix(msieve_obj *obj, 
 		uint32 *nrows_out, uint32 *max_nrows_out, 
 		uint32 *start_row_out,
@@ -367,6 +441,7 @@ void read_matrix(msieve_obj *obj,
 	FILE *matrix_fp;
 	uint32 read_submatrix = (start_row_out != NULL &&
 				start_col_out != NULL);
+	file_cache_t file_cache;
 #ifdef HAVE_MPI
 	uint32 num_static_rows = 0;
 #endif
@@ -446,6 +521,8 @@ void read_matrix(msieve_obj *obj,
 #endif
 	cols = (la_col_t *)xcalloc((size_t)ncols, sizeof(la_col_t));
 
+	file_cache_init(&file_cache);
+
 	for (i = 0; i < ncols; i++) {
 		la_col_t *c;
 		uint32 tmp_col[MAX_COL_IDEALS];
@@ -458,13 +535,10 @@ void read_matrix(msieve_obj *obj,
 
 		/* read the whole column */
 
-		fread(&num, sizeof(uint32), (size_t)1, matrix_fp);
-		if (num + dense_row_words > MAX_COL_IDEALS) {
-			printf("error: column too large; corrupt file?\n");
-			exit(-1);
-		}
+		file_cache_get_next(obj, matrix_fp, &file_cache,
+				dense_row_words, &num, tmp_col,
+				read_submatrix);
 		k = num + dense_row_words;
-		fread(tmp_col, sizeof(uint32), (size_t)k, matrix_fp);
 		c->data = NULL;
 		c->weight = num;
 
@@ -518,6 +592,7 @@ void read_matrix(msieve_obj *obj,
 		}
 	}
 
+	file_cache_free(&file_cache);
 	fclose(matrix_fp);
 	*cols_out = cols;
 	*ncols_out = ncols;
