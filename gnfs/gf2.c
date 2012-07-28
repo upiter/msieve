@@ -578,6 +578,8 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 #ifdef HAVE_MPI
 	int32 grid_bools[2] = {0};
 	int32 grid_dims[2];
+	int32 mpi_nrows = 0;
+	int32 mpi_ncols = 0;
 #endif
 
 	logprintf(obj, "\n");
@@ -595,21 +597,44 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 		exit(-1);
 	}
 
+	/* parse input arguments */
+
+	if (obj->nfs_args != NULL) {
+		const char *tmp0, *tmp1;
+
+		tmp1 = strstr(obj->nfs_args, "mpi_nrows=");
+		if (tmp1 != NULL)
+			mpi_nrows = atoi(tmp1 + 10);
+
+		tmp1 = strstr(obj->nfs_args, "mpi_ncols=");
+		if (tmp1 != NULL)
+			mpi_ncols = atoi(tmp1 + 10);
+
+		/* old-style 'X,Y' format */
+
+		tmp1 = strchr(obj->nfs_args, ',');
+		if (tmp1 != NULL) {
+			tmp0 = tmp1 - 1;
+			while (tmp0 > obj->nfs_args && isdigit(tmp0[-1]))
+				tmp0--;
+			mpi_nrows = atoi(tmp0);
+			mpi_ncols = atoi(tmp1 + 1);
+		}
+	}
+
 	/* create the grid */
 
 	obj->mpi_nrows = grid_dims[0] = 1;
 	obj->mpi_ncols = grid_dims[1] = obj->mpi_size;
-	if (obj->nfs_lower && obj->nfs_upper) {
-		if (obj->mpi_size != obj->nfs_lower * obj->nfs_upper) {
+	if (mpi_nrows && mpi_ncols) {
+		if (obj->mpi_size != mpi_nrows * mpi_ncols) {
 			printf("error: MPI size %u incompatible with "
-				"%u x %u grid\n", obj->mpi_size, 
-				(uint32)obj->nfs_lower, 
-				(uint32)obj->nfs_upper);
-
+				"%d x %d grid\n", obj->mpi_size, 
+				mpi_nrows, mpi_ncols);
 			MPI_Abort(MPI_COMM_WORLD, MPI_ERR_TOPOLOGY);
 		}
-		obj->mpi_nrows = grid_dims[0] = obj->nfs_lower;
-		obj->mpi_ncols = grid_dims[1] = obj->nfs_upper;
+		obj->mpi_nrows = grid_dims[0] = mpi_nrows;
+		obj->mpi_ncols = grid_dims[1] = mpi_ncols;
 	}
 	if (obj->mpi_nrows > MAX_MPI_GRID_DIM ||
 	    obj->mpi_ncols > MAX_MPI_GRID_DIM) {

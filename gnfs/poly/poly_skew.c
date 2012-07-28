@@ -304,10 +304,26 @@ static void find_poly_core(msieve_obj *obj, mpz_t n,
 	uint32 do_both_stages = 0;
 	double digits;
 	double coeff_scale = 3.0;
+	const char *lower_limit = NULL;
+	const char *upper_limit = NULL;
 
 	if ((obj->flags & MSIEVE_FLAG_NFS_POLY1) &&
 	    (obj->flags & MSIEVE_FLAG_NFS_POLY2))
 		do_both_stages = 1;
+
+	/* parse arguments */
+
+	if (obj->nfs_args != NULL) {
+		upper_limit = strchr(obj->nfs_args, ',');
+		if (upper_limit != NULL) {
+			lower_limit = upper_limit - 1;
+			while (lower_limit > obj->nfs_args &&
+				isdigit(lower_limit[-1])) {
+				lower_limit--;
+			}
+			upper_limit++;
+		}
+	}
 
 	/* get poly select parameters */
 
@@ -369,15 +385,15 @@ static void find_poly_core(msieve_obj *obj, mpz_t n,
 		stage1_data.norm_max = params.stage1_norm;
 		stage1_data.deadline = deadline;
 
-		if (obj->nfs_lower)
-			uint64_2gmp(obj->nfs_lower, 
+		if (lower_limit != NULL)
+			gmp_sscanf(lower_limit, "%Zd",
 					stage1_data.gmp_high_coeff_begin);
 		else
 			mpz_set_ui(stage1_data.gmp_high_coeff_begin, 
 					(unsigned long)1);
 
-		if (obj->nfs_upper)
-			uint64_2gmp(obj->nfs_upper, 
+		if (upper_limit != NULL)
+			gmp_sscanf(upper_limit, "%Zd",
 					stage1_data.gmp_high_coeff_end);
 		else
 			mpz_set_d(stage1_data.gmp_high_coeff_end,
@@ -385,7 +401,7 @@ static void find_poly_core(msieve_obj *obj, mpz_t n,
 					(double)(degree * (degree - 1))) / 
 				coeff_scale );
 
-		if (obj->nfs_lower && obj->nfs_upper)
+		if (lower_limit != NULL && upper_limit != NULL)
 			stage1_data.deadline = 0;
 		else
 			logprintf(obj, "time limit set to %.2f CPU-hours\n",

@@ -228,14 +228,6 @@ int32 find_poly(msieve_obj *obj, mpz_t n) {
 
 	logprintf(obj, "commencing number field sieve polynomial selection\n");
 
-	/* do sanity checking */
-
-	if ((obj->nfs_lower == 0 && obj->nfs_upper != 0) ||
-	    (obj->nfs_lower != 0 && obj->nfs_upper == 0) ) {
-		printf("lower/upper bounds must both be specified\n");
-		return -3;
-	}
-
 	poly_config_init(&config);
 
 	/* figure out how long poly selection should take */

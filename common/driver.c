@@ -19,11 +19,10 @@ msieve_obj * msieve_obj_new(char *input_integer, uint32 flags,
 			    char *savefile_name, char *logfile_name,
 			    char *nfs_fbfile_name,
 			    uint32 seed1, uint32 seed2, uint32 max_relations,
-			    uint64 nfs_lower, uint64 nfs_upper,
 			    enum cpu_type cpu,
 			    uint32 cache_size1, uint32 cache_size2,
-			    uint32 num_threads, uint32 mem_mb,
-			    uint32 which_gpu, double target_density) {
+			    uint32 num_threads, uint32 which_gpu, 
+			    const char *nfs_args) {
 
 	msieve_obj *obj = (msieve_obj *)xcalloc((size_t)1, sizeof(msieve_obj));
 
@@ -32,16 +31,13 @@ msieve_obj * msieve_obj_new(char *input_integer, uint32 flags,
 	obj->seed1 = seed1;
 	obj->seed2 = seed2;
 	obj->max_relations = max_relations;
-	obj->nfs_lower = nfs_lower;
-	obj->nfs_upper = nfs_upper;
 	obj->cpu = cpu;
 	obj->cache_size1 = cache_size1;
 	obj->cache_size2 = cache_size2;
 	obj->num_threads = num_threads;
-	obj->mem_mb = mem_mb;
 	obj->which_gpu = which_gpu;
-	obj->target_density = target_density;
 	obj->logfile_name = MSIEVE_DEFAULT_LOGFILE;
+	obj->nfs_args = nfs_args;
 	if (logfile_name)
 		obj->logfile_name = logfile_name;
 	obj->nfs_fbfile_name = MSIEVE_DEFAULT_NFS_FBFILE;

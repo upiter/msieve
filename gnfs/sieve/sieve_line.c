@@ -182,9 +182,25 @@ uint32 do_line_sieving(msieve_obj *obj, sieve_param_t *params, mpz_t n,
 	uint32 i;
 	sieve_job_t job;
 	factor_base_t fb;
+	const char *lower_limit = NULL;
+	const char *upper_limit = NULL;
 
 	if (relations_found >= max_relations)
 		return relations_found;
+
+	/* parse arguments */
+
+	if (obj->nfs_args != NULL) {
+		upper_limit = strchr(obj->nfs_args, ',');
+		if (upper_limit != NULL) {
+			lower_limit = upper_limit - 1;
+			while (lower_limit > obj->nfs_args &&
+				isdigit(lower_limit[-1])) {
+				lower_limit--;
+			}
+			upper_limit++;
+		}
+	}
 
 	/* generate or read the factor base */
 
@@ -205,16 +221,16 @@ uint32 do_line_sieving(msieve_obj *obj, sieve_param_t *params, mpz_t n,
 
 	/* set user-specified limits, if any */
 
-	if (obj->nfs_lower != 0 && obj->nfs_upper != 0) {
-		if (obj->nfs_lower > obj->nfs_upper) {
+	if (lower_limit != NULL && upper_limit != NULL) {
+		job.min_b = strtoul(lower_limit, NULL, 10);
+		job.max_b = strtoul(upper_limit, NULL, 10);
+		if (job.min_b > job.max_b) {
 			printf("lower bound on b must be <= upper bound\n");
 			return 0;
 		}
-		job.min_b = obj->nfs_lower;
-		job.max_b = obj->nfs_upper;
 	}
-	else if ((obj->nfs_lower == 0 && obj->nfs_upper != 0) ||
-		 (obj->nfs_lower != 0 && obj->nfs_upper == 0) ) {
+	else if ((lower_limit == NULL && upper_limit != NULL) ||
+		 (lower_limit != NULL && upper_limit == NULL) ) {
 		printf("lower/upper bounds on b must both be specified\n");
 		return 0;
 	}

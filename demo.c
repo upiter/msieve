@@ -162,15 +162,12 @@ void factor_integer(char *buf, uint32 flags,
 		    char *nfs_fbfile_name,
 		    uint32 *seed1, uint32 *seed2,
 		    uint32 max_relations,
-		    uint64 nfs_lower,
-		    uint64 nfs_upper,
 		    enum cpu_type cpu,
 		    uint32 cache_size1,
 		    uint32 cache_size2,
 		    uint32 num_threads,
-		    uint32 mem_mb,
 		    uint32 which_gpu,
-		    double target_density) {
+		    const char *nfs_args) {
 	
 	char *int_start, *last;
 	msieve_obj *obj;
@@ -195,10 +192,9 @@ void factor_integer(char *buf, uint32 flags,
 					savefile_name, logfile_name,
 					nfs_fbfile_name,
 					*seed1, *seed2, max_relations,
-					nfs_lower, nfs_upper, cpu,
-					cache_size1, cache_size2,
-					num_threads, mem_mb, which_gpu,
-					target_density);
+					cpu, cache_size1, cache_size2,
+					num_threads, which_gpu,
+					nfs_args);
 	if (g_curr_factorization == NULL) {
 		printf("factoring initialization failed\n");
 		return;
@@ -293,15 +289,12 @@ int main(int argc, char **argv) {
 	int i;
 	int32 deadline = 0;
 	uint32 max_relations = 0;
-	uint64 nfs_lower = 0;
-	uint64 nfs_upper = 0;
 	enum cpu_type cpu;
 	uint32 cache_size1; 
 	uint32 cache_size2; 
 	uint32 num_threads = 0;
-	uint32 mem_mb = 0;
 	uint32 which_gpu = 0;
-	double target_density = 0;
+	const char *nfs_args = NULL;
 		
 	get_cache_sizes(&cache_size1, &cache_size2);
 	cpu = get_cpu_type();
@@ -340,8 +333,7 @@ int main(int argc, char **argv) {
 			case 'i':
 			case 's':
 			case 'l':
-				if (i + 1 < argc && 
-				    argv[i+1][0] != '-') {
+				if (i + 1 < argc && argv[i+1][0] != '-') {
 					if (tolower(argv[i][1]) == 'i')
 						infile_name = argv[i+1];
 					else if (tolower(argv[i][1]) == 's') {
@@ -351,8 +343,10 @@ int main(int argc, char **argv) {
 							savefile_name = strdup(argv[i+1]);
 							savefile_name[p-argv[i+1]] = 0;
 						}
-					} else
+					} 
+					else {
 						logfile_name = argv[i+1];
+					}
 					i += 2;
 				}
 				else {
@@ -362,15 +356,8 @@ int main(int argc, char **argv) {
 				break;
 					
 			case 'm':
-				if (argv[i][2] == 'b' &&
-				    i + 1 < argc && isdigit(argv[i+1][0])) {
-					mem_mb = atol(argv[i+1]);
-					i += 2;
-				}
-				else {
-					manual_mode = 1;
-					i++;
-				}
+				manual_mode = 1;
+				i++;
 				break;
 
 			case 'e':
@@ -378,8 +365,21 @@ int main(int argc, char **argv) {
 				i++;
 				break;
 
-			case 'n':
-				if (argv[i][2] == 'p') {
+			case 'n': 
+				switch (argv[i][2]) {
+				case 0:
+					flags |= MSIEVE_FLAG_NFS_POLY1 |
+						 MSIEVE_FLAG_NFS_POLY2 |
+						 MSIEVE_FLAG_NFS_SIEVE |
+						 MSIEVE_FLAG_NFS_FILTER |
+						 MSIEVE_FLAG_NFS_LA |
+						 MSIEVE_FLAG_NFS_SQRT;
+					break;
+
+				case 'f':
+					break;
+
+				case 'p':
 					if (argv[i][3] == '1')
 						flags |= MSIEVE_FLAG_NFS_POLY1;
 					else if (argv[i][3] == '2')
@@ -387,54 +387,46 @@ int main(int argc, char **argv) {
 					else
 						flags |= MSIEVE_FLAG_NFS_POLY1 |
 							 MSIEVE_FLAG_NFS_POLY2;
-				}
-				else if (argv[i][2] == 's') {
+					break;
+				
+				case 's':
 					flags |= MSIEVE_FLAG_NFS_SIEVE;
-				}
-				else if (argv[i][2] == 'c') {
-					if (argv[i][3] == '1')
+					break;
+
+				case 'c':
+					switch (argv[i][3]) {
+					case 0:
+						flags |= MSIEVE_FLAG_NFS_FILTER |
+						         MSIEVE_FLAG_NFS_LA |
+						         MSIEVE_FLAG_NFS_SQRT;
+						break;
+
+					case '1':
 						flags |= MSIEVE_FLAG_NFS_FILTER;
-					else if (argv[i][3] == '2')
+						break;
+
+					case 'r':
+						flags |= MSIEVE_FLAG_NFS_LA_RESTART;
+					case '2': /* fall through */
 						flags |= MSIEVE_FLAG_NFS_LA;
-					else if (argv[i][3] == 'r')
-						flags |= 
-						     MSIEVE_FLAG_NFS_LA |
-						     MSIEVE_FLAG_NFS_LA_RESTART;
-					else if (argv[i][3] == '3')
+						break;
+
+					case '3':
 						flags |= MSIEVE_FLAG_NFS_SQRT;
-					else if (argv[i][3] == 0)
-						flags |= 
-						     MSIEVE_FLAG_NFS_FILTER |
-						     MSIEVE_FLAG_NFS_LA |
-						     MSIEVE_FLAG_NFS_SQRT;
-				}
-				else if (argv[i][2] == 0) {
-					flags |= MSIEVE_FLAG_NFS_POLY1 |
-						 MSIEVE_FLAG_NFS_POLY2 |
-						 MSIEVE_FLAG_NFS_SIEVE |
-						 MSIEVE_FLAG_NFS_FILTER |
-						 MSIEVE_FLAG_NFS_LA |
-						 MSIEVE_FLAG_NFS_SQRT;
+						break;
+					}
+					break;
+
+				default:
+					print_usage(argv[0]);
+					return -1;
 				}
 
 				if (i + 1 < argc && argv[i+1][0] != '-') {
-					if (argv[i][2] == 'f') {
-						nfs_fbfile_name = argv[i+1];
-						i++;
-					}
-					else if ((argv[i][2] == 's' ||
-						  argv[i][2] == 'c' ||
-						  argv[i][2] == 'p') &&
-						  strchr(argv[i+1], ',') != 
-						  		NULL ) {
-						char *tmp;
-						nfs_lower = strtoull(argv[i+1],
-								&tmp, 10);
-						tmp++;
-						nfs_upper = strtoull(tmp,
-								NULL, 10);
-						i++;
-					}
+					if (argv[i][2] == 'f')
+						nfs_fbfile_name = argv[++i];
+					else
+						nfs_args = argv[++i];
 				}
 				i++;
 				break;
@@ -470,17 +462,6 @@ int main(int argc, char **argv) {
 			case 't':
 				if (i + 1 < argc && isdigit(argv[i+1][0])) {
 					num_threads = atol(argv[i+1]);
-					i += 2;
-				}
-				else {
-					print_usage(argv[0]);
-					return -1;
-				}
-				break;
-
-			case 'D':
-				if (i + 1 < argc && isdigit(argv[i+1][0])) {
-					target_density = atof(argv[i+1]);
 					i += 2;
 				}
 				else {
@@ -546,10 +527,9 @@ int main(int argc, char **argv) {
 				logfile_name, nfs_fbfile_name,
 				&seed1, &seed2,
 				max_relations, 
-				nfs_lower, nfs_upper, cpu,
-				cache_size1, cache_size2,
-				num_threads, mem_mb, 
-				which_gpu, target_density);
+				cpu, cache_size1, cache_size2,
+				num_threads, which_gpu,
+				nfs_args);
 	}
 	else if (manual_mode) {
 		while (1) {
@@ -561,10 +541,8 @@ int main(int argc, char **argv) {
 					logfile_name, nfs_fbfile_name,
 					&seed1, &seed2,
 					max_relations, 
-					nfs_lower, nfs_upper, cpu,
-					cache_size1, cache_size2,
-					num_threads, mem_mb, 
-					which_gpu, target_density);
+					cpu, cache_size1, cache_size2,
+					num_threads, which_gpu, nfs_args);
 			if (feof(stdin))
 				break;
 		}
@@ -583,10 +561,8 @@ int main(int argc, char **argv) {
 					logfile_name, nfs_fbfile_name,
 					&seed1, &seed2,
 					max_relations, 
-					nfs_lower, nfs_upper, cpu,
-					cache_size1, cache_size2,
-					num_threads, mem_mb, 
-					which_gpu, target_density);
+					cpu, cache_size1, cache_size2,
+					num_threads, which_gpu, nfs_args);
 			if (feof(infile))
 				break;
 		}

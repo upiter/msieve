@@ -321,9 +321,37 @@ uint32 nfs_find_factors(msieve_obj *obj, mpz_t n,
 
 	/* determine the list of dependencies to compute */
 
-	if (obj->nfs_lower && obj->nfs_upper) {
-		dep_lower = MIN(obj->nfs_lower, 64);
-		dep_upper = MIN(obj->nfs_upper, 64);
+	if (obj->nfs_args != NULL) {
+
+		uint32 lo, hi;
+		const char *tmp;
+		const char *lower_limit;
+		const char *upper_limit;
+
+		tmp = strstr(obj->nfs_args, "dep_first=");
+		if (tmp != NULL)
+			dep_lower = strtoul(tmp + 10, NULL, 10);
+
+		tmp = strstr(obj->nfs_args, "dep_last=");
+		if (tmp != NULL)
+			dep_upper = strtoul(tmp + 9, NULL, 10);
+
+		/* old-style 'X,Y' format */
+
+		upper_limit = strchr(obj->nfs_args, ',');
+		if (upper_limit != NULL) {
+			lower_limit = upper_limit - 1;
+			while (lower_limit > obj->nfs_args &&
+				isdigit(lower_limit[-1])) {
+				lower_limit--;
+			}
+			upper_limit++;
+		}
+		lo = strtoul(lower_limit, NULL, 10);
+		hi = strtoul(upper_limit, NULL, 10);
+
+		dep_lower = MIN(lo, 64);
+		dep_upper = MIN(hi, 64);
 		dep_upper = MAX(dep_lower, dep_upper);
 	}
 
