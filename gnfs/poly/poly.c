@@ -14,35 +14,6 @@ $Id$
 
 #include "poly.h"
 
-/* used to place a deadline on how long polynomial 
-   selection will run. Note that the time budget is
-   independent of CPU speed; faster CPUs will simply
-   search more of the polynomial space */
-
-typedef struct {
-	uint32 bits;
-	uint32 seconds;
-} poly_deadline_t;
-
-static const poly_deadline_t time_limits[] = {
-	{MIN_NFS_BITS, 4 * 60},
-	{304, 8 * 60},
-	{320, 15 * 60},
-	{348, 30 * 60},
-	{365, 1 * 3600},
-	{383, 2 * 3600},
-	{399, 4 * 3600},
-	{416, 8 * 3600},
-	{433, 16 * 3600},
-	{449, 32 * 3600},
-	{466, 64 * 3600},
-	{482, 100 * 3600},
-	{498, 200 * 3600},
-	{514, 300 * 3600},
-};
-
-#define NUM_TIME_LIMITS sizeof(time_limits)/sizeof(time_limits[0])
-
 /*------------------------------------------------------------------*/
 int32 read_poly(msieve_obj *obj, mpz_t n,
 	       mpz_poly_t *rat_poly,
@@ -222,37 +193,22 @@ int32 find_poly(msieve_obj *obj, mpz_t n) {
 
 	/* external entry point for NFS polynomial generation */
 
-	uint32 i, j;
+	poly_param_t params;
 	poly_config_t config;
-	uint32 deadline;
+	uint32 degree;
 
 	logprintf(obj, "commencing number field sieve polynomial selection\n");
 
 	poly_config_init(&config);
 
-	/* figure out how long poly selection should take */
+	/* configure the selection process */
 
-	i = mpz_sizeinbase(n, 2);
-	for (j = 0; j < NUM_TIME_LIMITS; j++) {
-		if (i < time_limits[j].bits)
-			break;
-	}
-	if (j == NUM_TIME_LIMITS) {
-		deadline = time_limits[j-1].seconds;
-	}
-	else {
-		const poly_deadline_t *low = &time_limits[j-1];
-		const poly_deadline_t *high = &time_limits[j];
-		uint32 dist = high->bits - low->bits;
-		deadline = (uint32)(
-			 ((double)low->seconds * (high->bits - i) +
-			  (double)high->seconds * (i - low->bits)) / dist);
-	}
+	get_poly_params(obj, n, &degree, &params);
 
 	/* run the core polynomial finder */
 
 	obj->flags |= MSIEVE_FLAG_SIEVING_IN_PROGRESS;
-	find_poly_skew(obj, n, &config, deadline);
+	find_poly_core(obj, n, &params, &config, degree);
 	obj->flags &= ~MSIEVE_FLAG_SIEVING_IN_PROGRESS;
 
 	/* save the best polynomial */

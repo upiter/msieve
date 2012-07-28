@@ -558,27 +558,15 @@ optimize_final(mpz_t x, mpz_t y, int64 z, poly_stage2_t *data)
 	if (alpha > -4.5)
 		return;
 
-	get_bernstein_score(c, assess, deg, alpha, &bscore);
+	optimize_final_core(c, assess, deg, alpha, 
+			&combined_score, &skewness,
+			&num_real_roots);
 
-#if 0
-	printf("%.0lf %d %lf %le\n", (double)x, y, alpha, bscore); 
-	fflush(stdout);
-#endif
+	if (combined_score > data->min_e) {
+		get_bernstein_score(c, assess, deg, alpha, &bscore);
 
-	if (bscore > data->min_e_bernstein) {
-
-		optimize_final_core(c, assess, deg, alpha, 
-				&combined_score, &skewness,
-				&num_real_roots);
-
-#if 0
-		printf("combined %le ratio %lf\n", combined_score,
-					combined_score / bscore);
-#endif
-		if (combined_score > data->min_e) {
-			data->callback(data->callback_data, deg, c->gmp_b, 
-					c->gmp_linb, skewness, bscore,
-					alpha, combined_score, num_real_roots);
-		}
+		data->callback(data->callback_data, deg, c->gmp_b, 
+				c->gmp_linb, skewness, bscore,
+				alpha, combined_score, num_real_roots);
 	}
 }

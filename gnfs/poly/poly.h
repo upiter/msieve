@@ -26,6 +26,19 @@ $Id$
 extern "C" {
 #endif
 
+#if MAX_POLY_DEGREE < 6
+#error "Polynomial generation assumes degree <= 6 allowed"
+#endif
+
+/* parameters */
+typedef struct {
+	double digits;
+	double stage1_norm;
+	double stage2_norm;
+	double final_norm;
+	uint32 deadline;
+} poly_param_t;
+
 /* used if polynomials will ever be generated in parallel */
 #define POLY_HEAP_SIZE 1
 
@@ -58,11 +71,16 @@ void poly_config_free(poly_config_t *config);
 
 #define SIZE_EPS 1e-6
 
-/* main routine */
+/* main routines */
 
-void find_poly_skew(msieve_obj *obj, mpz_t n,
+void get_poly_params(msieve_obj *obj, mpz_t n,
+			uint32 *degree_out, 
+			poly_param_t *params_out);
+
+void find_poly_core(msieve_obj *obj, mpz_t n,
+			poly_param_t *params,
 			poly_config_t *config,
-			uint32 deadline);
+			uint32 degree);
 
 typedef struct {
 	uint32 degree;

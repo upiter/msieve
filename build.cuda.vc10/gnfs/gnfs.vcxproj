@@ -182,6 +182,7 @@
     <ClCompile Include="..\..\gnfs\filter\filter.c" />
     <ClCompile Include="..\..\gnfs\filter\singleton.c" />
     <ClCompile Include="..\..\gnfs\poly\poly.c" />
+    <ClCompile Include="..\..\gnfs\poly\poly_param.c" />
     <ClCompile Include="..\..\gnfs\poly\poly_skew.c" />
     <ClCompile Include="..\..\gnfs\poly\polyutil.c" />
     <ClCompile Include="..\..\gnfs\poly\root_score.c" />
