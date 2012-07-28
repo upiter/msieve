@@ -242,6 +242,17 @@ void find_poly_core(msieve_obj *obj, mpz_t n,
 		stage2_data.degree = degree;
 		stage2_data.max_norm = params->stage2_norm;
 		stage2_data.min_e = params->final_norm;
+		stage2_data.min_e_bernstein = 0;
+
+		/* smaller degree 5 problems run much faster when Bernstein's
+		   scoring function is used to weed out polynomials that
+		   probably cannot get their Murphy score optimized enough
+		   to exceed the E-value bound */
+
+		if (degree == 5) {
+			stage2_data.min_e_bernstein = params->final_norm / 
+					(2.2 * pow(3.0, (params->digits - 100) / 10));
+		}
 
 		sprintf(buf, "%s.p", obj->savefile.name);
 		stage2_callback_data.config = config;

@@ -133,6 +133,7 @@ void print_usage(char *progname) {
 		 "   -nc3      perform only NFS square root\n\n"
 		 " the arguments are a space-delimited list of:\n"
 		 " polynomial selection options:\n"
+		 "   polydegree=X    selection polynomials with degree X\n"
 		 "   min_coeff=X     minimum leading coefficient to search\n"
 		 "                   in stage 1\n"
 		 "   max_coeff=X     maximum leading coefficient to search\n"

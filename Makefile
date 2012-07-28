@@ -200,6 +200,7 @@ NFS_NOGPU_HDR =
 
 NFS_SRCS = \
 	gnfs/poly/poly.c \
+	gnfs/poly/poly_param.c \
 	gnfs/poly/poly_skew.c \
 	gnfs/poly/polyutil.c \
 	gnfs/poly/root_score.c \

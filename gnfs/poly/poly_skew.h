@@ -58,6 +58,7 @@ typedef struct {
 	uint32 murphy_p_bound;
 	double max_norm;
 	double min_e;
+	double min_e_bernstein;
 
 	void *internal;
 
