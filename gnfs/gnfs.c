@@ -68,9 +68,6 @@ uint32 factor_gnfs(msieve_obj *obj, mp_t *input_n,
 	logprintf(obj, "commencing number field sieve (%d-digit input)\n",
 			strlen(obj->mp_sprintf_buf));
 
-	if (obj->nfs_args != NULL)
-		logprintf(obj, "NFS arguments: '%s'\n", obj->nfs_args);
-
 	/* generate or read in the NFS polynomials */
 
 	mpz_poly_init(&rat_poly);

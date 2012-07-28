@@ -258,20 +258,32 @@ uint32 nfs_filter_relations(msieve_obj *obj, mpz_t n) {
 		const char *tmp;
 
 		tmp = strstr(obj->nfs_args, "filter_mem_mb=");
-		if (tmp != NULL)
+		if (tmp != NULL) {
 			ram_size = strtoull(tmp + 14, NULL, 10) << 20;
+			logprintf(obj, "setting memory use to %.1f MB\n",
+					(double)ram_size / 1048576);
+		}
 
 		tmp = strstr(obj->nfs_args, "filter_maxrels=");
-		if (tmp != NULL)
+		if (tmp != NULL) {
 			max_relations = strtoul(tmp + 15, NULL, 10);
+			logprintf(obj, "setting max relations to %u\n",
+					max_relations);
+		}
 
 		tmp = strstr(obj->nfs_args, "filter_lpbound=");
-		if (tmp != NULL)
+		if (tmp != NULL) {
 			filter_bound = strtoul(tmp + 15, NULL, 10);
+			logprintf(obj, "setting large prime bound to %u\n",
+					filter_bound);
+		}
 
 		tmp = strstr(obj->nfs_args, "target_density=");
-		if (tmp != NULL)
+		if (tmp != NULL) {
 			target_density = strtod(tmp + 15, NULL);
+			logprintf(obj, "setting target matrix density to %.1f\n",
+					target_density);
+		}
 
 		/* old-style 'X,Y' format */
 
@@ -282,6 +294,11 @@ uint32 nfs_filter_relations(msieve_obj *obj, mpz_t n) {
 				tmp0--;
 			max_relations = strtoul(tmp + 1, NULL, 10);
 			filter_bound = strtoul(tmp0, NULL, 10);
+
+			logprintf(obj, "setting max relations to %u\n",
+					max_relations);
+			logprintf(obj, "setting large prime bound to %u\n",
+					filter_bound);
 		}
 	}
 
