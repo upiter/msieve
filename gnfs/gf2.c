@@ -586,21 +586,10 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 	logprintf(obj, "\n");
 	logprintf(obj, "commencing linear algebra\n");
 
-#ifdef HAVE_MPI
-
-	/* do not allow the square root to run if the
-	   LA is running on a grid; this is a side-effect
-	   of the LA not cleaning up very gracefully */
-
-	if (obj->mpi_size > 1 && (obj->flags & MSIEVE_FLAG_NFS_SQRT)) {
-		printf("error: square root is incompatible with "
-			"multiple MPI processes\n");
-		exit(-1);
-	}
-
 	/* parse input arguments */
 
 	if (obj->nfs_args != NULL) {
+#ifdef HAVE_MPI
 		const char *tmp0, *tmp1;
 
 		tmp1 = strstr(obj->nfs_args, "mpi_nrows=");
@@ -621,6 +610,20 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 			mpi_nrows = atoi(tmp0);
 			mpi_ncols = atoi(tmp1 + 1);
 		}
+#endif
+		if (strstr(obj->nfs_args, "skip_matbuild=1"))
+			skip_matbuild = 1;
+	}
+
+#ifdef HAVE_MPI
+	/* do not allow the square root to run if the
+	   LA is running on a grid; this is a side-effect
+	   of the LA not cleaning up very gracefully */
+
+	if (obj->mpi_size > 1 && (obj->flags & MSIEVE_FLAG_NFS_SQRT)) {
+		printf("error: square root is incompatible with "
+			"multiple MPI processes\n");
+		exit(-1);
 	}
 
 	/* create the grid */
@@ -673,10 +676,6 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 			obj->mpi_la_row_rank, obj->mpi_la_col_rank,
 			obj->mpi_nrows, obj->mpi_ncols);
 #endif
-
-	if (obj->nfs_args != NULL &&
-	    strstr(obj->nfs_args, "skip_matbuild=1"))
-		skip_matbuild = 1;
 
 	if (!skip_matbuild && !(obj->flags & MSIEVE_FLAG_NFS_LA_RESTART)) {
 
