@@ -574,6 +574,7 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 	uint32 num_dense_rows;
 	uint32 deps_found;
 	uint64 *dependencies;
+	uint32 skip_matbuild = 0;
 	time_t cpu_time = time(NULL);
 #ifdef HAVE_MPI
 	int32 grid_bools[2] = {0};
@@ -673,7 +674,11 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 			obj->mpi_nrows, obj->mpi_ncols);
 #endif
 
-	if (!(obj->flags & MSIEVE_FLAG_NFS_LA_RESTART)) {
+	if (obj->nfs_args != NULL &&
+	    strstr(obj->nfs_args, "skip_matbuild=1"))
+		skip_matbuild = 1;
+
+	if (!skip_matbuild && !(obj->flags & MSIEVE_FLAG_NFS_LA_RESTART)) {
 
 		/* build the matrix; if using MPI, only process
 		   0 does this, the rest are stalled. This isn't very
