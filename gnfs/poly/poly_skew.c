@@ -178,14 +178,14 @@ void find_poly_core(msieve_obj *obj, mpz_t n,
 			upper_limit = tmp + 10;
 
 		/* old-style 'X,Y' format */
-		upper_limit = strchr(obj->nfs_args, ',');
-		if (upper_limit != NULL) {
-			lower_limit = upper_limit - 1;
+		tmp = strchr(obj->nfs_args, ',');
+		if (tmp != NULL) {
+			lower_limit = tmp - 1;
 			while (lower_limit > obj->nfs_args &&
 				isdigit(lower_limit[-1])) {
 				lower_limit--;
 			}
-			upper_limit++;
+			upper_limit = tmp + 1;
 		}
 
 	}
