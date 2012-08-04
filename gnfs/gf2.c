@@ -611,8 +611,10 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 			mpi_ncols = atoi(tmp1 + 1);
 		}
 #endif
-		if (strstr(obj->nfs_args, "skip_matbuild=1"))
+		if (strstr(obj->nfs_args, "skip_matbuild=1")) {
+			logprintf(obj, "skipping matrix build\n");
 			skip_matbuild = 1;
+		}
 	}
 
 #ifdef HAVE_MPI
