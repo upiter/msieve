@@ -144,11 +144,13 @@ static uint32 msieve_run_core(msieve_obj *obj, mp_t *n,
 			   MSIEVE_FLAG_NFS_LA |
 	    		   MSIEVE_FLAG_NFS_SQRT)) &&
 	    (!(obj->flags & (MSIEVE_FLAG_NFS_POLY1 |
-			     MSIEVE_FLAG_NFS_POLY2 |
+			     MSIEVE_FLAG_NFS_POLYSIZE |
+			     MSIEVE_FLAG_NFS_POLYROOT |
 	    		     MSIEVE_FLAG_NFS_SIEVE)))) ||
 	   (mp_bits(n) > MIN_NFS_BITS && 
 	    (obj->flags & (MSIEVE_FLAG_NFS_POLY1 |
-	   		  MSIEVE_FLAG_NFS_POLY2 |
+	   		  MSIEVE_FLAG_NFS_POLYSIZE |
+	   		  MSIEVE_FLAG_NFS_POLYROOT |
 	   		  MSIEVE_FLAG_NFS_SIEVE |
 			  MSIEVE_FLAG_NFS_FILTER |
 			  MSIEVE_FLAG_NFS_LA |

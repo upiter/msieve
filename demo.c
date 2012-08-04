@@ -123,7 +123,8 @@ void print_usage(char *progname) {
 		 "             <name> instead of the default %s\n"
 		 "   -np       perform only NFS polynomial selection\n"
 		 "   -np1      perform stage 1 of NFS polynomial selection\n"
-		 "   -np2      perform stage 2 of NFS polynomial selection\n"
+		 "   -nps      perform NFS polynomial size optimization\n"
+		 "   -npr      perform NFS polynomial root optimization\n"
 		 "   -ns       perform only NFS sieving\n"
 		 "   -nc       perform only NFS combining (all phases)\n"
 		 "   -nc1      perform only NFS filtering\n"
@@ -156,8 +157,10 @@ void print_usage(char *progname) {
 		 "   target_density=X attempt to produce a matrix with X\n"
 		 "                    entries per column\n"
 		 "   X,Y              same as 'filter_lpbound=X filter_maxrels=Y'\n"
-#ifdef HAVE_MPI
 		 " linear algebra options:\n"
+		 "   skip_matbuild=1  start the linear algebra but skip building\n"
+		 "                    the matrix (assumes it is built already)\n"
+#ifdef HAVE_MPI
 		 "   mpi_nrows=X      use a grid with X rows\n"
 		 "   mpi_ncols=X      use a grid with X columns\n"
 		 "   X,Y              same as 'mpi_nrows=X mpi_ncols=Y'\n"
@@ -386,7 +389,8 @@ int main(int argc, char **argv) {
 				switch (argv[i][2]) {
 				case 0:
 					flags |= MSIEVE_FLAG_NFS_POLY1 |
-						 MSIEVE_FLAG_NFS_POLY2 |
+						 MSIEVE_FLAG_NFS_POLYSIZE |
+						 MSIEVE_FLAG_NFS_POLYROOT |
 						 MSIEVE_FLAG_NFS_SIEVE |
 						 MSIEVE_FLAG_NFS_FILTER |
 						 MSIEVE_FLAG_NFS_LA |
@@ -399,11 +403,14 @@ int main(int argc, char **argv) {
 				case 'p':
 					if (argv[i][3] == '1')
 						flags |= MSIEVE_FLAG_NFS_POLY1;
-					else if (argv[i][3] == '2')
-						flags |= MSIEVE_FLAG_NFS_POLY2;
+					else if (argv[i][3] == 's')
+						flags |= MSIEVE_FLAG_NFS_POLYSIZE;
+					else if (argv[i][3] == 'r')
+						flags |= MSIEVE_FLAG_NFS_POLYROOT;
 					else
 						flags |= MSIEVE_FLAG_NFS_POLY1 |
-							 MSIEVE_FLAG_NFS_POLY2;
+							 MSIEVE_FLAG_NFS_POLYSIZE |
+							 MSIEVE_FLAG_NFS_POLYROOT;
 					break;
 				
 				case 's':

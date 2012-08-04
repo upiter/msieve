@@ -58,13 +58,13 @@ uint32 stage2_root_score(uint32 deg1, mpz_t *coeff1,
 /*-----------------------------------------------------------------------*/
 /* routines for optimizing polynomials */
 
-void optimize_initial(poly_stage2_t *data, double *pol_norm,
+void optimize_initial(curr_poly_t *data, uint32 deg, double *pol_norm,
 			uint32 skew_only);
 
 double optimize_initial_deg6(double best[MAX_VARS], 
 			curr_poly_t *c, uint32 degree);
 
-void optimize_final(mpz_t x, mpz_t y, int64 z, poly_stage2_t *data);
+void optimize_final(mpz_t x, mpz_t y, int64 z, poly_rootopt_t *data);
 
 double optimize_basic(dpoly_t *apoly, double *best_skewness,
 				double *best_translation);
@@ -229,7 +229,7 @@ void sieve_x_free(sieve_x_t *x);
 #define DEFAULT_BLOCK_SIZE  8192
 
 typedef struct {
-	poly_stage2_t *data;
+	poly_rootopt_t *data;
 
 	uint32 num_primes;
 	sieve_prime_t *primes;
@@ -256,7 +256,7 @@ typedef struct {
 
 void root_sieve_init(root_sieve_t *rs);
 void root_sieve_free(root_sieve_t *rs);
-void root_sieve_run(poly_stage2_t *data, double curr_norm,
+void root_sieve_run(poly_rootopt_t *data, double curr_norm,
 				double alpha_proj);
 
 uint64 find_lattice_size_z(double line_length);
@@ -282,7 +282,7 @@ void save_rotation(root_heap_t *heap, mpz_t x, mpz_t y,
 
 /*-------------------------------------------------------------------------*/
 
-/* data for optimizing a single (a5, p, d) triplet */
+/* data for optimizing a single (ad, p, d) triplet */
 
 typedef struct {
 	curr_poly_t curr_poly;

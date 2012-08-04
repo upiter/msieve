@@ -75,7 +75,8 @@ uint32 factor_gnfs(msieve_obj *obj, mp_t *input_n,
 	status = read_poly(obj, n, &rat_poly, &alg_poly, &params.skewness);
 	if (status != 0 && 
 	   (obj->flags & (MSIEVE_FLAG_NFS_POLY1 | 
-			  MSIEVE_FLAG_NFS_POLY2))) {
+			  MSIEVE_FLAG_NFS_POLYSIZE |
+			  MSIEVE_FLAG_NFS_POLYROOT))) {
 		status = find_poly(obj, n);
 		status = read_poly(obj, n, &rat_poly, 
 					&alg_poly, &params.skewness);

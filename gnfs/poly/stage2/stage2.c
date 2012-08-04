@@ -192,50 +192,110 @@ curr_poly_free(curr_poly_t *c)
 
 /*-------------------------------------------------------------------------*/
 void
-poly_stage2_init(poly_stage2_t *data, 
-		 msieve_obj *obj,
-		 stage2_callback_t callback,
+poly_sizeopt_init(poly_sizeopt_t *data, 
+		 sizeopt_callback_t callback,
 		 void *callback_data)
 {
-	memset(data, 0, sizeof(poly_stage2_t));
+	memset(data, 0, sizeof(poly_sizeopt_t));
 	mpz_init(data->gmp_N);
-	data->obj = obj;
-	data->murphy_p_bound = 2000;
+
+	data->internal = xmalloc(sizeof(curr_poly_t));
+	curr_poly_init((curr_poly_t *)data->internal);
+
 	data->callback = callback;
 	data->callback_data = callback_data;
 }
 
 /*-------------------------------------------------------------------------*/
 void
-poly_stage2_free(poly_stage2_t *data)
+poly_sizeopt_free(poly_sizeopt_t *data)
 {
 	mpz_clear(data->gmp_N);
+	curr_poly_free((curr_poly_t *)data->internal);
+	free(data->internal);
+}
 
-	if (data->internal) {
-		stage2_curr_data_t *s = (stage2_curr_data_t *)(data->internal);
-		curr_poly_free(&s->curr_poly);
-		root_sieve_free(&s->root_sieve);
-		assess_free(&s->assess);
+/*-------------------------------------------------------------------------*/
+void
+poly_sizeopt_run(poly_sizeopt_t *data, mpz_t ad, mpz_t p, mpz_t d)
+{
+	double pol_norm;
+	double alpha_proj;
+	int status;
+	curr_poly_t *c = (curr_poly_t *)(data->internal);
 
-		free(data->internal);
-		data->internal = NULL;
+	mpz_set(c->gmp_d, d);
+	mpz_set(c->gmp_p, p);
+	mpz_neg(c->gmp_lina[0], c->gmp_d);
+	mpz_set(c->gmp_lina[1], c->gmp_p);
+
+	status = pol_expand(c, data->gmp_N, ad, p, d, 
+			data->max_stage1_norm, data->degree);
+	if (status != 2) {
+		if (status == 0)
+			fprintf(stderr, "expand failed\n");
+		return;
+	}
+
+	optimize_initial(c, data->degree, &pol_norm, 0);
+
+	stage2_root_score(data->degree, c->gmp_a, 100, &alpha_proj, 1);
+
+	if (pol_norm * exp(alpha_proj) <= data->max_sizeopt_norm) {
+		data->callback(data->degree, c->gmp_a, c->gmp_lina, 
+				pol_norm, alpha_proj, 
+				data->callback_data);
 	}
 }
 
 /*-------------------------------------------------------------------------*/
 void
-poly_stage2_run(poly_stage2_t *data, mpz_t high_coeff, mpz_t p, 
-			mpz_t d, double coeff_bound,
-			mpz_t *full_apoly)
+poly_rootopt_init(poly_rootopt_t *data, 
+		 msieve_obj *obj,
+		 rootopt_callback_t callback,
+		 void *callback_data)
 {
-	double pol_norm;
-	double alpha_proj;
-	int status;
 	stage2_curr_data_t *s;
-	curr_poly_t *c;
-	uint32 degree;
-	uint32 skew_only = 0;
 
+	memset(data, 0, sizeof(poly_rootopt_t));
+
+	mpz_init(data->gmp_N);
+	data->obj = obj;
+	data->murphy_p_bound = PRIME_BOUND;
+	data->callback = callback;
+	data->callback_data = callback_data;
+
+	s = (stage2_curr_data_t *)xmalloc(sizeof(stage2_curr_data_t));
+	curr_poly_init(&s->curr_poly);
+	root_sieve_init(&s->root_sieve);
+	assess_init(&s->assess);
+	data->internal = (void *)s;
+}
+
+/*-------------------------------------------------------------------------*/
+void
+poly_rootopt_free(poly_rootopt_t *data)
+{
+	stage2_curr_data_t *s = (stage2_curr_data_t *)(data->internal);
+
+	mpz_clear(data->gmp_N);
+
+	curr_poly_free(&s->curr_poly);
+	root_sieve_free(&s->root_sieve);
+	assess_free(&s->assess);
+
+	free(data->internal);
+}
+
+/*-------------------------------------------------------------------------*/
+void
+poly_rootopt_run(poly_rootopt_t *data, mpz_t * alg_coeffs, 
+		mpz_t * rat_coeffs, double sizeopt_norm, 
+		double projective_alpha)
+{
+	uint32 i;
+	stage2_curr_data_t *s = (stage2_curr_data_t *)(data->internal);
+	curr_poly_t *c = &s->curr_poly;
 	dd_precision_t precision = 0;
 	uint32 precision_changed = 0;
 
@@ -244,49 +304,32 @@ poly_stage2_run(poly_stage2_t *data, mpz_t high_coeff, mpz_t p,
 		precision = dd_set_precision_ieee();
 	}
 
-	degree = data->degree;
-	s = (stage2_curr_data_t *)(data->internal);
-	if (s == NULL) {
-		s = (stage2_curr_data_t *)xmalloc(sizeof(stage2_curr_data_t));
-		curr_poly_init(&s->curr_poly);
-		root_sieve_init(&s->root_sieve);
-		assess_init(&s->assess);
-		data->internal = (void *)s;
-	}
+	mpz_set(c->gmp_lina[0], rat_coeffs[0]);
+	mpz_set(c->gmp_lina[1], rat_coeffs[1]);
+	mpz_neg(c->gmp_d, rat_coeffs[0]);
+	mpz_set(c->gmp_p, rat_coeffs[1]);
 
-	c = &s->curr_poly;
-	mpz_set(c->gmp_d, d);
-	mpz_set(c->gmp_p, p);
-	mpz_neg(c->gmp_lina[0], c->gmp_d);
-	mpz_set(c->gmp_lina[1], c->gmp_p);
+	for (i = 0; i <= data->degree; i++)
+		mpz_set(c->gmp_a[i], alg_coeffs[i]);
 
-	if (full_apoly != NULL) {
-		uint32 i;
+	if (sizeopt_norm == 0) {
 
-		for (i = 0; i <= degree; i++)
-			mpz_set(c->gmp_a[i], full_apoly[i]);
+		/* size optimization possibly did not run
+		   previously; check poly and get the norm */
 
 		if (check_poly(c, c->gmp_a, c->gmp_lina[0], 
-				data->gmp_N, degree) != 1) {
+				data->gmp_N, data->degree) != 1) {
 			goto finished;
 		}
-		skew_only = 1;
-	}
-	else {
-		status = pol_expand(c, data->gmp_N, high_coeff,
-					p, d, coeff_bound, degree);
-		if (status != 2) {
-			if (status == 0)
-				fprintf(stderr, "expand failed\n");
-			goto finished;
-		}
+
+		optimize_initial(c, data->degree, &sizeopt_norm, 1);
+
+		stage2_root_score(data->degree, c->gmp_a, 100, 
+				&projective_alpha, 1);
 	}
 
-	optimize_initial(data, &pol_norm, skew_only);
-
-	stage2_root_score(degree, c->gmp_a, 100, &alpha_proj, 1);
-	if (pol_norm * exp(alpha_proj) <= data->max_norm)
-		root_sieve_run(data, pol_norm, alpha_proj);
+	if (sizeopt_norm * exp(projective_alpha) <= data->max_sizeopt_norm)
+		root_sieve_run(data, sizeopt_norm, projective_alpha);
 
 finished:
 	if (precision_changed)

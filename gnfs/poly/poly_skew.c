@@ -14,34 +14,16 @@ $Id$
 
 #include "poly_skew.h"
 
+/*------------------------------------------------------------------*/
+/* callback for root optimization */
+
 typedef struct {
 	FILE *all_poly_file;
 	poly_config_t *config;
-} stage2_callback_data_t;
+} rootopt_callback_data_t;
 
-/*------------------------------------------------------------------*/
-static void stage1_callback(mpz_t high_coeff, mpz_t p, mpz_t m, 
-				double coeff_bound, void *extra) {
-	
-	gmp_printf("%Zd %Zd %Zd\n", high_coeff, p, m);
-	poly_stage2_run((poly_stage2_t *)extra, high_coeff, p, m, 
-			coeff_bound, NULL);
-}
-
-/*------------------------------------------------------------------*/
-static void stage1_callback_log(mpz_t high_coeff, mpz_t p, mpz_t m, 
-				double coeff_bound, void *extra) {
-	
-	FILE *mfile = (FILE *)extra;
-	gmp_printf("%Zd %Zd %Zd\n", high_coeff, p, m);
-	gmp_fprintf(mfile, "%Zd %Zd %Zd\n",
-			high_coeff, p, m);
-	fflush(mfile);
-}
-
-/*------------------------------------------------------------------*/
 static void
-stage2_callback(void *extra, uint32 degree, 
+rootopt_callback(void *extra, uint32 degree, 
 		mpz_t * coeff1, mpz_t * coeff2,
 		double skewness, double size_score,
 		double root_score, double combined_score,
@@ -51,7 +33,7 @@ stage2_callback(void *extra, uint32 degree,
 	poly_select_t poly;
 	mpz_poly_t *rpoly;
 	mpz_poly_t *apoly;
-	stage2_callback_data_t *data = (stage2_callback_data_t *)extra;
+	rootopt_callback_data_t *data = (rootopt_callback_data_t *)extra;
 	poly_config_t *config = data->config;
 
 	memset(&poly, 0, sizeof(poly_select_t));
@@ -93,18 +75,70 @@ stage2_callback(void *extra, uint32 degree,
 }
 
 /*------------------------------------------------------------------*/
+/* callbacks for size optimization */
+
+typedef struct {
+	poly_rootopt_t *rootopt;
+	rootopt_callback_data_t *rootopt_callback;
+} sizeopt_callback_data_t;
+
+static void sizeopt_callback(uint32 deg, mpz_t *alg_coeffs, mpz_t *rat_coeffs, 
+				double sizeopt_norm, double projective_alpha, 
+				void *extra)
+{
+	sizeopt_callback_data_t *callback = (sizeopt_callback_data_t *)extra;
+
+	poly_rootopt_run(callback->rootopt, alg_coeffs, 
+			rat_coeffs, sizeopt_norm, projective_alpha);
+}
+
+static void sizeopt_callback_log(uint32 deg, mpz_t *alg_coeffs, mpz_t *rat_coeffs, 
+				double sizeopt_norm, double projective_alpha, 
+				void *extra)
+{
+	uint32 i;
+	FILE *mfile = (FILE *)extra;
+
+	for (i = deg; (int32)i >= 0; i--)
+		gmp_fprintf(mfile, "%Zd ", alg_coeffs[i]);
+
+	gmp_fprintf(mfile, "%Zd %Zd\n", rat_coeffs[1], rat_coeffs[0]);
+	fflush(mfile);
+}
+
+/*------------------------------------------------------------------*/
+/* callbacks for stage 1 */
+
+static void stage1_callback(mpz_t ad, mpz_t p, mpz_t m, void *extra) {
+	
+	poly_sizeopt_t *data = (poly_sizeopt_t *)extra;
+
+	gmp_printf("%Zd %Zd %Zd\n", ad, p, m);
+	poly_sizeopt_run(data, ad, p, m);
+}
+
+static void stage1_callback_log(mpz_t ad, mpz_t p, mpz_t m, void *extra) {
+	
+	FILE *mfile = (FILE *)extra;
+	gmp_printf("%Zd %Zd %Zd\n", ad, p, m);
+	gmp_fprintf(mfile, "%Zd %Zd %Zd\n", ad, p, m);
+	fflush(mfile);
+}
+
+/*------------------------------------------------------------------*/
 void find_poly_core(msieve_obj *obj, mpz_t n,
 			poly_param_t *params,
 			poly_config_t *config,
 			uint32 degree) {
 
 	poly_stage1_t stage1_data;
-	poly_stage2_t stage2_data;
-	stage2_callback_data_t stage2_callback_data;
+	poly_sizeopt_t sizeopt_data;
+	poly_rootopt_t rootopt_data;
+	sizeopt_callback_data_t sizeopt_callback_data;
+	rootopt_callback_data_t rootopt_callback_data;
 	char buf[2048];
 	FILE *stage1_outfile = NULL;
-	uint32 do_both_stages = 0;
-	double coeff_scale = 3.0;
+	FILE *sizeopt_outfile = NULL;
 	const char *lower_limit = NULL;
 	const char *upper_limit = NULL;
 
@@ -117,22 +151,33 @@ void find_poly_core(msieve_obj *obj, mpz_t n,
 		printf("error: stage 1 bound not provided\n");
 		exit(-1);
 	}
-
-	if ((obj->flags & MSIEVE_FLAG_NFS_POLY2) &&
+	if (((obj->flags & MSIEVE_FLAG_NFS_POLYSIZE) ||
+	     (obj->flags & MSIEVE_FLAG_NFS_POLYROOT)) &&
 	    params->stage2_norm == 0) {
-		printf("error: stage 2 bound not provided\n");
+		printf("error: stage 2 size bound not provided\n");
 		exit(-1);
 	}
-
 	if ((obj->flags & MSIEVE_FLAG_NFS_POLY1) &&
-	    (obj->flags & MSIEVE_FLAG_NFS_POLY2))
-		do_both_stages = 1;
+	    (obj->flags & MSIEVE_FLAG_NFS_POLYROOT) &&
+	    !(obj->flags & MSIEVE_FLAG_NFS_POLYSIZE)) {
+		printf("error: middle polyselect stage missing\n");
+		exit(-1);
+	}
 
 	/* parse arguments */
 
 	if (obj->nfs_args != NULL) {
 		const char *tmp;
 
+		tmp = strstr(obj->nfs_args, "min_coeff=");
+		if (tmp != NULL)
+			lower_limit = tmp + 10;
+
+		tmp = strstr(obj->nfs_args, "max_coeff=");
+		if (tmp != NULL)
+			upper_limit = tmp + 10;
+
+		/* old-style 'X,Y' format */
 		upper_limit = strchr(obj->nfs_args, ',');
 		if (upper_limit != NULL) {
 			lower_limit = upper_limit - 1;
@@ -143,27 +188,22 @@ void find_poly_core(msieve_obj *obj, mpz_t n,
 			upper_limit++;
 		}
 
-		tmp = strstr(obj->nfs_args, "min_coeff=");
-		if (tmp != NULL)
-			lower_limit = tmp + 10;
-
-		tmp = strstr(obj->nfs_args, "max_coeff=");
-		if (tmp != NULL)
-			upper_limit = tmp + 10;
 	}
 
 	/* set up stage 1 */
 
 	if (obj->flags & MSIEVE_FLAG_NFS_POLY1) {
 
-		/* if we're doing both stage 1 and 2, every hit
-		   in stage 1 is immediately forwarded to stage 2.
-		   For stage 1 alone, all the stage 1 hits are buffered
+		double coeff_scale = 3.0;
+
+		/* if we're doing both stage 1 and size optimization, 
+		   every hit in stage 1 is immediately forwarded. For 
+		   stage 1 alone, all the stage 1 hits are buffered
 		   to file first */
 
-		if (do_both_stages) {
+		if (obj->flags & MSIEVE_FLAG_NFS_POLYSIZE) {
 			poly_stage1_init(&stage1_data, 
-					stage1_callback, &stage2_data);
+					stage1_callback, &sizeopt_data);
 		}
 		else {
 			sprintf(buf, "%s.m", obj->savefile.name);
@@ -229,102 +269,118 @@ void find_poly_core(msieve_obj *obj, mpz_t n,
 				mpz_get_d(stage1_data.gmp_high_coeff_end));
 	}
 
-	/* set up stage 2 */
+	/* set up size optimization */
 
-	if (obj->flags & MSIEVE_FLAG_NFS_POLY2) {
+	if (obj->flags & MSIEVE_FLAG_NFS_POLYSIZE) {
 
-		poly_stage2_init(&stage2_data, obj, stage2_callback, 
-				&stage2_callback_data);
+		/* if we're doing both size and root optimization, 
+		   every size opt hit in is immediately forwarded. For 
+		   size optimization alone, all the hits are buffered
+		   to file first */
 
-		/* fill stage 2 data */
+		if (obj->flags & MSIEVE_FLAG_NFS_POLYROOT) {
+			sizeopt_callback_data.rootopt = &rootopt_data;
+			sizeopt_callback_data.rootopt_callback = &rootopt_callback_data;
 
-		mpz_set(stage2_data.gmp_N, n);
-		stage2_data.degree = degree;
-		stage2_data.max_norm = params->stage2_norm;
-		stage2_data.min_e = params->final_norm;
-		stage2_data.min_e_bernstein = 0;
+			poly_sizeopt_init(&sizeopt_data, 
+					sizeopt_callback, &sizeopt_callback_data);
+		}
+		else {
+			sprintf(buf, "%s.ms", obj->savefile.name);
+			sizeopt_outfile = fopen(buf, "a");
+			if (sizeopt_outfile == NULL) {
+				printf("error: cannot open sizeopt file\n");
+				exit(-1);
+			}
+			poly_sizeopt_init(&sizeopt_data, sizeopt_callback_log, 
+					sizeopt_outfile);
+		}
 
-		/* smaller degree 5 problems run much faster when Bernstein's
-		   scoring function is used to weed out polynomials that
-		   probably cannot get their Murphy score optimized enough
-		   to exceed the E-value bound */
+		/* fill size optimization data */
 
-		if (degree == 5) {
-			stage2_data.min_e_bernstein = params->final_norm / 
+		mpz_set(sizeopt_data.gmp_N, n);
+		sizeopt_data.degree = degree;
+		sizeopt_data.max_stage1_norm = params->stage1_norm;
+		sizeopt_data.max_sizeopt_norm = params->stage2_norm;
+	}
+
+	/* set up root optimization */
+
+	if (obj->flags & MSIEVE_FLAG_NFS_POLYROOT) {
+
+		poly_rootopt_init(&rootopt_data, obj, rootopt_callback, 
+				&rootopt_callback_data);
+
+		/* fill root optimization data */
+
+		mpz_set(rootopt_data.gmp_N, n);
+		rootopt_data.degree = degree;
+		rootopt_data.max_sizeopt_norm = params->stage2_norm;
+		rootopt_data.min_e = params->final_norm;
+		rootopt_data.min_e_bernstein = 0;
+
+		/* smaller problems (especially degree 5) run much faster 
+		   when Bernstein's scoring function is used to weed out 
+		   polynomials that probably cannot get their Murphy score 
+		   optimized enough to exceed the E-value bound */
+
+		if (degree == 4) {
+			rootopt_data.min_e_bernstein = params->final_norm / 
+					(30000 * pow(2.5, (params->digits - 90) / 5));
+		}
+		else if (degree == 5) {
+			rootopt_data.min_e_bernstein = params->final_norm / 
 					(2.2 * pow(3.0, (params->digits - 100) / 10));
 		}
 
 		sprintf(buf, "%s.p", obj->savefile.name);
-		stage2_callback_data.config = config;
-		stage2_callback_data.all_poly_file = fopen(buf, "a");
-		if (stage2_callback_data.all_poly_file == NULL) {
-			printf("error: cannot open poly2 file\n");
+		rootopt_callback_data.config = config;
+		rootopt_callback_data.all_poly_file = fopen(buf, "a");
+		if (rootopt_callback_data.all_poly_file == NULL) {
+			printf("error: cannot open root opt file\n");
 			exit(-1);
 		}
 	}
 
 
-	if (do_both_stages) {
+	if (obj->flags & MSIEVE_FLAG_NFS_POLY1) {
+
 		poly_stage1_run(obj, &stage1_data);
 
-		fclose(stage2_callback_data.all_poly_file);
 		poly_stage1_free(&stage1_data);
-		poly_stage2_free(&stage2_data);
+		if (obj->flags & MSIEVE_FLAG_NFS_POLYROOT) {
+			fclose(rootopt_callback_data.all_poly_file);
+			poly_sizeopt_free(&sizeopt_data);
+			poly_rootopt_free(&rootopt_data);
+		}
+		else if (obj->flags & MSIEVE_FLAG_NFS_POLYSIZE) {
+			fclose(sizeopt_outfile);
+			poly_sizeopt_free(&sizeopt_data);
+		}
 	}
-	else if (obj->flags & MSIEVE_FLAG_NFS_POLY1) {
-		poly_stage1_run(obj, &stage1_data);
-		fclose(stage1_outfile);
-		poly_stage1_free(&stage1_data);
-	}
-	else if (obj->flags & MSIEVE_FLAG_NFS_POLY2) {
-		uint32 i;
+	else if (obj->flags & MSIEVE_FLAG_NFS_POLYSIZE) {
 		mpz_t ad, p, m;
-		mpz_t full_apoly[MAX_POLY_DEGREE + 1];
 
 		mpz_init(ad);
 		mpz_init(p);
 		mpz_init(m);
-		for (i = 0; i <= MAX_POLY_DEGREE; i++)
-			mpz_init(full_apoly[i]);
 
 		sprintf(buf, "%s.m", obj->savefile.name);
 		stage1_outfile = fopen(buf, "r");
 		if (stage1_outfile == NULL) {
-			printf("error: cannot open poly2 input file\n");
+			printf("error: cannot open sizeopt input file\n");
 			exit(-1);
 		}
 
 		while (1) {
-			int c;
-			char *tmp = buf;
-			mpz_t *arg = NULL;
-
 			if (fgets(buf, sizeof(buf), stage1_outfile) == NULL)
 				break;
 
-			if (gmp_sscanf(tmp, "%Zd%n", ad, &c) != 1)
-				continue;
-			tmp += c;
-
-			if (mpz_cmp_ui(ad, 0) == 0) {
-				for (i = 0; i <= degree; i++) {
-					if (gmp_sscanf(tmp, "%Zd%n", 
-					    full_apoly[degree - i], &c) != 1)
-						break;
-					tmp += c;
-				}
-
-				mpz_set(ad, full_apoly[degree]);
-				arg = full_apoly;
-			}
-			if (gmp_sscanf(tmp, "%Zd %Zd", p, m) != 2)
+			if (gmp_sscanf(buf, "%Zd %Zd %Zd", ad, p, m) != 3)
 				continue;
 
-			if (arg == NULL)
-				gmp_printf("poly %Zd %Zd %Zd\n", ad, p, m);
-
-			poly_stage2_run(&stage2_data, ad, p, m, 1e100, arg);
-
+			gmp_printf("poly %Zd %Zd %Zd\n", ad, p, m);
+			poly_sizeopt_run(&sizeopt_data, ad, p, m);
 			if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
 				break;
 		}
@@ -332,10 +388,64 @@ void find_poly_core(msieve_obj *obj, mpz_t n,
 		mpz_clear(ad);
 		mpz_clear(p);
 		mpz_clear(m);
-		for (i = 0; i <= MAX_POLY_DEGREE; i++)
-			mpz_clear(full_apoly[i]);
 		fclose(stage1_outfile);
-		fclose(stage2_callback_data.all_poly_file);
-		poly_stage2_free(&stage2_data);
+		poly_sizeopt_free(&sizeopt_data);
+		if (obj->flags & MSIEVE_FLAG_NFS_POLYROOT) {
+			fclose(rootopt_callback_data.all_poly_file);
+			poly_rootopt_free(&rootopt_data);
+		}
+	}
+	else if (obj->flags & MSIEVE_FLAG_NFS_POLYROOT) {
+		uint32 i;
+		mpz_t alg_coeffs[MAX_POLY_DEGREE + 1];
+		mpz_t rat_coeffs[2];
+
+		for (i = 0; i <= MAX_POLY_DEGREE; i++)
+			mpz_init(alg_coeffs[i]);
+		for (i = 0; i <= 1; i++)
+			mpz_init(rat_coeffs[i]);
+
+		sprintf(buf, "%s.ms", obj->savefile.name);
+		sizeopt_outfile = fopen(buf, "r");
+		if (sizeopt_outfile == NULL) {
+			printf("error: cannot open rootopt input file\n");
+			exit(-1);
+		}
+
+		while (1) {
+			int c;
+			char *tmp = buf;
+
+			/* this reading scheme is unintuitive but more
+			   resistant to corrupted input lines */
+
+			if (fgets(tmp, sizeof(buf), sizeopt_outfile) == NULL)
+				break;
+
+			for (i = 0; i <= degree; i++) {
+				if (gmp_sscanf(tmp, "%Zd%n", 
+					    alg_coeffs[degree - i], &c) != 1)
+						break;
+				tmp += c;
+			}
+
+			if (gmp_sscanf(tmp, "%Zd %Zd", 
+					rat_coeffs[1], rat_coeffs[0]) != 2)
+				continue;
+
+			/* make later code figure out the initial poly score */
+
+			poly_rootopt_run(&rootopt_data, alg_coeffs, rat_coeffs, 0, 0);
+			if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
+				break;
+		}
+
+		for (i = 0; i <= MAX_POLY_DEGREE; i++)
+			mpz_clear(alg_coeffs[i]);
+		for (i = 0; i <= 1; i++)
+			mpz_clear(rat_coeffs[i]);
+		fclose(sizeopt_outfile);
+		fclose(rootopt_callback_data.all_poly_file);
+		poly_rootopt_free(&rootopt_data);
 	}
 }

@@ -336,13 +336,8 @@ static double poly_murphy_callback(double *v, void *extra)
 
 /*-------------------------------------------------------------------------*/
 void
-optimize_initial(poly_stage2_t *data, double *pol_norm,
-		uint32 skew_only)
+optimize_initial(curr_poly_t *c, uint32 deg, double *pol_norm, uint32 skew_only)
 {
-	stage2_curr_data_t *curr_data = 
-			(stage2_curr_data_t *)(data->internal);
-	curr_poly_t *c = &curr_data->curr_poly;
-	uint32 deg = data->degree;
 	uint32 rotate_dim = deg - 4;
 	uint32 num_vars = rotate_dim + 3;
 	opt_data_t opt_data;
@@ -526,7 +521,7 @@ get_bernstein_score(curr_poly_t *c, assess_t *assess,
 
 /*-------------------------------------------------------------------------*/
 void
-optimize_final(mpz_t x, mpz_t y, int64 z, poly_stage2_t *data)
+optimize_final(mpz_t x, mpz_t y, int64 z, poly_rootopt_t *data)
 {
 	uint32 i;
 	uint32 deg = data->degree;

@@ -158,7 +158,7 @@ typedef struct {
 #define MAX_BOUNDS 5
 
 void
-root_sieve_run_core(poly_stage2_t *data, double initial_norm,
+root_sieve_run_core(poly_rootopt_t *data, double initial_norm,
 			double alpha_proj)
 {
 	uint32 i;
@@ -189,7 +189,7 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 	mpz_set_ui(rs->xdata.mp_lattice_size, 1);
 	line_min = -10;
 	line_max = 10;
-	max_norm = MIN(data->max_norm * alpha_bias, 100 * initial_norm);
+	max_norm = MIN(data->max_sizeopt_norm * alpha_bias, 100 * initial_norm);
 
 	num_bounds = 0;
 	for (curr_norm = 0; curr_norm < max_norm;
@@ -285,7 +285,7 @@ root_sieve_run_core(poly_stage2_t *data, double initial_norm,
 
 /*-------------------------------------------------------------------------*/
 void
-root_sieve_run(poly_stage2_t *data, double curr_norm, double alpha_proj)
+root_sieve_run(poly_rootopt_t *data, double curr_norm, double alpha_proj)
 {
 	stage2_curr_data_t *s = (stage2_curr_data_t *)data->internal;
 	curr_poly_t *c = &s->curr_poly;
