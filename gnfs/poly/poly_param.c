@@ -247,34 +247,27 @@ void get_poly_params(msieve_obj *obj, mpz_t n,
 		const char *tmp;
 
 		tmp = strstr(obj->nfs_args, "stage1_norm=");
-		if (tmp != NULL) {
+		if (tmp != NULL)
 			params.stage1_norm = strtod(tmp + 12, NULL);
-			logprintf(obj, "setting max stage 1 norm to %.2e\n", 
-					params.stage1_norm);
-		}
 
 		tmp = strstr(obj->nfs_args, "stage2_norm=");
-		if (tmp != NULL) {
+		if (tmp != NULL)
 			params.stage1_norm = strtod(tmp + 12, NULL);
-			logprintf(obj, "setting max stage 2 norm to %.2e\n", 
-					params.stage1_norm);
-		}
 
 		tmp = strstr(obj->nfs_args, "min_evalue=");
-		if (tmp != NULL) {
+		if (tmp != NULL)
 			params.final_norm = strtod(tmp + 11, NULL);
-			logprintf(obj, "setting min E-value to %.2e\n", 
-					params.final_norm);
-		}
 
 		tmp = strstr(obj->nfs_args, "poly_deadline=");
-		if (tmp != NULL) {
+		if (tmp != NULL)
 			params.deadline = strtoul(tmp + 14, NULL, 10);
-			logprintf(obj, "setting poly select deadline to %u\n", 
-					params.deadline);
-		}
 	}
 
+	logprintf(obj, "polynomial degree: %u\n", degree);
+	logprintf(obj, "max stage 1 norm: %.2e\n", params.stage1_norm);
+	logprintf(obj, "max stage 2 norm: %.2e\n", params.stage1_norm);
+	logprintf(obj, "min E-value: %.2e\n", params.final_norm);
+	logprintf(obj, "poly select deadline: %u\n", params.deadline);
 	*degree_out = degree;
 	*params_out = params;
 }
