@@ -230,6 +230,10 @@ static double minimize_line(double *base, double *search_dir,
 	double min_dist, fmin_dist;
 	double max_dir;
 	double normalized[MAX_VARS];
+	double backup[MAX_VARS];
+
+	for (i = 0; i < ndim; i++)
+		backup[i] = base[i];
 
 	max_dir = fabs(search_dir[0]);
 	for (i = 1; i < ndim; i++)
@@ -242,10 +246,17 @@ static double minimize_line(double *base, double *search_dir,
 	fmin_dist = minimize_line_core(base, normalized, a, b, c, 
 					fb, ftol, &min_dist, ndim,
 					status, callback, extra);
-	for (i = 0; i < ndim; i++) {
-		search_dir[i] = normalized[i] * min_dist;
-		base[i] += search_dir[i];
+	if (*status) {
+		for (i = 0; i < ndim; i++)
+			base[i] = backup[i];
 	}
+	else {
+		for (i = 0; i < ndim; i++) {
+			search_dir[i] = normalized[i] * min_dist;
+			base[i] += search_dir[i];
+		}
+	}
+
 	return fmin_dist;
 }
 
