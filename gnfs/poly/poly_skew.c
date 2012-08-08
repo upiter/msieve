@@ -102,9 +102,9 @@ static void sizeopt_callback_log(uint32 deg, mpz_t *alg_coeffs, mpz_t *rat_coeff
 	for (i = deg; (int32)i >= 0; i--)
 		gmp_fprintf(mfile, "%Zd ", alg_coeffs[i]);
 
-	gmp_fprintf(mfile, "%Zd %Zd %.2lf %le\n", 
-				rat_coeffs[1], rat_coeffs[0],
-				projective_alpha, sizeopt_norm);
+	gmp_fprintf(mfile, "%Zd %Zd %.2lf %le\n", rat_coeffs[1], 
+				rat_coeffs[0], projective_alpha, 
+				exp(projective_alpha) * sizeopt_norm);
 	fflush(mfile);
 }
 
