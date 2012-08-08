@@ -1,4 +1,7 @@
 Version 1.51:
+	- Split stage 2 of NFS polynomial selection into the size optimization
+		and root optimization portions, which can be invoked inde-
+		pendently from the demo binary
 	- Added a caching layer for reading in the matrix, to reduce the
 		amount of disk IO required by an MPI grid (thanks Greg Childers)
 	- Changed the main API to allow free-text strings for configuring NFS,
