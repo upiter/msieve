@@ -252,7 +252,7 @@ void get_poly_params(msieve_obj *obj, mpz_t n,
 
 		tmp = strstr(obj->nfs_args, "stage2_norm=");
 		if (tmp != NULL)
-			params.stage1_norm = strtod(tmp + 12, NULL);
+			params.stage2_norm = strtod(tmp + 12, NULL);
 
 		tmp = strstr(obj->nfs_args, "min_evalue=");
 		if (tmp != NULL)
