@@ -387,4 +387,4 @@ mpqs/sieve_core_k8_64_64k.qo: mpqs/sieve_core.c $(COMMON_HDR) $(QS_HDR)
 # GPU build rules
 
 %.ptx: gnfs/poly/stage1/stage1_core_gpu/%.cu $(NFS_GPU_HDR)
-	nvcc $(NVCCFLAGS) -ptx -o $@ $<
+	$(CUDA_PATH)/bin/nvcc $(NVCCFLAGS) -ptx -o $@ $<
