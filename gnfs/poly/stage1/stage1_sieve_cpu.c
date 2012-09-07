@@ -631,7 +631,7 @@ sieve_lattice_cpu(msieve_obj *obj, poly_search_t *poly, double deadline)
 	uint32 special_q_fb_max;
 	uint32 num_passes;
 	double p_size_max = poly->p_size_max;
-	double sieve_bound = poly->coeff_max / poly->m0 / degree;
+	double sieve_bound = poly->coeff_max / poly->m0;
 	double elapsed_total = 0;
 	sieve_fb_t sieve_p, sieve_special_q;
 

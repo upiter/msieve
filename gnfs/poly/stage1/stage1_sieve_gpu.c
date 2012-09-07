@@ -365,7 +365,7 @@ check_found_array(poly_search_t *poly, device_data_t *d)
 			double check = (double)p1 * p2;
 
 			check = check * check * poly->coeff_max
-					/ poly->m0 / poly->degree;
+					/ poly->m0;
 
 			if (fabs((double)offset) < check) {
 
@@ -740,7 +740,7 @@ sieve_lattice_gpu(msieve_obj *obj, poly_search_t *poly, double deadline)
 	uint32 special_q_min2, special_q_max2;
 	uint32 special_q_fb_max;
 	double p_size_max = poly->p_size_max;
-	double sieve_bound = poly->coeff_max / poly->m0 / degree;
+	double sieve_bound = poly->coeff_max / poly->m0;
 	double elapsed = 0;
 	sieve_fb_t sieve_p, sieve_special_q;
 
