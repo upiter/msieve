@@ -476,16 +476,28 @@ uint64 get_file_size(char *name) {
 	WIN32_FILE_ATTRIBUTE_DATA tmp;
 
 	if (GetFileAttributesEx((LPCTSTR)name, 
+			GetFileExInfoStandard, &tmp) == 0) {
+		char name_gz[256];
+		sprintf(name_gz, "%s.gz", name);
+		if (GetFileAttributesEx((LPCTSTR)name_gz,
 			GetFileExInfoStandard, &tmp) == 0)
-		return 0;
+			return 0;
+
+		return ((uint64)tmp.nFileSizeHigh << 32 | tmp.nFileSizeLow) << 1;
+	}
 
 	return (uint64)tmp.nFileSizeHigh << 32 | tmp.nFileSizeLow;
 
 #else
 	struct stat tmp;
 
-	if (stat(name, &tmp) != 0)
-		return 0;
+	if (stat(name, &tmp) != 0) {
+		char name_gz[256];
+		sprintf(name_gz, "%s.gz", name);
+		if (stat(name_gz, &tmp) != 0) 
+			return 0;
+		return (tmp.st_size / 11) * 20;
+	}
 
 	return tmp.st_size;
 #endif
