@@ -301,13 +301,13 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 	log2_hashtable1_size = 28;
 	if (rel_size > 0.0) {
 		double num_rels; /* estimated */
-#if !defined(WIN32) && !defined(_WIN64)
+#if 0 /* WAS: !defined(WIN32) && !defined(_WIN64) */
 		if (savefile->isCompressed) {
 			char name_gz[256];
 			sprintf(name_gz, "%s.gz", savefile->name);
 			num_rels = get_file_size(name_gz) / 0.55 / rel_size;
 		} else 
-#endif
+#endif /* get_file_size( ) will now do the same internally */
 			num_rels = get_file_size(savefile->name) / rel_size;
 		log2_hashtable1_size = log(num_rels * 10.0) / M_LN2 + 0.5;
 	}
