@@ -17,11 +17,9 @@ $Id$
 
 /* system-specific stuff ---------------------------------------*/
 
-#if defined(WIN32)
-	#define WIN32_LEAN_AND_MEAN
-#endif
-
 #if defined(WIN32) || defined(_WIN64)
+	#define WIN32_LEAN_AND_MEAN
+
 	#include <windows.h>
 	#include <process.h>
 #else
@@ -31,6 +29,7 @@ $Id$
 	#include <pthread.h>
 	#include <sys/resource.h>
 	#include <float.h>
+	#include <dlfcn.h>
 #endif
 
 #ifdef NO_ZLIB
@@ -101,6 +100,12 @@ extern "C" {
 	typedef int int32;
 	typedef int64_t int64;
 	#endif
+#endif
+
+#if defined(WIN32) || defined(_WIN64)
+	typedef HMODULE libhandle_t;
+#else
+	typedef void * libhandle_t;
 #endif
 
 /* useful functions ---------------------------------------------------*/
@@ -181,6 +186,10 @@ double get_cpu_time(void);
 void set_idle_priority(void);
 uint64 get_file_size(char *name);
 uint64 get_ram_size(void);
+
+libhandle_t load_dynamic_lib(const char *libname);
+void unload_dynamic_lib(libhandle_t h);
+void * get_lib_symbol(libhandle_t h, const char *symbol_name);
 
 #ifndef M_LN2
 #define M_LN2 0.69314718055994530942

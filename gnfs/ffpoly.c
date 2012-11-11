@@ -200,7 +200,9 @@ static INLINE uint32 mul_mac(uint32 a, uint32 b, uint32 c,
 	   many inputs are cached from previous calls then the overall
 	   performance will be dismal. */
 
-#if defined(GCC_ASM32A) && !(defined(__GNUC__) && __GNUC__ < 3 )
+#if defined(GCC_ASM32A) && \
+	!(defined(__GNUC__) && __GNUC__ < 3 ) && \
+	defined(NDEBUG)
 
 	uint32 ans;
 	ASM_G(
@@ -284,7 +286,10 @@ static INLINE uint64 sqr_mac(uint32 a, uint32 b, uint64 c,
 	
 	uint64 ans;
 
-#if defined(GCC_ASM32A) && !(defined(__GNUC__) && __GNUC__ < 3 )
+#if defined(GCC_ASM32A) && \
+	!(defined(__GNUC__) && __GNUC__ < 3 ) && \
+	defined(NDEBUG)
+
 	ASM_G(
 	    "movl %1, %%eax               \n\t"
 	    "mull %2                      \n\t"
@@ -380,7 +385,10 @@ static INLINE uint64 sqr_mac0(uint32 a, uint32 b,
 
 	uint64 ans;
 
-#if defined(GCC_ASM32A) && !(defined(__GNUC__) && __GNUC__ < 3 )
+#if defined(GCC_ASM32A) && \
+	!(defined(__GNUC__) && __GNUC__ < 3 ) && \
+	defined(NDEBUG)
+
 	ASM_G(
 	    "movl %1, %%eax               \n\t"
 	    "mull %2                      \n\t"

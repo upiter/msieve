@@ -172,6 +172,7 @@
     <ClCompile Include="..\..\common\smallfact\squfof.c" />
     <ClCompile Include="..\..\common\strtoll.c" />
     <ClCompile Include="..\..\common\smallfact\tinyqs.c" />
+    <ClCompile Include="..\..\common\thread.c" />
     <ClCompile Include="..\..\common\util.c" />
   </ItemGroup>
   <ItemGroup>
@@ -186,6 +187,7 @@
     <ClInclude Include="..\..\include\mp.h" />
     <ClInclude Include="..\..\include\msieve.h" />
     <ClInclude Include="..\..\include\polyroot.h" />
+    <ClInclude Include="..\..\include\thread.h" />
     <ClInclude Include="..\..\include\util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -272,7 +272,6 @@ root_sieve_run_core(poly_rootopt_t *data, double initial_norm,
 			return;
 	}
 
-	printf("\n");
 	for (i = 0; i < rs->root_heap.num_entries; i++) {
 		rotation_t *r = rs->root_heap.entries + i;
 

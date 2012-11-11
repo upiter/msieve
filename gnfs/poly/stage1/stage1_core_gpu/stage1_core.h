@@ -23,7 +23,7 @@ $Id$
 extern "C" {
 #endif
 
-#define BATCH_SPECIALQ_MAX 128
+#define FOUND_ARRAY_SIZE 1000
 
 typedef struct {
 	uint32 p1;
@@ -37,6 +37,7 @@ typedef struct {
 typedef struct {
 	uint32 p;
 	uint32 pad;
+	uint64 pp;
 	uint64 root;
 } specialq_t;
 

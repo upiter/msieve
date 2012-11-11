@@ -1,4 +1,11 @@
 Version 1.51:
+	- Performed another massive overhaul of the GPU polynomial selection
+		code; stage 1 now runs dozens to *hundreds* of times faster
+		on a GPU
+	- Added a thread pool implementation, and made GPU polynomial 
+		selection multithread-capable. Eventually the CPU code should
+		be overhauled to look more like the GPU code, it will 
+		probably be able to run several times faster
 	- Split stage 2 of NFS polynomial selection into the size optimization
 		and root optimization portions, which can be invoked inde-
 		pendently from the demo binary

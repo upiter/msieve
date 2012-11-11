@@ -290,8 +290,10 @@ sieve_xy_run_deg5(root_sieve_t *rs, uint64 lattice_size,
 	}
 	xy->y_blocks = y_blocks;
 
+#if 0
 	printf("\n%.0lf %u %u\n", (double)lattice_size, 
 			y_blocks, num_lattices);
+#endif
 
 	sieve_x_run_deg5(rs);
 }

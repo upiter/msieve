@@ -515,7 +515,6 @@ sieve_x_run_deg5(root_sieve_t *rs)
 			if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
 				break;
 		}
-		printf("\n");
 		return;
 	}
 
@@ -585,7 +584,6 @@ sieve_x_run_deg5(root_sieve_t *rs)
 		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
 			break;
 	}
-	printf("\n");
 }
 
 /*-------------------------------------------------------------------------*/
@@ -604,8 +602,6 @@ sieve_x_run_deg4(root_sieve_t *rs, uint64 lattice_size,
 	xline_heap_t xline_heap;
 	uint32 cutoff_score;
 
-	printf("L %u\n", (uint32)lattice_size);
-
 	mpz_set_ui(xy->y_base, (unsigned long)0);
 	xy->y_blocks = 0;
 	mpz_set_ui(rs->curr_y, (unsigned long)0);
@@ -621,7 +617,6 @@ sieve_x_run_deg4(root_sieve_t *rs, uint64 lattice_size,
 		x->x_blocks = line_max - line_min;
 		x->curr_score = 0;
 		root_sieve_line(rs);
-		printf("\n");
 		return;
 	}
 
@@ -663,6 +658,4 @@ sieve_x_run_deg4(root_sieve_t *rs, uint64 lattice_size,
 		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
 			break;
 	}
-
-	printf("\n");
 }

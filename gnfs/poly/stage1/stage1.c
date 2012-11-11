@@ -18,14 +18,14 @@ $Id$
 
 /*------------------------------------------------------------------------*/
 static void
-stage1_bounds_update(poly_search_t *poly)
+stage1_bounds_update(poly_search_t *poly, poly_coeff_t *c)
 {
 	/* determine the parametrs for the collision search,
 	   given one leading algebraic coefficient a_d */
 
 	uint32 degree = poly->degree;
 	double N = mpz_get_d(poly->N);
-	double high_coeff = mpz_get_d(poly->high_coeff);
+	double high_coeff = mpz_get_d(c->high_coeff);
 	double m0 = pow(N / high_coeff, 1./degree);
 	double skewness_min, coeff_max;
 
@@ -55,9 +55,10 @@ stage1_bounds_update(poly_search_t *poly)
 		exit(-1);
 	}
 
-	poly->m0 = m0;
-	poly->coeff_max = coeff_max;
-	poly->p_size_max = coeff_max / skewness_min;
+	c->degree = degree;
+	c->m0 = m0;
+	c->coeff_max = coeff_max;
+	c->p_size_max = coeff_max / skewness_min;
 
 	/* we perform the collision search on a transformed version
 	   of N and the low-order rational coefficient m. In the
@@ -65,53 +66,51 @@ stage1_bounds_update(poly_search_t *poly)
 	   a hit is found, we undo the transformation to recover
 	   the correction to m that makes the new polynomial 'work' */
 
-	mpz_mul_ui(poly->trans_N, poly->high_coeff, (mp_limb_t)degree);
-	mpz_pow_ui(poly->trans_N, poly->trans_N, (mp_limb_t)(degree - 1));
-	mpz_mul_ui(poly->trans_N, poly->trans_N, (mp_limb_t)degree);
-	mpz_mul(poly->trans_N, poly->trans_N, poly->N);
-	mpz_root(poly->trans_m0, poly->trans_N, (mp_limb_t)degree);
+	mpz_mul_ui(c->trans_N, c->high_coeff, degree);
+	mpz_pow_ui(c->trans_N, c->trans_N, degree - 1);
+	mpz_mul_ui(c->trans_N, c->trans_N, degree);
+	mpz_mul(c->trans_N, c->trans_N, poly->N);
+	mpz_root(c->trans_m0, c->trans_N, degree);
 }
 
 /*------------------------------------------------------------------------*/
-void
-handle_collision(poly_search_t *poly, uint64 p, uint32 special_q,
+uint32
+handle_collision(poly_coeff_t *c, uint64 p, uint32 special_q,
 		uint64 special_q_root, int64 res)
 {
 	/* the proposed rational coefficient is p*special_q;
 	   p and special_q must be coprime. The 'trivial
 	   special q' has special_q = 1 and special_q_root = 0 */
 
-	uint64_2gmp(p, poly->p);
-	mpz_gcd_ui(poly->tmp1, poly->p, (unsigned long)special_q);
-	if (mpz_cmp_ui(poly->tmp1, (unsigned long)1))
-		return;
+	uint64_2gmp(p, c->p);
+	mpz_gcd_ui(c->tmp1, c->p, special_q);
+	if (mpz_cmp_ui(c->tmp1, 1))
+		return 0;
 
-	mpz_mul_ui(poly->p, poly->p, (unsigned long)special_q);
+	mpz_mul_ui(c->p, c->p, (unsigned long)special_q);
 
 	/* the corresponding correction to trans_m0 is 
 	   special_q_root + res * special_q^2, and can be
 	   positive or negative */
 
-	uint64_2gmp(special_q_root, poly->tmp1);
-	int64_2gmp(res, poly->tmp2);
-	mpz_set_ui(poly->tmp3, (unsigned long)special_q);
+	uint64_2gmp(special_q_root, c->tmp1);
+	int64_2gmp(res, c->tmp2);
+	mpz_set_ui(c->tmp3, special_q);
 
-	mpz_mul(poly->tmp3, poly->tmp3, poly->tmp3);
-	mpz_addmul(poly->tmp1, poly->tmp2, poly->tmp3);
-	mpz_add(poly->m, poly->trans_m0, poly->tmp1);
+	mpz_mul(c->tmp3, c->tmp3, c->tmp3);
+	mpz_addmul(c->tmp1, c->tmp2, c->tmp3);
+	mpz_add(c->m, c->trans_m0, c->tmp1);
 
 	/* a lot can go wrong before this function is called!
 	   Check that Kleinjung's modular condition is satisfied */
 
-	mpz_pow_ui(poly->tmp1, poly->m, (mp_limb_t)poly->degree);
-	mpz_mul(poly->tmp2, poly->p, poly->p);
-	mpz_sub(poly->tmp1, poly->trans_N, poly->tmp1);
-	mpz_tdiv_r(poly->tmp3, poly->tmp1, poly->tmp2);
-	if (mpz_cmp_ui(poly->tmp3, (mp_limb_t)0)) {
-		gmp_printf("poly %Zd %Zd %Zd\n",
-				poly->high_coeff, poly->p, poly->m);
-		printf("crap\n");
-		return;
+	mpz_pow_ui(c->tmp1, c->m, c->degree);
+	mpz_mul(c->tmp2, c->p, c->p);
+	mpz_sub(c->tmp1, c->trans_N, c->tmp1);
+	mpz_tdiv_r(c->tmp3, c->tmp1, c->tmp2);
+	if (mpz_cmp_ui(c->tmp3, 0)) {
+		gmp_printf("crap %Zd %Zd %Zd\n", c->high_coeff, c->p, c->m);
+		return 0;
 	}
 
 	/* the pair works, now translate the computed m back
@@ -126,25 +125,24 @@ handle_collision(poly_search_t *poly, uint64 p, uint32 special_q,
 	   to disappear, so second_highest_coeff can be found
 	   modulo degree*high_coeff and real_m then follows */
 
-	mpz_mul_ui(poly->tmp1, poly->high_coeff, (mp_limb_t)poly->degree);
-	mpz_tdiv_r(poly->tmp2, poly->m, poly->tmp1);
-	mpz_invert(poly->tmp3, poly->p, poly->tmp1);
-	mpz_mul(poly->tmp2, poly->tmp3, poly->tmp2);
-	mpz_tdiv_r(poly->tmp2, poly->tmp2, poly->tmp1);
+	mpz_mul_ui(c->tmp1, c->high_coeff, c->degree);
+	mpz_tdiv_r(c->tmp2, c->m, c->tmp1);
+	mpz_invert(c->tmp3, c->p, c->tmp1);
+	mpz_mul(c->tmp2, c->tmp3, c->tmp2);
+	mpz_tdiv_r(c->tmp2, c->tmp2, c->tmp1);
 
 	/* make second_highest_coeff as small as possible in
 	   absolute value */
 
-	mpz_tdiv_q_2exp(poly->tmp3, poly->tmp1, 1);
-	if (mpz_cmp(poly->tmp2, poly->tmp3) > 0) {
-		mpz_sub(poly->tmp2, poly->tmp2, poly->tmp1);
+	mpz_tdiv_q_2exp(c->tmp3, c->tmp1, 1);
+	if (mpz_cmp(c->tmp2, c->tmp3) > 0) {
+		mpz_sub(c->tmp2, c->tmp2, c->tmp1);
 	}
 
 	/* solve for real_m */
-	mpz_submul(poly->m, poly->tmp2, poly->p);
-	mpz_tdiv_q(poly->m, poly->m, poly->tmp1);
-
-	poly->callback(poly->high_coeff, poly->p, poly->m, poly->callback_data);
+	mpz_submul(c->m, c->tmp2, c->p);
+	mpz_tdiv_q(c->m, c->m, c->tmp1);
+	return 1;
 }
 
 /*------------------------------------------------------------------------*/
@@ -152,60 +150,70 @@ static void
 poly_search_init(poly_search_t *poly, poly_stage1_t *data)
 {
 	mpz_init_set(poly->N, data->gmp_N);
-	mpz_init(poly->high_coeff);
-	mpz_init(poly->trans_N);
-	mpz_init(poly->trans_m0);
-	mpz_init(poly->m);
-	mpz_init(poly->p);
-	mpz_init(poly->tmp1);
-	mpz_init(poly->tmp2);
-	mpz_init(poly->tmp3);
-	mpz_init(poly->tmp4);
-	mpz_init(poly->tmp5);
 
 	mpz_init_set(poly->gmp_high_coeff_begin, 
 			data->gmp_high_coeff_begin);
 	mpz_init_set(poly->gmp_high_coeff_end, 
 			data->gmp_high_coeff_end);
+	mpz_init(poly->tmp1);
 
 	poly->degree = data->degree;
 	poly->norm_max = data->norm_max;
 	poly->callback = data->callback;
 	poly->callback_data = data->callback_data;
-
-#ifdef HAVE_CUDA
-	CUDA_TRY(cuCtxCreate(&poly->gpu_context, 
-			CU_CTX_BLOCKING_SYNC,
-			poly->gpu_info->device_handle))
-
-	/* load two GPU kernels, one for special-q
-	   collision search and one for ordinary collision 
-	   search */
-
-	CUDA_TRY(cuModuleLoad(&poly->gpu_module, "stage1_core.ptx"))
-#endif
 }
 
-/*------------------------------------------------------------------------*/
 static void
 poly_search_free(poly_search_t *poly)
 {
 	mpz_clear(poly->N);
-	mpz_clear(poly->high_coeff);
-	mpz_clear(poly->trans_N);
-	mpz_clear(poly->trans_m0);
-	mpz_clear(poly->m);
-	mpz_clear(poly->p);
-	mpz_clear(poly->tmp1);
-	mpz_clear(poly->tmp2);
-	mpz_clear(poly->tmp3);
-	mpz_clear(poly->tmp4);
-	mpz_clear(poly->tmp5);
 	mpz_clear(poly->gmp_high_coeff_begin);
 	mpz_clear(poly->gmp_high_coeff_end);
-#ifdef HAVE_CUDA
-	CUDA_TRY(cuCtxDestroy(poly->gpu_context)) 
-#endif
+	mpz_clear(poly->tmp1);
+}
+
+/*------------------------------------------------------------------------*/
+poly_coeff_t *
+poly_coeff_init(void)
+{
+	poly_coeff_t *c = (poly_coeff_t *)xmalloc(sizeof(poly_coeff_t));
+
+	mpz_init(c->high_coeff);
+	mpz_init(c->trans_N);
+	mpz_init(c->trans_m0);
+	mpz_init(c->m);
+	mpz_init(c->p);
+	mpz_init(c->tmp1);
+	mpz_init(c->tmp2);
+	mpz_init(c->tmp3);
+	return c;
+}
+
+void
+poly_coeff_free(poly_coeff_t *c)
+{
+	mpz_clear(c->high_coeff);
+	mpz_clear(c->trans_N);
+	mpz_clear(c->trans_m0);
+	mpz_clear(c->m);
+	mpz_clear(c->p);
+	mpz_clear(c->tmp1);
+	mpz_clear(c->tmp2);
+	mpz_clear(c->tmp3);
+	free(c);
+}
+
+void
+poly_coeff_copy(poly_coeff_t *dest, poly_coeff_t *src)
+{
+	dest->degree = src->degree;
+	dest->coeff_max = src->coeff_max;
+	dest->m0 = src->m0;
+	dest->p_size_max = src->p_size_max;
+
+	mpz_set(dest->high_coeff, src->high_coeff);
+	mpz_set(dest->trans_N, src->trans_N);
+	mpz_set(dest->trans_m0, src->trans_m0);
 }
 
 /*------------------------------------------------------------------------*/
@@ -255,7 +263,7 @@ sieve_ad_block(sieve_t *sieve, poly_search_t *poly)
 
 /*------------------------------------------------------------------------*/
 static int
-find_next_ad(sieve_t *sieve, poly_search_t *poly)
+find_next_ad(sieve_t *sieve, poly_search_t *poly, mpz_t next_coeff)
 {
 	uint32 i, j, p, k;
 	double td_test;
@@ -269,13 +277,12 @@ find_next_ad(sieve_t *sieve, poly_search_t *poly)
 				continue;
 
 			mpz_divexact_ui(poly->tmp1, poly->gmp_high_coeff_begin,
-					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
-			mpz_add_ui(poly->tmp1, poly->tmp1, (mp_limb_t)i);
-			mpz_mul_ui(poly->high_coeff, poly->tmp1,
-					(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+					HIGH_COEFF_MULTIPLIER);
+			mpz_add_ui(poly->tmp1, poly->tmp1, i);
+			mpz_mul_ui(next_coeff, poly->tmp1,
+					HIGH_COEFF_MULTIPLIER);
 
-			if (mpz_cmp(poly->high_coeff,
-						poly->gmp_high_coeff_end) > 0)
+			if (mpz_cmp(next_coeff, poly->gmp_high_coeff_end) > 0)
 				break;
 
 			/* trial divide the a_d and skip it if it
@@ -291,11 +298,9 @@ find_next_ad(sieve_t *sieve, poly_search_t *poly)
 					break;
 
 				for (k = 0; k < HIGH_COEFF_POWER_LIMIT; k++) {
-					if (mpz_divisible_ui_p(poly->tmp1, 
-							(mp_limb_t)p))
+					if (mpz_divisible_ui_p(poly->tmp1, p))
 						mpz_divexact_ui(poly->tmp1, 
-							poly->tmp1,
-							(mp_limb_t)p);
+							poly->tmp1, p);
 					else
 						break;
 				}
@@ -311,9 +316,8 @@ find_next_ad(sieve_t *sieve, poly_search_t *poly)
 
 		/* update lower bound for next sieve block */
 
-		mpz_set_ui(poly->tmp1, (mp_limb_t)SIEVE_ARRAY_SIZE);
-		mpz_mul_ui(poly->tmp1, poly->tmp1,
-				(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+		mpz_set_ui(poly->tmp1, SIEVE_ARRAY_SIZE);
+		mpz_mul_ui(poly->tmp1, poly->tmp1, HIGH_COEFF_MULTIPLIER);
 		mpz_add(poly->gmp_high_coeff_begin,
 				poly->gmp_high_coeff_begin, poly->tmp1);
 
@@ -396,7 +400,10 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	double deadline_per_coeff;
 	double cumulative_time = 0;
 	sieve_t ad_sieve;
-
+	poly_coeff_t *c = poly_coeff_init();
+#ifdef HAVE_CUDA
+	void *gpu_data = gpu_data_init(obj, poly);
+#endif
 	/* determine the CPU time limit; I have no idea if
 	   the following is appropriate */
 
@@ -426,12 +433,12 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 
 	/* set up lower limit on a_d */
 
-	mpz_sub_ui(poly->tmp1, poly->gmp_high_coeff_begin, (mp_limb_t)1);
+	mpz_sub_ui(poly->tmp1, poly->gmp_high_coeff_begin, 1);
 	mpz_fdiv_q_ui(poly->tmp1, poly->tmp1, 
-			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
-	mpz_add_ui(poly->tmp1, poly->tmp1, (mp_limb_t)1);
+			HIGH_COEFF_MULTIPLIER);
+	mpz_add_ui(poly->tmp1, poly->tmp1, 1);
 	mpz_mul_ui(poly->gmp_high_coeff_begin, poly->tmp1, 
-			(mp_limb_t)HIGH_COEFF_MULTIPLIER);
+			HIGH_COEFF_MULTIPLIER);
 
 	init_ad_sieve(&ad_sieve, poly);
 
@@ -443,24 +450,24 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 		   have lots of projective roots going
 		   into stage 2 */
 
-		if (find_next_ad(&ad_sieve, poly))
+		if (find_next_ad(&ad_sieve, poly, c->high_coeff))
 			break;
 
 		/* recalculate internal parameters used
 		   for search */
 
-		stage1_bounds_update(poly);
+		stage1_bounds_update(poly, c);
 
 		/* finally, sieve for polynomials using
 		   Kleinjung's improved algorithm */
 
 #ifdef HAVE_CUDA
-		elapsed = sieve_lattice_gpu(obj, poly, deadline_per_coeff);
+		cumulative_time = sieve_lattice_gpu(obj, poly, c,
+					gpu_data, deadline_per_coeff);
 #else
-		elapsed = sieve_lattice_cpu(obj, poly, deadline_per_coeff);
-#endif
-
+		elapsed = sieve_lattice_cpu(obj, poly, c, deadline_per_coeff);
 		cumulative_time += elapsed;
+#endif
 
 		if (obj->flags & MSIEVE_FLAG_STOP_SIEVING)
 			break;
@@ -470,6 +477,10 @@ search_coeffs(msieve_obj *obj, poly_search_t *poly, uint32 deadline)
 	}
 
 	free_ad_sieve(&ad_sieve);
+#ifdef HAVE_CUDA
+	gpu_data_free(gpu_data);
+#endif
+	poly_coeff_free(c);
 }
 
 /*------------------------------------------------------------------------*/
@@ -501,24 +512,6 @@ poly_stage1_run(msieve_obj *obj, poly_stage1_t *data)
 	/* pass external configuration in and run the search */
 
 	poly_search_t poly;
-#ifdef HAVE_CUDA
-	gpu_config_t gpu_config;
-
-	gpu_init(&gpu_config);
-	if (gpu_config.num_gpu == 0) {
-		printf("error: no CUDA-enabled GPUs found\n");
-		exit(-1);
-	}
-	if (obj->which_gpu >= (uint32)gpu_config.num_gpu) {
-		printf("error: GPU %u does not exist "
-			"or is not CUDA-enabled\n", obj->which_gpu);
-		exit(-1);
-	}
-	logprintf(obj, "using GPU %u (%s)\n", obj->which_gpu,
-			gpu_config.info[obj->which_gpu].name);
-
-	poly.gpu_info = gpu_config.info + obj->which_gpu; 
-#endif
 
 	poly_search_init(&poly, data);
 

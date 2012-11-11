@@ -265,7 +265,7 @@ void get_poly_params(msieve_obj *obj, mpz_t n,
 
 	logprintf(obj, "polynomial degree: %u\n", degree);
 	logprintf(obj, "max stage 1 norm: %.2e\n", params.stage1_norm);
-	logprintf(obj, "max stage 2 norm: %.2e\n", params.stage1_norm);
+	logprintf(obj, "max stage 2 norm: %.2e\n", params.stage2_norm);
 	logprintf(obj, "min E-value: %.2e\n", params.final_norm);
 	logprintf(obj, "poly select deadline: %u\n", params.deadline);
 	*degree_out = degree;

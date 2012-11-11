@@ -22,6 +22,7 @@ $Id$
 
 #include <poly_skew.h>
 #include <cuda_xface.h>
+#include <thread.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,10 +60,7 @@ typedef struct {
 
 	uint32 degree;
 
-	/* approximately (N/a_d) ^ (1/d) for input N, high
-	   coefficient a_d and poly degree d */
-
-	double m0;
+	mpz_t N;
 
 	/* bound on the norm used in stage 1; this is the maximum
 	   value of (poly coefficient i) * (optimal skew)^i across
@@ -74,6 +72,31 @@ typedef struct {
 
 	double norm_max; 
 
+	/* the range on a_d, provided by calling code */
+
+	mpz_t gmp_high_coeff_begin;
+	mpz_t gmp_high_coeff_end;
+
+	/* function to call when a collision is found */
+
+	stage1_callback_t callback;
+	void *callback_data;
+
+	/* internal stuff */
+
+	mpz_t tmp1;
+
+} poly_search_t;
+
+
+/* data for searching a single leading coefficient */
+
+typedef struct {
+
+	uint32 degree;
+
+	mpz_t high_coeff; 
+
 	/* (computed) bound on the third-highest algebraic
 	   poly coefficient. Making this small is the only
 	   thing stage 1 can do; the other coefficients can
@@ -81,43 +104,29 @@ typedef struct {
 
 	double coeff_max;
 
+	/* approximately (N/a_d) ^ (1/d) for input N, high
+	   coefficient a_d and poly degree d */
+
+	double m0;
+
 	/* bound on the leading rational poly coefficient */
 
 	double p_size_max;
 
-	/* the range on a_d, provided by calling code */
-
-	mpz_t gmp_high_coeff_begin;
-	mpz_t gmp_high_coeff_end;
-
 	/* internal values used */
 
-	mpz_t high_coeff; 
 	mpz_t trans_N;
 	mpz_t trans_m0;
-	mpz_t N; 
 	mpz_t m; 
 	mpz_t p;
 	mpz_t tmp1;
 	mpz_t tmp2;
 	mpz_t tmp3;
-	mpz_t tmp4;
-	mpz_t tmp5;
+} poly_coeff_t;
 
-#ifdef HAVE_CUDA
-
-	/* main structures for GPU-based sieving */
-
-	CUcontext gpu_context;
-	gpu_info_t *gpu_info;
-	CUmodule gpu_module;
-#endif
-
-	/* function to call when a collision is found */
-
-	stage1_callback_t callback;
-	void *callback_data;
-} poly_search_t;
+poly_coeff_t * poly_coeff_init(void);
+void poly_coeff_free(poly_coeff_t *c);
+void poly_coeff_copy(poly_coeff_t *dest, poly_coeff_t *src);
 
 /*-----------------------------------------------------------------------*/
 
@@ -132,11 +141,10 @@ typedef struct {
 
 /* Rational leading coeffs of NFS polynomials are assumed 
    to be the product of 2 or 3 coprime groups of factors p; 
-   each p is < 2^32 and the product of (powers of) up to 
-   MAX_P_FACTORS distinct primes. The arithmetic progressions 
-   mentioned above are of the form r_i + k * p^2 for 'root' r_i. 
-   p may be prime or composite, and may have up to MAX_ROOTS 
-   roots. 
+   each p is < 2^32 and the product of (powers of) one or more
+   distinct primes. The arithmetic progressions mentioned 
+   above are of the form r_i + k * p^2 for 'root' r_i. 
+   p may be prime or composite.
    
    We get a collision when we can find two progressions 
    aprog1(k) = r_i1 + k*p1^2 and aprog2(k) = r_i2+k*p2^2, 
@@ -159,107 +167,33 @@ typedef struct {
    We will need to generate many p along with all their r_i
    fairly often, and need efficient methods to do so */
 
-#define MAX_P_FACTORS 7
-#define MAX_ROOTS 128
+/* initialize and free the factory */
 
-#define P_SEARCH_DONE ((uint32)(-2))
+void * sieve_fb_alloc(void);
 
-/* structure for building arithmetic progressions */
+void sieve_fb_free(void *s_in);
 
-typedef struct {
-	uint32 power;
-	uint32 roots[MAX_POLYSELECT_DEGREE];
-} aprog_power_t;
-
-typedef struct {
-	uint32 p;
-
-	/* number of 'degree-th roots' of N (mod p) */
-	uint32 num_roots;
-
-	/* largest e for which p^e < 2^32 */
-	uint32 max_power;
-
-	/* power p^e_j and its 'degree-th roots' of N (mod p^e_j) */
-	aprog_power_t *powers;
-
-	/* maximum product of other p which may be
-	   combined with this p */
-	uint32 cofactor_max;
-} aprog_t;
-
-typedef struct {
-	aprog_t *aprogs;
-	uint32 num_aprogs;
-	uint32 num_aprogs_alloc;
-} aprog_list_t;
-
-/* structures for finding arithmetic progressions via
-   explicit enumeration */
-
-typedef struct {
-	/* number of distinct primes p_i in the current enum product */
-	uint32 num_factors;
-
-	/* index into aprog list for each distinct prime p_i */
-	uint32 curr_factor[MAX_P_FACTORS + 1];
-
-	/* exponent e_i of each prime p_i */
-	uint32 curr_power[MAX_P_FACTORS + 1];
-
-	/* the 'running product' of p_1^e_1..p_{i-1}^e_{i-1} for
-	   each i, or 1 if i==1 */
-	uint32 curr_prod[MAX_P_FACTORS + 1];
-
-	/* number of roots in each 'running product' */
-	uint32 curr_num_roots[MAX_P_FACTORS + 1];
-} p_enum_t;
-
-#define ALGO_ENUM  0x1
-#define ALGO_PRIME 0x2
-
-/* a factory for building arithmetic progressions */
-
-typedef struct {
-	uint32 num_roots_min;
-	uint32 num_roots_max;
-	uint32 avail_algos;
-	uint32 fb_only;
-	uint32 degree;
-	uint32 p_min, p_max;
-	uint64 roots[MAX_ROOTS];
-	mpz_poly_t tmp_poly;
-
-	aprog_list_t aprog_data;
-
-	prime_sieve_t p_prime;
-
-	p_enum_t p_enum;
-
-	mpz_t p, pp, nmodpp, tmp1, tmp2, tmp3, gmp_root;
-} sieve_fb_t;
-
-/* externally visible interface */
-
-/* initialize the factory. p is allowed to have small prime
+/* initialize the factory for a new leading algebraic 
+   coefficient. p is allowed to have small prime
    factors p_i between factor_min and factor_max, and N
    will have between fb_roots_min and fb_roots_max d_th
    roots modulo each of these p_i. Additionally, if fb_only
    is zero, a sieve is used to find any prime p which are
    larger than factor_max */
 
-void sieve_fb_init(sieve_fb_t *s, poly_search_t *poly,
+void sieve_fb_init(void *s_in, poly_coeff_t *coeff,
 			uint32 factor_min, uint32 factor_max,
 			uint32 fb_roots_min, uint32 fb_roots_max,
 			uint32 fb_only);
 
-void sieve_fb_free(sieve_fb_t *s);
-
 /* set up for a run of p production. The generated p will 
    all be between p_min and p_max, and the number of roots
-   for each p is between num_roots_min and num_roots_max */
+   for each p is between num_roots_min and num_roots_max 
+   (bounded by MAX_ROOTS) */
 
-void sieve_fb_reset(sieve_fb_t *s, uint32 p_min, uint32 p_max,
+#define MAX_ROOTS 128
+
+void sieve_fb_reset(void *s_in, uint32 p_min, uint32 p_max,
 			uint32 num_roots_min, uint32 num_roots_max);
 
 /* function that 'does something' when a single p 
@@ -278,8 +212,9 @@ typedef void (*root_callback)(uint32 p, uint32 num_roots, uint64 *roots,
    no order may be assumed for composite p returned by 
    consecutive calls */
 
-uint32 sieve_fb_next(sieve_fb_t *s, 
-			poly_search_t *poly, 
+#define P_SEARCH_DONE ((uint32)(-2))
+
+uint32 sieve_fb_next(void *s_in, poly_coeff_t *c, 
 			root_callback callback,
 			void *extra);
 
@@ -287,8 +222,8 @@ uint32 sieve_fb_next(sieve_fb_t *s,
 
 /* what to do when the collision search finds a 'stage 1 hit' */
 
-void
-handle_collision(poly_search_t *poly, uint64 p, uint32 special_q,
+uint32
+handle_collision(poly_coeff_t *c, uint64 p, uint32 special_q,
 		uint64 special_q_root, int64 res);
 
 /* main search routine */
@@ -298,14 +233,22 @@ handle_collision(poly_search_t *poly, uint64 p, uint32 special_q,
 /* GPU search routine */
 
 double sieve_lattice_gpu(msieve_obj *obj,
-			poly_search_t *poly, double deadline);
+			poly_search_t *poly, 
+			poly_coeff_t *c, 
+			void *gpu_data,
+			double deadline);
+
+void * gpu_data_init(msieve_obj *obj, poly_search_t *poly);
+void gpu_data_free(void *gpu_data);
 
 #else
 
 /* CPU search routine */
 
 double sieve_lattice_cpu(msieve_obj *obj,
-			poly_search_t *poly, double deadline);
+			poly_search_t *poly, 
+			poly_coeff_t *c,
+			double deadline);
 
 #endif
 

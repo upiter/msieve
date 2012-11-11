@@ -296,7 +296,9 @@ sieve_xyz_run_deg6(root_sieve_t *rs, uint64 lattice_size,
 		xyz->z_blocks = z_blocks;
 	}
 
+#if 0
 	printf("%.0lf %u %u\n", (double)lattice_size, z_blocks, num_lattices);
+#endif
 
 	sieve_xy_run_deg6(rs);
 }

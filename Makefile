@@ -53,7 +53,7 @@ ifeq ($(CUDA),1)
 	# CUDA_LIB_DIR = /usr/lib
 	# CUDA_LIB_DIR = /usr/lib64
 
-	CFLAGS += -I"$(CUDA_INC_DIR)" -DHAVE_CUDA
+	CFLAGS += -I"$(CUDA_INC_DIR)" -I../b40c -DHAVE_CUDA
 
 	# the CUDA driver library has a different name in linux
 	# LIBS += "$(CUDA_LIB_DIR)/cuda.lib"
@@ -74,7 +74,7 @@ endif
 # win32 or win64, so it's safe to pull libpthread into the link line.
 # Of course this does mean you have to install the minGW pthreads bundle...
 
-LIBS += -lgmp -lm -lpthread
+LIBS += -lgmp -lm -lpthread -ldl
 
 #---------------------------------- Generic file lists -------------------
 
@@ -93,6 +93,7 @@ COMMON_HDR = \
 	include/msieve.h \
 	include/mp.h \
 	include/polyroot.h \
+	include/thread.h \
 	include/util.h
 
 COMMON_SRCS = \
@@ -130,6 +131,7 @@ COMMON_SRCS = \
 	common/prime_sieve.c \
 	common/savefile.c \
 	common/strtoll.c \
+	common/thread.c \
 	common/util.c
 
 COMMON_OBJS = $(COMMON_SRCS:.c=.o)
@@ -177,7 +179,9 @@ QS_CORE_OBJS_X86_64 = \
 #---------------------------------- GPU file lists -------------------------
 
 GPU_OBJS = \
-	stage1_core.ptx
+	stage1_core_sm11.ptx \
+	stage1_core_sm13.ptx \
+	stage1_core_sm20.ptx
 
 #---------------------------------- NFS file lists -------------------------
 
@@ -193,6 +197,7 @@ NFS_HDR = \
 	gnfs/gnfs.h
 
 NFS_GPU_HDR = \
+	gnfs/poly/stage1/stage1_core_gpu/stage1_core.cu \
 	gnfs/poly/stage1/stage1_core_gpu/cuda_intrinsics.h \
 	gnfs/poly/stage1/stage1_core_gpu/stage1_core.h
 
@@ -264,7 +269,6 @@ all:
 	@echo "generic   portable code"
 	@echo "add 'ECM=1' if GMP-ECM is available (enables ECM)"
 	@echo "add 'CUDA=1' for Nvidia graphics card support"
-	@echo "             (add NVCCFLAGS=\"-arch sm_20\" for Fermi tuning)"
 	@echo "add 'MPI=1' for parallel processing using MPI"
 	@echo "add 'NO_ZLIB=1' if you don't have zlib"
 
@@ -386,5 +390,11 @@ mpqs/sieve_core_k8_64_64k.qo: mpqs/sieve_core.c $(COMMON_HDR) $(QS_HDR)
 
 # GPU build rules
 
-%.ptx: gnfs/poly/stage1/stage1_core_gpu/%.cu $(NFS_GPU_HDR)
-	$(CUDA_PATH)/bin/nvcc $(NVCCFLAGS) -ptx -o $@ $<
+stage1_core_sm11.ptx: $(NFS_GPU_HDR)
+	$(CUDA_PATH)/bin/nvcc $(NVCCFLAGS) -arch sm_11 -ptx -o $@ $<
+
+stage1_core_sm13.ptx: $(NFS_GPU_HDR)
+	$(CUDA_PATH)/bin/nvcc $(NVCCFLAGS) -arch sm_13 -ptx -o $@ $<
+
+stage1_core_sm20.ptx: $(NFS_GPU_HDR)
+	$(CUDA_PATH)/bin/nvcc $(NVCCFLAGS) -arch sm_20 -ptx -o $@ $<

@@ -757,7 +757,9 @@ optimize_initial_deg6(double best[MAX_VARS],
 					1e-5 * fabs(last_score))
 				break;
 		}
+#if 0
 		printf("final: %le\n", curr_score);
+#endif
 	}
 
 	for (i = 0; i <= degree; i++)

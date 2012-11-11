@@ -78,7 +78,7 @@ typedef enum {
 	GPU_ARG_UINT64
 } gpu_arg_type_t;
 
-#define GPU_MAX_KERNEL_ARGS 10
+#define GPU_MAX_KERNEL_ARGS 15
 
 typedef struct {
 	uint32 num_args;
