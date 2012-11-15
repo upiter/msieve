@@ -63,6 +63,13 @@ ifeq ($(MPI),1)
 	CC = mpicc -D_FILE_OFFSET_BITS=64
 	CFLAGS += -DHAVE_MPI
 endif
+ifeq ($(BOINC),1)
+	# fill in as appropriate
+	BOINC_INC_DIR = .
+	BOINC_LIB_DIR = .
+	CFLAGS += -I$(BOINC_INC_DIR) -DHAVE_BOINC
+	LIBS += -L$(BOINC_LIB_DIR) -lboinc_api -lboinc
+endif
 ifeq ($(NO_ZLIB),1)
 	CFLAGS += -DNO_ZLIB
 else
@@ -270,6 +277,7 @@ all:
 	@echo "add 'ECM=1' if GMP-ECM is available (enables ECM)"
 	@echo "add 'CUDA=1' for Nvidia graphics card support"
 	@echo "add 'MPI=1' for parallel processing using MPI"
+	@echo "add 'BOINC=1' to add BOINC wrapper"
 	@echo "add 'NO_ZLIB=1' if you don't have zlib"
 
 x86: $(COMMON_OBJS) $(QS_OBJS) $(QS_CORE_OBJS) \
