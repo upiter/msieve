@@ -1,4 +1,6 @@
 
+WIN = 0
+
 NVCC = "$(shell which nvcc)"
 
 GEN_SM20 = -gencode=arch=compute_20,code=\"sm_20,compute_20\" 
@@ -8,24 +10,13 @@ GEN_SM10 = -gencode=arch=compute_10,code=\"sm_10,compute_10\"
 CUDA_INC = "$(shell dirname $(NVCC))/../include"
 INC = -I$(CUDA_INC) -I. 
 
-# for windows
+ifeq ($(WIN),1)
 EXT = dll
 NVCCFLAGS = -Xptxas -v -Xcudafe -\# -shared -Xptxas -abi=no
-
-# for linux
-# EXT = so
-# NVCCFLAGS = -Xptxas -v -Xcudafe -\# -shared -Xptxas -abi=no \
-# 		-Xcompiler -fPIC -Xcompiler -fvisibility=hidden
-
-
-ifeq ($(verbose), 1)
-    NVCCFLAGS += -v
-endif
-ifeq ($(keep), 1)
-    NVCCFLAGS += -keep
-endif
-ifdef maxregisters
-    NVCCFLAGS += -maxrregcount $(maxregisters)
+else
+EXT = so
+NVCCFLAGS = -Xptxas -v -Xcudafe -\# -shared -Xptxas -abi=no \
+		-Xcompiler -fPIC -Xcompiler -fvisibility=hidden
 endif
 
 DEPS = ./Makefile \
@@ -39,9 +30,10 @@ DEPS = ./Makefile \
 LIBNAME = sort_engine
 
 all: $(LIBNAME)_sm10.$(EXT) $(LIBNAME)_sm13.$(EXT) $(LIBNAME)_sm20.$(EXT)
+	touch built
 
 clean :
-	rm -f  *.$(EXT) *.lib *.exp
+	rm -f  *.$(EXT) *.lib *.exp built
 
 $(LIBNAME)_sm10.$(EXT) : $(DEPS)
 	$(NVCC) $(GEN_SM10) -o $@ sort_engine.cu $(NVCCFLAGS) $(INC) -O3  
