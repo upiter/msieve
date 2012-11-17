@@ -49,22 +49,15 @@ endif
 ifeq ($(CUDA),1)
 
 ifeq ($(WIN),1)
-	# these environment variables are set in windows
-	CUDA_ROOT = "$(shell echo $$CUDA_PATH)"
+	CUDA_ROOT = $(shell echo $$CUDA_PATH)
 	NVCC = "$(CUDA_ROOT)bin/nvcc"
-	CUDA_LIB_DIR = "$(CUDA_ROOT)lib/win32"
-	CUDA_LIBS = "$(CUDA_LIB_DIR)/cuda.lib"
+	CUDA_LIBS = "$(CUDA_ROOT)lib/win32/cuda.lib"
 else
-	# On linux, there is a 32-bit and 64-bit
-	# version of the CUDA driver libs
 	NVCC = "$(shell which nvcc)"
 	CUDA_ROOT = $(shell dirname $(NVCC))/../
-	CUDA_LIB_DIR = /usr/lib
-	# CUDA_LIB_DIR = /usr/lib64
 	CUDA_LIBS = -lcuda
 endif
-	CUDA_INC_DIR = "$(CUDA_ROOT)include"
-	CFLAGS += -I$(CUDA_INC_DIR) -Ib40c -DHAVE_CUDA
+	CFLAGS += -I"$(CUDA_ROOT)include" -Ib40c -DHAVE_CUDA
 	LIBS += $(CUDA_LIBS)
 endif
 ifeq ($(MPI),1)
@@ -278,7 +271,7 @@ all: $(COMMON_OBJS) $(QS_OBJS) $(NFS_OBJS) $(GPU_OBJS)
 			libmsieve.a $(LIBS)
 
 clean:
-	cd b40c && make clean && cd ..
+	cd b40c && make clean WIN=$(WIN) && cd ..
 	rm -f msieve msieve.exe libmsieve.a $(COMMON_OBJS) $(QS_OBJS) \
 		$(NFS_OBJS) $(NFS_GPU_OBJS) $(NFS_NOGPU_OBJS) *.ptx
 
@@ -292,12 +285,12 @@ clean:
 # QS build rules
 
 mpqs/sieve_core_generic_32k.qo: mpqs/sieve_core.c $(COMMON_HDR) $(QS_HDR)
-	$(CC) $(CFLAGS) -DBLOCK_KB=32 -DCPU_GENERIC \
+	$(CC) $(CFLAGS) -DBLOCK_KB=32 -DHAS_SSE2 \
 		-DROUTINE_NAME=qs_core_sieve_generic_32k \
 		-c -o $@ mpqs/sieve_core.c
 
 mpqs/sieve_core_generic_64k.qo: mpqs/sieve_core.c $(COMMON_HDR) $(QS_HDR)
-	$(CC) $(CFLAGS) -DBLOCK_KB=64 -DCPU_GENERIC \
+	$(CC) $(CFLAGS) -DBLOCK_KB=64 -DHAS_SSE2 \
 		-DROUTINE_NAME=qs_core_sieve_generic_64k \
 		-c -o $@ mpqs/sieve_core.c
 

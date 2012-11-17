@@ -1,23 +1,26 @@
 
 WIN = 0
 
-NVCC = "$(shell which nvcc)"
+ifeq ($(WIN),1)
+	CUDA_ROOT = $(shell echo $$CUDA_PATH)
+	NVCC = "$(CUDA_ROOT)bin/nvcc"
+	CUDA_LIBS = "$(CUDA_ROOT)lib/win32/cuda.lib"
+	EXT = dll
+	NVCCFLAGS = -Xptxas -v -Xcudafe -\# -shared -Xptxas -abi=no
+else
+	NVCC = "$(shell which nvcc)"
+	CUDA_ROOT = $(shell dirname $(NVCC))/../
+	CUDA_LIBS = -lcuda
+	EXT = so
+	NVCCFLAGS = -Xptxas -v -Xcudafe -\# -shared -Xptxas -abi=no \
+			-Xcompiler -fPIC -Xcompiler -fvisibility=hidden
+endif
 
 GEN_SM20 = -gencode=arch=compute_20,code=\"sm_20,compute_20\" 
 GEN_SM13 = -gencode=arch=compute_13,code=\"sm_13,compute_13\" 
 GEN_SM10 = -gencode=arch=compute_10,code=\"sm_10,compute_10\" 
 
-CUDA_INC = "$(shell dirname $(NVCC))/../include"
-INC = -I$(CUDA_INC) -I. 
-
-ifeq ($(WIN),1)
-EXT = dll
-NVCCFLAGS = -Xptxas -v -Xcudafe -\# -shared -Xptxas -abi=no
-else
-EXT = so
-NVCCFLAGS = -Xptxas -v -Xcudafe -\# -shared -Xptxas -abi=no \
-		-Xcompiler -fPIC -Xcompiler -fvisibility=hidden
-endif
+INC = -I"$(CUDA_ROOT)include" -I. 
 
 DEPS = ./Makefile \
 	sort_engine.cu \
