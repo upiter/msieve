@@ -1,5 +1,5 @@
 /* simple DSO interface for parallel simultaneous sort;
-   keys are 64-bit unsigned integers and values are
+   keys are 32- or 64-bit unsigned integers and values are
    32-bit unsigned integers */
 
 #ifndef _SORT_ENGINE_H_
