@@ -278,6 +278,13 @@ enum cpu_type get_cpu_type(void);
 	#endif
 #endif
 
+#if !defined(HAS_SSE) && defined(__x86_64__)
+	#define HAS_SSE
+#endif
+#if !defined(HAS_SSE2) && defined(__x86_64__)
+	#define HAS_SSE2
+#endif
+
 /* this byzantine complexity sets up the correct assembly
    language syntax based on the compiler, OS and word size 
    
