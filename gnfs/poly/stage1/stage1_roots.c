@@ -129,6 +129,8 @@ sieve_fb_free(void *s_in)
 	mpz_clear(s->tmp3);
 	mpz_clear(s->gmp_root);
 	mpz_poly_free(&s->tmp_poly);
+
+	free(s);
 }
 
 /*------------------------------------------------------------------------*/
