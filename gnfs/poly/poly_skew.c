@@ -241,11 +241,7 @@ void find_poly_core(msieve_obj *obj, mpz_t n,
 					(double)(degree * (degree - 1))) / 
 				coeff_scale );
 
-		/* the time deadline is ignored if performing stage 1 on a range */
-
-		if (lower_limit != NULL && upper_limit != NULL)
-			stage1_data.deadline = 0;
-		else
+		if (stage1_data.deadline != 0)
 			logprintf(obj, "time limit set to %.2f CPU-hours\n",
 				stage1_data.deadline / 3600.0);
 
