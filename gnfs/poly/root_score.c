@@ -123,10 +123,15 @@ uint32 analyze_poly_roots(mpz_poly_t *poly, uint32 prime_bound,
 	uint32 prime;
 	mpz_poly_t rev_poly;
 
-	/* all linear polynomials have the same root properties */
+	/* all linear polynomials have the same root properties;
+	   note that we still must treat them as generating 
+	   homogeneous polynomial values and *not* as random
+	   numbers. A linear NFS polynomial will always have one
+	   root modulo each prime p, leading to a fixed but
+	   nonzero alpha value */
 
 	if (poly->degree == 1) {
-		*result = 0.0;
+		*result = 0.569959993064325;
 		return 0;
 	}
 
