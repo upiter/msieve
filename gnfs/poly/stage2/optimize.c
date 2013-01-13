@@ -450,7 +450,8 @@ optimize_basic(dpoly_t *apoly, double *best_skewness,
 /*-------------------------------------------------------------------------*/
 static void
 optimize_final_core(curr_poly_t *c, assess_t *assess, uint32 deg,
-			double root_score, double *best_score_out,
+			double root_score_r, double root_score_a,
+			double *best_score_out,
 			double *best_skewness_out, 
 			uint32 *num_real_roots_out)
 {
@@ -464,8 +465,8 @@ optimize_final_core(curr_poly_t *c, assess_t *assess, uint32 deg,
 	opt_data.apoly = &apoly;
 	opt_data.integ_aux = &assess->integ_aux;
 	opt_data.dickman_aux = &assess->dickman_aux;
-	opt_data.root_score_r = 0.0;
-	opt_data.root_score_a = root_score;
+	opt_data.root_score_r = root_score_r;
+	opt_data.root_score_a = root_score_a;
 	rpoly.degree = 1;
 	apoly.degree = deg;
 
@@ -522,7 +523,7 @@ optimize_final(mpz_t x, mpz_t y, int64 z, poly_rootopt_t *data)
 	uint32 i;
 	uint32 deg = data->degree;
 	uint32 num_real_roots;
-	double alpha, skewness, bscore, combined_score;
+	double alpha_r, alpha_a, skewness, bscore, combined_score;
 	stage2_curr_data_t *s = (stage2_curr_data_t *)data->internal;
 	curr_poly_t *c = &s->curr_poly;
 	assess_t *assess = &s->assess;
@@ -543,24 +544,30 @@ optimize_final(mpz_t x, mpz_t y, int64 z, poly_rootopt_t *data)
 	mpz_addmul(c->gmp_b[1], c->gmp_p, x);
 	mpz_submul(c->gmp_b[0], c->gmp_d, x);
 
-	if (stage2_root_score(deg, c->gmp_b, data->murphy_p_bound, &alpha, 0))
+	if (stage2_root_score(deg, c->gmp_b, 
+			data->murphy_p_bound, &alpha_a, 0))
 		return;
 
-	if (alpha > -4.5)
+	if (stage2_root_score(1, c->gmp_linb, 
+			data->murphy_p_bound, &alpha_r, 0))
 		return;
 
-	get_bernstein_score(c, assess, deg, alpha, &bscore);
+	if (alpha_a > -4.5)
+		return;
+
+	get_bernstein_score(c, assess, deg, alpha_a, &bscore);
 
 	if (bscore > data->min_e_bernstein) {
 
-		optimize_final_core(c, assess, deg, alpha, 
+		optimize_final_core(c, assess, deg, alpha_r, alpha_a, 
 				&combined_score, &skewness,
 				&num_real_roots);
 
 		if (combined_score > data->min_e) {
 			data->callback(data->callback_data, deg, c->gmp_b, 
 					c->gmp_linb, skewness, bscore,
-					alpha, combined_score, num_real_roots);
+					alpha_a, combined_score, 
+					num_real_roots);
 		}
 	}
 }
