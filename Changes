@@ -1,4 +1,4 @@
-Version 1.51:
+Version 1.51: 2/17/13
 	- Performed another massive overhaul of the GPU polynomial selection
 		code; stage 1 now runs dozens to *hundreds* of times faster
 		on a GPU
@@ -14,6 +14,7 @@ Version 1.51:
 	- Changed the main API to allow free-text strings for configuring NFS,
 		then allowed all the parameters for polynomial selection to be
 		specified when calling the library
+	- Finally overhauled the Makefile to avoid everyone having to edit it
 	- Fixed a potential 32-bit overflow in the hashtable code, that could
 		occur for extremely large problems (thanks Paul Zimmermann)
 	- Fixed the computation of alpha value when polynomials are linear
