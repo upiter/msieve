@@ -436,6 +436,10 @@ Kleinjung's latest algorithmic ideas on NFS polynomial selection
 are documented at the 2008 CADO Factoring Workshop:
 http://cado.gforge.inria.fr/workshop/abstracts.html
 
+My talk 'High-Performance Optimization of GNFS Polynomials' gives
+some details of my own research on NFS polynomial selection:
+http://event.cwi.nl/wcnt2011/program.html
+
 Jason Gower's 'Rotations and Translations of Number Field Sieve
 Polynomials' describes some very promising improvements to the
 polynomial generation process. As far as I know, nobody has actually

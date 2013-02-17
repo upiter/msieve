@@ -7,9 +7,9 @@ Introduction
 ------------
 
 This file describes the implementation of the number field sieve that
-Msieve uses. By the time of this writing (version 1.49), the NFS code in
+Msieve uses. By the time of this writing (version 1.51), the NFS code in
 Msieve has been the focus of almost continuous development on my part for
-about 5 years now, but there are parts of it that still need doing. In
+about 6 years, but there are parts of it that still need doing. In
 order to truly be a fire-and-forget tool for NFS factoring, the current
 code needs a lattice sieve which is fast enough to be useful, and that is
 a very large undertaking given the time constraints I have. Because the
@@ -131,7 +131,28 @@ of three general types:
   knowing the format of these intermediate files lets you substitute 
   different NFS tools at particular stages of the NFS process.
 
-  
+
+Configuring NFS Processing
+--------------------------
+
+For the largest factorizations, hard experience has shown that no amount of
+my attempted cleverness will allow the code to guess the right thing to do by
+itself, and you may have to help it out a little. Previous Msieve versions had
+a very limited way of modifying the way the library worked, and so from v1.51
+onward you can pass a free-form string into the library with an arbitrary list
+of options set. The sections below will show what that string should contain
+in order to assert your will upon the factorization process. In all cases, the
+Msieve demo binary allows one string passed in, so when fiddling with multiple
+different things you need to enclose them all in doublequotes. For example,
+when specifying multiple options for NFS polynomial selection you will need
+something like
+
+	-np "option1=X option2=Y option3=Z"
+
+Finally, note that the library only takes a single string with options, so if
+you are using multiple NFS arguments (i.e. -np -ns for polynomial selection and
+sieving) then all the options for all the arguments need to be passed in one
+string.
 
 Polynomial Selection
 --------------------
@@ -208,18 +229,22 @@ large, which in turn allows choosing them to optimize the alpha value.
 The modern algorithms for selecting NFS polynomials are optimized to work
 when the skew is very large.
 
-NFS polynomial selection is divided into two stages. Stage 1 chooses
+NFS polynomial selection is divided into three stages. Stage 1 chooses
 the leading algebraic coefficient and tries to find the two rational
 polynomial coefficients so that the top three algebraic coefficients
 are small. Because stage 1 doesn't try to find the entire algebraic
 polynomial, it can use powerful sieving techniques to speed up this portion
 of the search. When stage 1 finds a 'hit', composed of the rational
-and the leading algebraic polynomial coefficient, Stage 2 then finds
-the complete polynomial pair and tries to optimize both the alpha and E
-values. A single stage 1 hit can generate many complete polynomials in
-stage 2. You can think of stage 1 as a very compute-intensive net that
-tries to drag in something good, and stage 2 as a shorter but still
-compute-intensive process that tries to polish things.
+and the leading algebraic polynomial coefficient, stage 2 and 3 then find
+the complete polynomial pair and try to optimize both the alpha and E
+values. You can think of stage 1 as a very compute-intensive net that
+tries to drag in something good, and stage 2 and 3 as a shorter but still
+compute-intensive process that tries to polish things. Stage 2 attempts
+to convert each hit from stage 1 into a complete polynomial with optimized
+size, i.e. a polynomial whose values are unusually small on average. From
+that starting point, stage 3 attempts to perturb the size optimized
+polynomial so that it has slightly worse size but much better E-value.
+A single polynomial from stage 2 can generate many polynomials in stage 3.
 
 The Msieve demo binary can run the full polynomial selection algorithm
 (both stages) when invoked with '-np'. With no other argument to -np,
@@ -239,44 +264,64 @@ into many pieces and only one piece, chosen randomly, is searched. This
 lets you give multiple computers the same range of coefficients to search 
 and reasonably expect them to not duplicate each other's work.
 
-By default, '-np' will run stage 1 and immediately run stage 2 on any
+By default, '-np' will run stage 1 and immediately run stages 2 and 3 on any
 hit that is found. It is also possible to run each stage by itself, and
 this can be useful if you want to do stage 1 on a graphics card (see below).
-You run stage 1 alone with '-np1 X,Y', and in that case any stage 1 hits 
+You run stage 1 alone with '-np1', and in that case any stage 1 hits 
 are written to a file <data_file_name>.m , where each hit is a line with 
 the triplet
 
 <leading_alg_coefficient> R1 R0
 
 and R0 is written as positive in the file. This is the same format used by
-the polynomial selection tools in GGNFS, so stage 2 code from either suite
+the polynomial selection tools in GGNFS, so stages 2 and 3 from either suite
 can be run on output from either Msieve or GGNFS (or other packages, since
-it should be easy to match up to the format above). There is a second 
-format that can be used in Msieve's stage 1 output, where each line has
+it should be easy to match up to the format above). 
 
-0 <all algebraic coefficients by decreasing degree> R1 R0
+Stage 2, the size optimization, can be specified to the demo binary with 
+'-nps'; this reads lines of <data_file_name>.m and produces size-optimized
+polynomials in <data_file_name>.ms, with each line having the form
 
-When Msieve's stage 2 code sees a line of this type, it skips the size
-optimization part of the stage 2 algorithm and only attempts to optimize
-the alpha value for the polynomial. This allows Msieve to attempt to
-optimize complete polynomials generated by other tools.
+<all algebraic coefficients by decreasing degree> R1 R0 alpha score
 
-The second stage of polynomial selection can be run alone by specifying
-'-np2', with no qualifiers, to the Msieve demo binary. This reads
-<data_file_name>.m and produces <factor_base_file> and <data_file_name>.p;
-The first file is used by the rest of the NFS code, and the second is
-for reference only. Currently <factor_base_file> gets the polynomial with
-the highest E value, while the *.p file gets all the complete polynomials
-found by stage 2 whose E-value exceeds a cutoff determined internally. 
+The 'alpha' is an approximate score for the alpha value and the score is an
+average size of polynomial values (lower scores are better). The last two
+items are optional, since size-optimized polynomials from other tools may
+not know these numbers.
 
-The code saves everything because it isn't entirely clear how often 
-the polynomial with the highest E score really sieves the fastest. The
+Finally, the root optimization can be specified with '-npr' given to the 
+demo binary. This reads <data_file_name>.ms and produces <factor_base_file> 
+and <data_file_name>.p; The first file is used by the rest of the NFS code, 
+and the second is for reference only. Currently <factor_base_file> gets 
+the polynomial with the highest E value, while the *.p file gets all the 
+complete polynomials found by stage 2 whose E-value exceeds a cutoff determined 
+internally. It is possible to specify several of the stages in a single
+command line, i.e. "-np1 -nps" will perform stage 1 plus the size optimization,
+and this is handly to avoid large intermediate output files from stage 1.
+
+The code saves everything from '-npr' because it isn't entirely clear how 
+often the polynomial with the highest E score really sieves the fastest. The
 E score was invented to reduce the number of polynomials that had to be
 test-sieved, but Msieve's polynomial selection does not do test sieving,
 and so for large input numbers it might be important to take the top few
 polynomials and experiment with them to determine which will achieve the
 highest sieving rate. Because this process is painful, for smaller inputs
 you can just use the polynomial with the highest E-value.
+
+Because there are many unanswered research issues with NFS polynomial selection,
+this stage allows a lot of tweaking using input arguments to the library. 
+Every run prints out the values of these parameters which are used, allowing
+you to adjust them in subsequent runs. The following configuration arguments are
+usable by the library:
+
+   polydegree=X    select polynomials with degree X
+   min_coeff=X     minimum leading coefficient to search in stage 1
+   max_coeff=X     maximum leading coefficient to search in stage 1
+   stage1_norm=X   the maximum norm value for stage 1
+   stage2_norm=X   the maximum norm value for stage 2 and 3
+   min_evalue=X    the minimum score of saved polyomials
+   poly_deadline=X stop searching after X seconds (0 means search forever)
+   X,Y             same as 'min_coeff=X max_coeff=Y'
 
 The format of polynomials in <data_file_name>.p matches the format used
 by the sieving tools in GGNFS. You can guess why :)
@@ -287,12 +332,11 @@ Polynomial Selection Using Graphics Cards
 
 Msieve's stage 1 polynomial selection code uses the improved algorithm
 of Thorsten Kleinjung, as described at the 2008 CADO Workshop on Integer
-Factorization. I realized in 2009 that the algorithm can be expressed in
-both a memory-bound and a compute-bound form, and the compute-bound
-version is perfectly suited to run on graphics card processors (GPUs). 
-These devices are cheap and have loads of compute units, allowing the
-possibility of higher throughput than an ordinary desktop computer if
-used correctly.
+Factorization. I realized in 2009 that it was possible to run stage 1
+on graphics card processors (GPUs), though it's taken a huge amount of 
+work to get there and my original ideas were completely silly. GPUs are 
+cheap and have loads of compute units, allowing the possibility of higher 
+throughput than an ordinary desktop computer if used correctly.
 
 So the Msieve source includes a branch that can drive an Nvidia GPU
 to perform stage 1 of NFS polynomial selection. If the code is compiled
@@ -307,79 +351,73 @@ To run stage 1 this way, you have to have
 
 - the latest Nvidia drivers
 
-- (if building from source) the latest Nvidia CUDA toolkit
+- the latest Nvidia CUDA toolkit, or if using a precompiled binary
+  the CUDA runtime API library from the latest Nvidia CUDA toolkit
 
-You don't need the CUDA toolkit if you are using a precompiled-for-GPU 
-Msieve binary, since the GPU stage 1 code only uses the Nvidia driver API,
-and you don't need the full CUDA toolkit to get that.
+The heart of stage 1 is a large collision search, where we're looking
+for pairs of 64-bit numbers that match, in a large unsorted collection
+of 64-bit numbers. Ordinarily the fastest way to perform that collision
+search is to use a hashtable, but it turns out that GPUs have so much
+memory bandwidth that it's better to just sort the list and look for
+repeated numbers. Starting in 2011 there's been a lot of research into
+making GPUs sort efficiently, and the end result is several third-party
+libraries that can sort incredibly fast on latter-day graphics cards.
 
-For maximum portability, the code that the GPU runs is compiled into 
-separate explicit (PTX) source files, and these files must be available
-in the directory where the Msieve demo binary is invoked. The Makefile
-can be configured to compile two sets of these PTX files, one for Fermi-class
-GPUs and one for older G80-class GPUs; if you have a Fermi card you can get
-increased performance if you build the Fermi PTX files.
+Msieve now includes the source for one of those libraries, from Back 40
+Computing, and building the GPU-enabled version of Msieve will package
+up the sorting into an externally callable library that is loaded at
+runtime. The GPU branch also includes its own custom GPU kernels that
+create at high speed the collections to sort, as well as postprocess
+the sorted results on the GPU. 
 
-The GPU code works now but is still a work in progress. One side effect
-of that is that the current code passes large blocks of work to the card,
-and you will notice a corresponding slowdown in your graphics if the card
-you are using is hooked up to a monitor on your computer. Another side
-effect is that the polynomial selection is not multithreaded, and if it
-was then you could run stage 2 on the CPU while the GPU is busy on stage 1.
-Because that isn't possible right now, you will actually get the highest
-throughput for large NFS polynomial selection problems by running stage 1 
-separately from stage 2, so that the GPU is kept busy as much as possible.
-For small problems this extra finesse is not worth the hassle of saving 
-intermediate files. 
+By default, the library will attempt to load the sort engine that is 
+appropriate for your GPU, but this can be overriden with additional 
+arguments:
+
+   sortlib=X       use GPU sorting library in file X
+   gpu_mem_mb=X    use at most X megabytes of GPU memory
 
 Finally, if you actually have several graphics boards in your machine, 
 you can use the '-g' flag in the Msieve demo binary to choose one of those 
 boards out of the list available.
 
 Anytime people find out you've moved code to a GPU, invariably there are
-two burning questions: 'How fast is it now' and 'you fanboy loser, why don't 
-you care about ATI cards but only Nvidia'. Believe it or not, I don't have
-a ready answer to the first question. I know that for small problems, using
-a GPU accumulates stage 1 hits noticeably faster on a GPU than using the
-memory-bound version of Kleinjung's algorithm. Here, 'small' is intentionally
-left vague, because I haven't had time to measure the crossover point.
-Even at the 155-digit input size, I subjectively notice that my medium-end
-test machine produces hits somewhat slower than the medium-end GPU I use.
-But eventually no number of GPU processors will be able to go through the
-number of combinations to search that the memory-bound version of Kleinjung's
-algorithm achieves for really big problems. That's a shame, because a GPU
-is overkill for small polynomial selection problems. The total speed
-possible on a GPU also depends a great deal on exactly how your algorithm
-is implemented in code, especially for Fermi-class GPUs with caches. It's
-entirely possible that the throughput you will see can improve drastically
-with a little GPU tuning (or recasting the compute-bound version of 
-Kleinjung's algorithm in slightly different terms that map better to the
-hardware).
+two burning questions. The first is 'How fast is it now', and while it 
+took several years and several 100% code rewrites to get to this point, 
+I can say with confidence that the speedup is just astounding. The GPU
+code can finish in seconds an amount of work that takes minutes for the
+CPU version of stage 1, and regularly works on the order of 50 to 100 *times* 
+faster. Not percent faster, *times* faster. It's so much faster than the
+CPU code that running stage 1 on a GPU leaves the card mostly idle unless
+you are factoring numbers larger than ~140 digits in size! To improve the
+throughput on such small problems, Msieve's GPU polynomial selection is
+multithreaded, and specifying '-t X' to the demo binary will set up X threads
+to feed the GPU and one more to perform the size and root optimization.
+Especially for smaller degree 5 problems, where the size of one block of
+work is not nearly sufficient to keep a GPU busy, running with three or
+four threads can dramatically improve the throughput of stage 1. For larger
+problems, there is nothing to be gained by using more threads, as the
+GPU is nearly fully busy.
 
-As for the second question: I assure you that I know ATI builds GPU
-processors, and that I can use languages like OpenCL to run code on them.
-Further, I know that computer hardware is a poor subsititute for religion
-(I've read all the tiresome agruments on usenet: Intel vs AMD, DDR vs
-Rambus, x86 vs Alpha...they produce massive volumes of hot air and 
-little else).
+The second burning question is 'you stupid loser, why don't you make this
+thing work on my ATI card, using OpenCL or something?' I assure you that 
+I know ATI builds GPU processors, and that I can use languages like OpenCL 
+to run code on them.  Further, I know that computer hardware is a poor 
+subsititute for religion (I've read all the tiresome agruments on usenet: 
+Intel vs AMD, DDR vs Rambus, x86 vs Alpha...they produce massive volumes 
+hot air and little else).
 
 I also know that ATI's implementation of OpenCL intentionally generates
 slow code on their GPUs to avoid an incompatibility between the OpenCL
 memory model and ATI hardware. Further, do you know of anybody who has
-implemented multiple-precision arithmetic on an ATI GPU? Even papers from
-this year (2011, by which time ATI chips were capable of running user
-code for three years) only use CUDA to implement these algorithms, because
-invaribly multiple-precision arithmetic requires low-level access to the
-processor to retrieve things like carry bits and high-half multiplication
-results. Nobody needs these sorts of things for your typical GPU floating
-point applications, so no effort goes into making it easy to use them in
-OpenCL. I can use inline assembler to make CUDA generate the requisite 
-instructions, but my understanding is that if I wanted to do the same
-things on ATI GPUs I'd have to use assembly language throughout. The fact
-of the matter is that I only have the time to do research on factorization 
-algorithms, which is sufficiently out of the mainstream that whatever tools I 
-need have to be written from scratch. I don't have the time to be a beta-
-tester for other companies' software products.
+implemented multiple-precision arithmetic on an ATI GPU? The last time I
+asked around, there was no way to access low-level quantities like carry
+bits or high-half multiply results using OpenCL. Do you know of any efficient
+radix-sorting libraries written for OpenCL? 90% of the performance in the
+current implementation depends on a fast sort implementation, which is ready-
+made for CUDA. The fact of the matter is that I only have the time to do 
+research on factorization algorithms; I regrettably don't have the time
+to do fundamental research on GPU algorithms as well.
 
 All of this may change in a year's time, when ATI's tools and the OpenCL 
 specification itself both become more mature, but I haven't chosen the tools 
@@ -629,32 +667,34 @@ sieve, although there will never be very many of them.
 Filtering is a very complex process, and the filtering in Msieve is designed 
 to proceed in a fully automated fashion.  The intermediate steps of Msieve's 
 filtering are not designed to allow for user intervention, although it 
-may be instructive to build compatible filtering tools. There are only 
+may be instructive to build compatible filtering tools. There are a few
+configuration arguments that can be passed to Msieve's filtering:
+
+   filter_mem_mb=X  try to limit filtering memory use to X megabytes
+   filter_maxrels=X limit the filtering to using the first X 
+                    relations in the data file
+   filter_lpbound=X have filtering start by only looking at ideals 
+   		    of size X or larger
+   target_density=X attempt to produce a matrix with X entries per column
+   X,Y              same as 'filter_lpbound=X filter_maxrels=Y'
+
 three 'knobs to turn' for the filtering:
 
-- you can invoke the filtering with '-nc1 X,Y' instead of '-nc1'. Here
-  X is the bound on the size of primes that will participate in the 
-  filtering; if set to 0, the code chooses X automatically. The number
-  of relations you want to participate in the filtering, counted from
-  the beginning of the relation file, is given by Y. Ordinairly you would
-  want to use all relations, since you spent the time to compute them in
-  the first place, but sometimes the other postprocessing stages have
-  trouble when given too many relations to deal with, and this lets you 
-  limit the dataset size without having to manually trim relations out
-  of the data file. Limitations in the parsing of arguments mean that if
-  you want to specify one of X or Y, you must specify the other to be the
-  default of zero.
+Ordinarily you would want to use all relations, since you spent the time 
+to compute them in the first place, but sometimes the other postprocessing 
+stages have trouble when given too many relations to deal with, and this 
+lets you limit the dataset size without having to manually trim relations 
+out of the data file. 
 
-- you can also invoke the demo binary with an additional '-D X' flag. This
-  controls how hard the filtering will work to produce a matrix that is 
-  small. Setting X to a value larger than the default of 70.0 will cause
-  the memory use of the filtering to be possibly much higher, and you need
-  to make sure you have a large number of excess relations, over and above
-  the number needed for filtering to converge to a reasonable matrix. In
-  practice, setting -D to a value over 130.0 will cause your computer to
-  run out of memory for large problems. Nonetheless, for the largest problems
-  making the filtering work harder can save a noticeable amount of time in
-  the linear algebra.
+'target_density=X' controls how hard the filtering will work to produce a 
+matrix that is small. Setting X to a value larger than the default of 70.0 
+will cause the memory use of the filtering to be possibly much higher, and 
+you need to make sure you have a large number of excess relations, over and 
+above the number needed for filtering to converge to a reasonable matrix. 
+In practice, setting the target density to a value over 130.0 will cause your 
+computer to run out of memory for large problems. Nonetheless, for the 
+largest problems making the filtering work harder can save a noticeable 
+amount of time in the linear algebra.
 
 If you do not have enough relations for filtering to succeed, no output 
 is produced other than complaints to that effect. If there are 'enough' 
@@ -681,7 +721,7 @@ finding more relations than you strictly need for filtering to work at
 all, although if you mess up and find twice as many relations as you need 
 then getting the filtering to work can also be difficult. In general the 
 filtering works better if you give it somewhat more relations than it
-stricly needs, maybe 10% more. As more and more relations are added, the
+strictly needs, maybe 10% more. As more and more relations are added, the
 size of the generated matrix becomes smaller and smaller, partly because the
 filtering can throw away more and more relations to keep only the 'best'
 ones.
@@ -699,8 +739,8 @@ matrix. Matrices generated by Msieve are slightly wider than they are tall,
 which means that a properly constructed matrix will have C columns and
 perhaps (C-100) rows. The value of C goes up as the number to be factored
 gets larger, and very large factorizations can generate huge matrices. The
-largest value of C that I know of is around 42 million; at that size you'd 
-need 10GB of memory just to store it.
+largest value of C that I know of is around 93 million; at that size you'd 
+need 27GB of memory just to store it.
 
 Needless to say, finding nullspace vectors for a really big matrix is an
 enormous amount of work. To do the job, Msieve uses the block Lanczos algorithm
@@ -799,7 +839,7 @@ probably not give the best performance. The best number of threads to use
 depends on the underlying machine; more recent processors have much more
 powerful memory controllers and can continue speeding up as more and more
 threads are used. A good rule of thumb to start off is to try two threads
-for each physical package on your motherboard; even if it's not the fastest
+for each physical CPU package on your motherboard; even if it's not the fastest
 choice, just two or four threads gets the vast majority of the potential
 speedup for the vast majority of machines.
 
@@ -862,23 +902,26 @@ can handle any decomposition of the matrix up to a 35x35 MPI grid.
 
 Currently the matrix file itself is constructed by only one MPI process,
 the others wait on a barrier until it finishes. This is wasteful, especially
-if you are using someone else's cluster time, but there's a trick to avoid
-having to do this if you can modify the source. Of course, a better idea would
-be to improve the library so that the matrix build happens in parallel along
-with the rest of the solver, and I know what to do, but it hasn't been a
-priority to make it happen. Contact me if you want more details. While I'm 
-dreaming, NFS filtering could also benefit from using MPI, if the pile of
-relations is so large that it won't fit on a single machine.
+if you are using someone else's cluster time. If the matrix is built already,
+you can start the MPI linear algebra but not actually build the matrix by
+giving '-nc2 "skip_matbuild=1 M,N" ' to the demo binary. This lets you build
+the matrix on a single machine, then stop the run and reuse the matrix on
+a cluster.
 
 If you run MPI Msieve with the '-t X' argument as well, *each* MPI process
 runs its part of the solver with X threads. If you expect one MPI process
 will use one physical machine, this is a handy way of soaking up more of the
 memory bandwidth that machine has to offer. Using X threads on a MxN grid
-means you have M x N x X threads running, but you can also increase M and N
+means you have M*N*X threads running, but you can also increase M and N
 so that X is 1 and more of the computation is exposed to your MPI library.
 In general there's a tradeoff between using more MPI processes and fewer
 processes with more threads, and the best combination depends on your hardware
-and the efficiency of your MPI library.
+and the efficiency of your MPI library. If you are using a large shared-memory
+NUMA machine to run MPI linear algebra, experience has shown that the machine
+must be as idle as possible (even background or scheduled idle-time tasks
+will throw off the linear algebra timing), and you will still need various 
+black-magic arguments to your MPI launch system to pin MPI processes to 
+phyiscal cores, and prevent them from migrating.
 
 The on-disk format of the matrix is independent of the choice of M and N,
 and checkpointing is still available to interrupt an MPI run in progress.
@@ -905,13 +948,16 @@ ethernet for an interconnect and using infiniband; the latter is much faster
 and scales better too. We've experimentally found that the best decomposition
 for P MPI processes will reduce the solve time by a factor of about P^0.6
 using gigabit ethernet, while an infiniband interconnect scales the solve 
-time by around P^0.8
+time by around P^0.71
 
 For the record, the largest matrix Msieve has currently been used on had about
-43 million columns, and was solved by the MPI version of Msieve running on
-a 30x30 grid of MPI processes on a supercomputer at Moscow State University,
-in just 63 hours. The same computation on a single fast PC would have taken
-many months.
+93 million columns, with the solution taking about 50 days running on 576 cores.
+(It could theoretically have finished much faster, but had to stall due to
+various cluster management issues). The same code has solved several matrices
+with 30 to 40 million columns, plus another monster with 63 million columns. 
+A notable case used an earlier version of the code to solve a matrix with 43 
+million columns, using a 30x30 grid of MPI processes on a supercomputer at 
+Moscow State University, in just 63 hours.
 
 
 NFS Square Root
