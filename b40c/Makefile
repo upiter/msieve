@@ -36,7 +36,7 @@ all: $(LIBNAME)_sm10.$(EXT) $(LIBNAME)_sm13.$(EXT) $(LIBNAME)_sm20.$(EXT)
 	touch built
 
 clean :
-	rm -f  *.$(EXT) *.lib *.exp built
+	rm -f  *.$(EXT) *.lib *.exp *.dll built
 
 $(LIBNAME)_sm10.$(EXT) : $(DEPS)
 	$(NVCC) $(GEN_SM10) -o $@ sort_engine.cu $(NVCCFLAGS) $(INC) -O3  
