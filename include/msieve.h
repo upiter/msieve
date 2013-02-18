@@ -30,7 +30,7 @@ extern "C" {
 /* version info */
 
 #define MSIEVE_MAJOR_VERSION 1
-#define MSIEVE_MINOR_VERSION 51
+#define MSIEVE_MINOR_VERSION 52
 
 #ifndef MSIEVE_SVN_VERSION
 #define MSIEVE_SVN_VERSION "unknown"

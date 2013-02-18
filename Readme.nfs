@@ -247,7 +247,7 @@ polynomial so that it has slightly worse size but much better E-value.
 A single polynomial from stage 2 can generate many polynomials in stage 3.
 
 The Msieve demo binary can run the full polynomial selection algorithm
-(both stages) when invoked with '-np'. With no other argument to -np,
+(all stages) when invoked with '-np'. With no other argument to -np,
 the search starts from a leading algebraic coefficient of 1 and keeps
 working until a time limit is reached. You can specify a range of leading
 coefficients to search with '-np X,Y' and in this case the only limit
@@ -297,7 +297,17 @@ the polynomial with the highest E value, while the *.p file gets all the
 complete polynomials found by stage 2 whose E-value exceeds a cutoff determined 
 internally. It is possible to specify several of the stages in a single
 command line, i.e. "-np1 -nps" will perform stage 1 plus the size optimization,
-and this is handly to avoid large intermediate output files from stage 1.
+and this is handy to avoid large intermediate output files from stage 1.
+
+For the largest size problems, you will find that it is much faster to
+run stage 1 and the size optimization together, then sort the size-optimized
+results and run the root optimization only on the top few (dozens,
+hundreds, perhaps thousands of) polynomials. This is because the internal
+cutoffs for good scores are pretty loose for large problems, meaning that
+large numbers of polynomials will make it to the root optimization stage
+even though they are unlikely to produce the best overall polynomials.
+Since the root optimization takes hundreds of times longer than the size
+optimization, this will eat up large amounts of search time needlessly.
 
 The code saves everything from '-npr' because it isn't entirely clear how 
 often the polynomial with the highest E score really sieves the fastest. The
@@ -308,18 +318,18 @@ polynomials and experiment with them to determine which will achieve the
 highest sieving rate. Because this process is painful, for smaller inputs
 you can just use the polynomial with the highest E-value.
 
-Because there are many unanswered research issues with NFS polynomial selection,
+There are many unanswered research issues with NFS polynomial selection, so
 this stage allows a lot of tweaking using input arguments to the library. 
-Every run prints out the values of these parameters which are used, allowing
-you to adjust them in subsequent runs. The following configuration arguments are
-usable by the library:
+Every run logs the values of these parameters which are used, allowing
+you to adjust them in subsequent runs. The following configuration arguments 
+are usable by the library:
 
    polydegree=X    select polynomials with degree X
    min_coeff=X     minimum leading coefficient to search in stage 1
    max_coeff=X     maximum leading coefficient to search in stage 1
-   stage1_norm=X   the maximum norm value for stage 1
-   stage2_norm=X   the maximum norm value for stage 2 and 3
-   min_evalue=X    the minimum score of saved polyomials
+   stage1_norm=X   the maximum norm value for -np1
+   stage2_norm=X   the maximum norm value for -nps and -npr
+   min_evalue=X    the minimum E-value score of saved polyomials
    poly_deadline=X stop searching after X seconds (0 means search forever)
    X,Y             same as 'min_coeff=X max_coeff=Y'
 
@@ -677,8 +687,6 @@ configuration arguments that can be passed to Msieve's filtering:
    		    of size X or larger
    target_density=X attempt to produce a matrix with X entries per column
    X,Y              same as 'filter_lpbound=X filter_maxrels=Y'
-
-three 'knobs to turn' for the filtering:
 
 Ordinarily you would want to use all relations, since you spent the time 
 to compute them in the first place, but sometimes the other postprocessing 

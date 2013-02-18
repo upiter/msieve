@@ -1,3 +1,6 @@
+Version 1.52:
+
+
 Version 1.51: 2/17/13
 	- Performed another massive overhaul of the GPU polynomial selection
 		code; stage 1 now runs dozens to *hundreds* of times faster
