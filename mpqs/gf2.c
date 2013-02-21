@@ -47,7 +47,6 @@ void solve_linear_system(msieve_obj *obj, uint32 fb_size,
 
 	if (ncols == 0) {
 		logprintf(obj, "matrix is corrupt; skipping linear algebra\n");
-		free(cols);
 		*num_cycles = 0;
 		return;
 	}
