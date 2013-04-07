@@ -1,4 +1,5 @@
 Version 1.52:
+	- Fixed a bug in the MPI code that makes Nx1 and 1xN grids work again
 
 
 Version 1.51: 2/17/13

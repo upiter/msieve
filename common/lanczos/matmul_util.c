@@ -209,8 +209,10 @@ void global_xor_scatter(uint64 *send_buf, uint64 *recv_buf,
 	MPI_Status mpi_status;
 	MPI_Request mpi_req;
     
-	if (num_nodes == 1)
+	if (num_nodes == 1) {
+		memcpy(recv_buf, send_buf, total_size * sizeof(uint64));
 		return;
+	}
     
 	/* split data */
     
