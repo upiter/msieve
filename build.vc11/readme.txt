@@ -1,4 +1,32 @@
 
+Building MSIEVE
+===============
+
+Msieve depends on several other packages, which have to be built
+before msieve itself can be built. To achieve this the Visual
+Studio build files for msieve and these other packages are laid
+out in a specific directory structure:
+
+  common_root_directory
+    msieve        MSIEVE
+    mpir          MPIR
+    gmp-ecm       GMP-ECM
+    pthreads      PTHREADS
+
+each of which have the following sub-directories:
+
+      build.vc10  - build files for Visual Studio 2010
+      build.vc11  - build files for Visual Studio 2012
+      bin         - any executable output from the build
+      lib         - any static library output from the build
+      dll         - any DLL library output from the build
+
+The above directory names are important and this may require 
+some renaming after source files are extracted.
+
+MPIR, GMP-ECM and PTHREADS must be built before MSIEVE (although
+GMP-ECM is optional).
+
 Building MSIEVE without GMP and GMP-ECM
 =======================================
 
@@ -18,33 +46,4 @@ this library in the following way:
 
 Blame Microsoft for the apparent lack of an easier way to do this.
 
-Using GMP-ECM
-=============
-
-GMP-ECM relies on a multiple precision integer arithmetic library,
-either GMP or MPIR, a windows freiendly fork of GMP.  The Msieve
-Visual Studio build is now set up to use the MPIR library as the 
-default as thi9s pprovides fast x64 assembler code support on 
-Windows that GMP does not provide.  GMP can still be used by 
-editing the VC++ gmp_ecm_config.vsprops sheet to set the user
-macro to 'gmp' (without the quotes) instead of 'mpir'. 
-
-The layout and naming of the directories holding MSIEVE, MPIR and 
-GMP-ECM is assumed to be:
-
-    common_root_directory 
-        mpir
-        gmp-ecm
-        msieve
-        
-(although the name of the msieve directory doesn't matter). If the 
-MPIR and GMP-ECM directories are named and/or located differently
-it will then be necessary to rename these directories as above 
-or modify the gmp_ecm_config.vsprops properties file so that it
-uses the revised names.  The 'Additional Include Directories'
-(under Properties|C/C++) and the 'Additional Dependencies' (under
-Properties|Linker|Input) will need to be changed to match the
-names and locations for MPIR and GMP-ECM.
-
-     Brian Gladman, June 2010
-
+     Brian Gladman, April 2012
