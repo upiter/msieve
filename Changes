@@ -1,4 +1,6 @@
 Version 1.52:
+	- Fixed 32-bit overflow problems in the NFS square root (thanks Greg 
+		Childers)
 	- Fixed a bug in the MPI code that makes Nx1 and 1xN grids work again
 
 

@@ -60,7 +60,7 @@ typedef struct {
 static void mpz_poly_mod_q(mpz_poly_t *p, mpz_t q, mpz_poly_t *res) {
 
 	uint32 i;
-	uint32 pbits, resbits;
+	uint64 pbits, resbits;
 
 	/* also trim aggressively the memory use of the
 	   computed remainders; the algebraic square root has
@@ -87,12 +87,13 @@ static void mpz_poly_mod_q(mpz_poly_t *p, mpz_t q, mpz_poly_t *res) {
 
 /*-------------------------------------------------------------------*/
 static void mpz_poly_bits(mpz_poly_t *p, 
-			uint32 *total_bits, uint32 *max_bits) {
+			uint64 *total_bits, uint64 *max_bits) {
 
-	uint32 i, bits1, bits2;
+	uint32 i;
+	uint64 bits1, bits2;
 
 	for (i = bits1 = bits2 = 0; i <= p->degree; i++) {
-		uint32 curr_bits = mpz_sizeinbase(p->coeff[i], 2);
+		uint64 curr_bits = mpz_sizeinbase(p->coeff[i], 2);
 		bits1 += curr_bits;
 		bits2 = MAX(bits2, curr_bits);
 	}
@@ -425,7 +426,7 @@ static uint32 get_final_sqrt(msieve_obj *obj, mpz_poly_t *alg_poly,
 	   written to isqrt_mod_q */
 
 	uint32 i, j;
-	uint32 prod_bits, prod_max_bits;
+	uint64 prod_bits, prod_max_bits;
 	uint32 num_iter;
 
 	/* initialize */
@@ -538,7 +539,7 @@ static uint32 get_final_sqrt(msieve_obj *obj, mpz_poly_t *alg_poly,
 	   much smaller than we would expect from random
 	   polynomials modulo q */
 
-	mpz_poly_bits(isqrt_mod_q, &prod_bits, &i);
+	mpz_poly_bits(isqrt_mod_q, &prod_bits, &prod_max_bits);
 	if (prod_bits >= (isqrt_mod_q->degree + 1) * 
 				mpz_sizeinbase(q, 2) - 100) {
 		logprintf(obj, "Newton iteration failed to converge\n");
