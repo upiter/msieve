@@ -88,7 +88,7 @@ get_cpu_time(void) {
 	FILETIME kernel_time = {0, 0};
 	FILETIME user_time = {0, 0};
 
-	GetProcessTimes(GetCurrentThread(),
+	GetThreadTimes(GetCurrentThread(),
 			&create_time,
 			&exit_time,
 			&kernel_time,
