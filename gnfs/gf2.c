@@ -575,6 +575,7 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 	uint32 deps_found;
 	uint64 *dependencies;
 	uint32 skip_matbuild = 0;
+	uint32 cado_filter = 0;
 	time_t cpu_time = time(NULL);
 #ifdef HAVE_MPI
 	int32 grid_bools[2] = {0};
@@ -614,6 +615,10 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 		if (strstr(obj->nfs_args, "skip_matbuild=1")) {
 			logprintf(obj, "skipping matrix build\n");
 			skip_matbuild = 1;
+		}
+		if (strstr(obj->nfs_args, "cado_filter=1")) {
+			logprintf(obj, "assuming CADO-NFS filtering\n");
+			cado_filter = 1;
 		}
 	}
 
@@ -696,6 +701,9 @@ void nfs_solve_linear_system(msieve_obj *obj, mpz_t n) {
 		if (obj->mpi_la_row_rank + obj->mpi_la_col_rank == 0) {
 #endif
 		uint64 sparse_weight;
+
+		if (cado_filter)
+			nfs_convert_cado_cycles(obj);
 
 		/* build the initial matrix that is the output from
 		   the filtering */

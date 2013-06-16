@@ -385,6 +385,8 @@ void nfs_read_cycles(msieve_obj *obj, factor_base_t *fb, uint32 *ncols,
 
 void nfs_free_relation_list(relation_t *rlist, uint32 num_relations);
 
+void nfs_convert_cado_cycles(msieve_obj *obj);
+
 #ifdef __cplusplus
 }
 #endif

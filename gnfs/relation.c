@@ -123,10 +123,6 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 		if (p == 0 || p >= ((uint64)1 << 32))
 			return -2;
 
-		num_roots = poly_get_zeros(roots, rpoly,
-						(uint32)p, &high_coeff, 0);
-		if (num_roots != rpoly->degree || high_coeff == 0)
-			return -3;
 		array_size = compress_p(factors, p, array_size);
 
 		num_roots = poly_get_zeros(roots, apoly,
@@ -695,3 +691,110 @@ void nfs_free_relation_list(relation_t *rlist, uint32 num_relations) {
 		free(rlist[i].factors);
 	free(rlist);
 }
+
+/*--------------------------------------------------------------------*/
+typedef struct {
+	uint32 purge_idx;
+	uint32 rel_idx;
+} relconvert_t;
+
+static int bsearch_relconvert(const void *key, const void *t) {
+	relconvert_t *c = (relconvert_t *)t;
+	uint32 *k = (uint32 *)key;
+
+	if ((*k) < c->purge_idx)
+		return -1;
+	if ((*k) > c->purge_idx)
+		return 1;
+	return 0;
+}
+
+void nfs_convert_cado_cycles(msieve_obj *obj) {
+
+	uint32 i, j;
+
+	char buf[LINE_BUF_SIZE];
+	char purgefile[LINE_BUF_SIZE];
+	savefile_t s;
+	savefile_t *savefile = &s;
+
+	uint32 num_cycles;
+	la_col_t *cycle_list = NULL;
+	uint32 num_unique_relidx;
+	relconvert_t *convert;
+
+	/* read the raw list of relation numbers for each cycle */
+
+	read_cycles(obj, &num_cycles, &cycle_list, 0, NULL);
+
+	/* for CADO filtering results, the cycle file contains
+	   line numbers in a purge file, not the line numbers of
+	   relations like we want. This is arguably better, since
+	   the purge file results have already assigned unique
+	   numbers to ideals so we could use the purge file to
+	   directly build the matrix. Unfortunately, if we did that
+	   then both the linear algebra and the square root would
+	   need modifications to understand the purge file format.
+	   The alternative is to use the purge file lines to convert 
+	   the purge file line numbers to relation numbers */
+
+	sprintf(purgefile, "%s.purged", obj->savefile.name);
+	savefile_init(savefile, purgefile);
+	savefile_open(savefile, SAVEFILE_READ);
+	savefile_read_line(buf, sizeof(buf), savefile);
+
+	num_unique_relidx = strtoul(buf, NULL, 10);
+
+	logprintf(obj, "cycles contain %u unique purge entries\n", 
+				num_unique_relidx);
+
+	convert = (relconvert_t *)xmalloc(num_unique_relidx *
+					sizeof(relconvert_t));
+
+	for (i = 0; i < num_unique_relidx; i++) {
+
+		relconvert_t *curr = convert + i;
+
+		savefile_read_line(buf, sizeof(buf), savefile);
+
+		/* the relation number is the first entry in the
+		   line from the purge file */
+
+		curr->rel_idx = strtoul(buf, NULL, 10);
+		curr->purge_idx = i;
+	}
+
+	savefile_close(savefile);
+	savefile_free(savefile);
+
+	/* walk through the list of cycles and convert
+	   each purge file number to a relation file number */
+
+	for (i = 0; i < num_cycles; i++) {
+		la_col_t *c = cycle_list + i;
+
+		for (j = 0; j < c->cycle.num_relations; j++) {
+
+			relconvert_t *t = (relconvert_t *)bsearch(
+						c->cycle.list + j,
+						convert,
+						(size_t)num_unique_relidx,
+						sizeof(relconvert_t),
+						bsearch_relconvert);
+			if (t == NULL) {
+				/* this cycle is corrupt somehow */
+				logprintf(obj, "error: cannot locate "
+						"relation %u\n", 
+						c->cycle.list[j]);
+				exit(-1);
+			}
+			else {
+				c->cycle.list[j] = t->rel_idx;
+			}
+		}
+	}
+
+	dump_cycles(obj, cycle_list, num_cycles);
+	free(convert);
+}
+
