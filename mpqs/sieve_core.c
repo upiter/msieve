@@ -163,7 +163,7 @@ static void fill_sieve_block(sieve_conf_t *conf,
 /*--------------------------------------------------------------------*/
 #define PACKED_SIEVE_MASK ((uint64)0x80808080 << 32 | 0x80808080)
 
-#if defined(GCC_ASM32X) || defined(GCC_ASM64X)
+#if (defined(GCC_ASM32X) || defined(GCC_ASM64X)) && defined(NDEBUG)
 	#if defined(HAS_SSE2)
 		#define SCAN_SSE2
 	#elif defined(HAS_AMD_MMX) || defined(HAS_SSE)

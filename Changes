@@ -4,6 +4,7 @@ Version 1.52:
 		Childers)
 	- Fixed problems parsing arguments in the NFS square root (thanks
 		Carlos Pinho)
+	- Turned off asm in QS when compiling debug builds
 	- Fixed Windows CPU time measurement (thanks Roman Rusakov)
 
 
