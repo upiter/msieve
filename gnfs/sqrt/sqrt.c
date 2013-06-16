@@ -323,7 +323,8 @@ uint32 nfs_find_factors(msieve_obj *obj, mpz_t n,
 
 	if (obj->nfs_args != NULL) {
 
-		uint32 lo, hi;
+		uint32 lo = 0;
+		uint32 hi = 64;
 		const char *tmp;
 		const char *lower_limit;
 		const char *upper_limit;
@@ -346,9 +347,9 @@ uint32 nfs_find_factors(msieve_obj *obj, mpz_t n,
 				lower_limit--;
 			}
 			upper_limit++;
+			lo = strtoul(lower_limit, NULL, 10);
+			hi = strtoul(upper_limit, NULL, 10);
 		}
-		lo = strtoul(lower_limit, NULL, 10);
-		hi = strtoul(upper_limit, NULL, 10);
 
 		dep_lower = MIN(lo, 64);
 		dep_upper = MIN(hi, 64);

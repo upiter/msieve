@@ -2,6 +2,8 @@ Version 1.52:
 	- Fixed a bug in the MPI code that makes Nx1 and 1xN grids work again
 	- Fixed 32-bit overflow problems in the NFS square root (thanks Greg 
 		Childers)
+	- Fixed problems parsing arguments in the NFS square root (thanks
+		Carlos Pinho)
 	- Fixed Windows CPU time measurement (thanks Roman Rusakov)
 
 
