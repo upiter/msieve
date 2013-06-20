@@ -482,7 +482,7 @@ struct threadpool* threadpool_init(int num_of_threads,
 		pool->thr_init[i].pool = pool;
 		pool->thr_init[i].control = *t;
 
-		pool->num_of_threads = i;
+		pool->num_of_threads = i + 1;
 		if (pthread_create(&(pool->thr_arr[i]),NULL,
 				worker_thr_routine,
 				&(pool->thr_init[i]))) {
