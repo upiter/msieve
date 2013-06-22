@@ -164,6 +164,8 @@ void print_usage(char *progname) {
 		 " linear algebra options:\n"
 		 "   skip_matbuild=1  start the linear algebra but skip building\n"
 		 "                    the matrix (assumes it is built already)\n"
+		 "   la_block=X       use a block size of X (512<=X<=65536)\n"
+		 "   la_superblock=X  use a superblock size of X\n"
 		 "   cado_filter=1    assume filtering used the CADO-NFS suite\n"
 #ifdef HAVE_MPI
 		 "   mpi_nrows=X      use a grid with X rows\n"

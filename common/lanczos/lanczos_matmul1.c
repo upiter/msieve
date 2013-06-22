@@ -22,23 +22,11 @@ $Id$
 static void mul_one_med_block(packed_block_t *curr_block,
 			uint64 *curr_col, uint64 *curr_b) {
 
-	uint16 *entries = curr_block->med_entries;
+	uint16 *entries = curr_block->d.med_entries;
 
 	while (1) {
 		uint64 accum;
 
-#ifdef LARGEBLOCKS
-#if defined(GCC_ASM64X)
-		uint64 i = 0;
-		uint64 row = (entries[0]<<16) | entries[1];
-		uint64 count = entries[2];
-#else
-		uint32 i = 0;
-		uint32 row = (entries[0]<<16) | entries[1];
-		uint32 count = entries[2];
-#endif
-		entries++;	/* we've used an extra word */
-#else
 #if defined(GCC_ASM64X)
 		uint64 i = 0;
 		uint64 row = entries[0];
@@ -47,7 +35,6 @@ static void mul_one_med_block(packed_block_t *curr_block,
 		uint32 i = 0;
 		uint32 row = entries[0];
 		uint32 count = entries[1];
-#endif
 #endif
 
 		if (count == 0)
@@ -218,12 +205,7 @@ static void mul_one_block(packed_block_t *curr_block,
 
 	uint32 i = 0; 
 	uint32 num_entries = curr_block->num_entries;
-#ifdef LARGEBLOCKS
-        uint32 *row_off = curr_block->row_off;
-        uint16 *col_off = curr_block->col_off;
-#else
-	entry_idx_t *entries = curr_block->entries;
-#endif
+	entry_idx_t *entries = curr_block->d.entries;
 
 	/* unroll by 16, i.e. the number of matrix elements
 	   in one cache line (usually). For 32-bit x86, we get
@@ -301,13 +283,8 @@ static void mul_one_block(packed_block_t *curr_block,
 	}
 
 #else
-#ifdef LARGEBLOCKS
-	#define _txor(x) curr_b[row_off[i+x]] ^= \
-				 curr_col[col_off[i+x]]	
-#else
 	#define _txor(x) curr_b[entries[i+x].row_off] ^= \
 				 curr_col[entries[i+x].col_off]
-#endif
 
 	for (i = 0; i < (num_entries & (uint32)(~15)); i += 16) {
 		#ifdef MANUAL_PREFETCH
@@ -323,44 +300,86 @@ static void mul_one_block(packed_block_t *curr_block,
 	#undef _txor
 
 	for (; i < num_entries; i++) {
-#ifdef LARGEBLOCKS
-		curr_b[row_off[i]] ^= curr_col[col_off[i]];
-#else
 		curr_b[entries[i].row_off] ^= curr_col[entries[i].col_off];
-#endif
 	}
 }
 
 /*-------------------------------------------------------------------*/
-void mul_packed_core(thread_data_t *t) {
+void mul_packed_core(void *data, int thread_num)
+{
+	/* we skip the first matrix row, since it is handled 
+	   in the dense function below */
 
-	uint64 *x = t->x;
-	uint64 *b = t->b;
+	la_task_t *task = (la_task_t *)data;
+	packed_matrix_t *p = task->matrix;
+
+	uint32 start_block_c = task->block_num * p->superblock_size;
+	uint32 num_blocks_c = MIN(p->superblock_size, 
+				p->num_block_cols - start_block_c);
+
+	packed_block_t *start_block = p->blocks + start_block_c +
+					p->num_block_cols;
+	uint64 *x = p->x + start_block_c * p->block_size;
+	uint32 i, j;
+
+	for (i = task->task_num; i < p->num_block_rows - 1; 
+					i += p->num_threads) {
+
+		packed_block_t *curr_block = start_block + 
+					i * p->num_block_cols;
+		uint64 *curr_x = x;
+		uint32 b_off = i * p->block_size + p->first_block_size;
+		uint64 *b = p->b + b_off;
+
+		if (start_block_c == 0) {
+			memset(b, 0, MIN(p->block_size, p->nrows - b_off) * 
+						sizeof(uint64));
+		}
+
+		for (j = 0; j < num_blocks_c; j++) {
+			mul_one_block(curr_block, curr_x, b);
+			curr_block++;
+			curr_x += p->block_size;
+		}
+	}
+}
+
+/*-------------------------------------------------------------------*/
+void mul_packed_small_core(void *data, int thread_num)
+{
+	la_task_t *task = (la_task_t *)data;
+	packed_matrix_t *p = task->matrix;
+	thread_data_t *t = p->thread_data + task->task_num;
+
+	uint32 last_task = (task->task_num == p->num_threads - 1);
+	uint32 num_blocks = p->num_block_cols / p->num_threads;
+	uint32 block_off = num_blocks * task->task_num;
+	uint32 off = p->block_size * block_off;
+	uint32 vsize = num_blocks * p->block_size;
+	uint64 *x = p->x + off;
+	uint64 *b = t->tmp_b;
+	packed_block_t *curr_block = p->blocks + block_off;
 	uint32 i;
 
-	/* proceed block by block. We assume that blocks access
-	   the matrix in row-major order; when computing b = A*x
-	   this will write to the same block of b repeatedly, and
-	   will read from all of x. This reduces the number of
-	   dirty cache writebacks, improving performance slightly */
+	memset(b, 0, p->first_block_size * sizeof(uint64));
 
-	for (i = 0; i < t->num_blocks; i++) {
-		packed_block_t *curr_block = t->blocks + i;
-		if (curr_block->med_entries)
-			mul_one_med_block(curr_block, 
-					x + curr_block->start_col,
-					b + curr_block->start_row);
-		else
-			mul_one_block(curr_block, 
-					x + curr_block->start_col,
-					b + curr_block->start_row);
+	if (p->num_threads == 1) {
+		vsize = p->ncols;
+	}
+	else if (last_task) {
+		num_blocks = p->num_block_cols - block_off;
+		vsize = p->ncols - off;
+	}
+
+	for (i = 0; i < num_blocks; i++) {
+		mul_one_med_block(curr_block, x, b);
+		curr_block++;
+		x += p->block_size;
 	}
 
 	/* multiply the densest few rows by x (in batches of 64 rows) */
 
-	for (i = 0; i < (t->num_dense_rows + 63) / 64; i++) {
-		mul_64xN_Nx64(t->dense_blocks[i], 
-				x + t->blocks[0].start_col, 
-				b + 64 * i, t->ncols);
-	}
+	for (i = 0; i < (p->num_dense_rows + 63) / 64; i++)
+		mul_64xN_Nx64(p->dense_blocks[i] + off, 
+				p->x + off, b + 64 * i, vsize);
 }

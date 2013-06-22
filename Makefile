@@ -43,9 +43,6 @@ ifeq ($(WIN),1)
 else
 	LIBS += -ldl
 endif
-ifeq ($(LARGEBLOCKS),1)
-	CFLAGS += -DLARGEBLOCKS
-endif
 ifeq ($(CUDA),1)
 
 ifeq ($(WIN),1)

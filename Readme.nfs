@@ -779,6 +779,17 @@ solutions; usually there will be 25-35 of them, and each of these has about
 a 50-50 chance of factoring the input number at the conclusion of the NFS
 square root step.
 
+The low-level details of the linear algebra are very messy; most of the time
+goes into a sparse matrix multiply, and the code uses blocking to make as
+much use of cache as possible. The choice of block size (in 64-bit words) is 
+determined automatically, but if a bad choice is made it can be overridden 
+via configuration strings:
+
+   la_block=X      set the L1 block size to X (default 8192, should fit 
+		   in L1 cache but not be too small)
+   la_superblock=X set the L2 block size to X (default is 3/4 of the largest
+		   cache detected)
+
 Both the matrix and all of the solutions are numbers in a finite field of
 size 2, so if a matrix entry or any solution entry is not zero, then it has
 to be 1. Hence we don't need to explicitly store the value at a particular 
@@ -839,17 +850,16 @@ instead of '-nc2'.
 Multithreaded Linear Algebra
 ----------------------------
 
-Unlike all the other code in the Msieve library, the linear algebra is fully
-multithread aware, and if the demo binary is started with '-t X' then the
-matrix solver uses X threads. Note that the solver is primarily memory bound,
-and using as many threads as you have cores on your multicore processor will
-probably not give the best performance. The best number of threads to use
-depends on the underlying machine; more recent processors have much more
-powerful memory controllers and can continue speeding up as more and more
-threads are used. A good rule of thumb to start off is to try two threads
-for each physical CPU package on your motherboard; even if it's not the fastest
-choice, just two or four threads gets the vast majority of the potential
-speedup for the vast majority of machines.
+The linear algebra is fully multithread aware, and if the demo binary is 
+started with '-t X' then the matrix solver uses X threads. Note that the 
+solver is primarily memory bound, and using as many threads as you have 
+cores on your multicore processor will probably not give the best performance. 
+The best number of threads to use depends on the underlying machine; more 
+recent processors have much more powerful memory controllers and can continue 
+speeding up as more and more threads are used. A good rule of thumb to start 
+off is to try two threads for each physical CPU package on your motherboard; 
+even if it's not the fastest choice, just two or four threads gets the vast 
+majority of the potential speedup for the vast majority of machines.
 
 There are a few other things to note about the multithreading. Multiple 
 threads are only used for matrices larger than about 250k columns, regardless

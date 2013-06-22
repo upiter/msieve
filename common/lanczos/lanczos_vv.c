@@ -153,15 +153,24 @@ void mul_Nx64_64x64_acc(uint64 *v, uint64 *x,
 }
 
 /*-------------------------------------------------------------------*/
+static void outer_thread_run(void *data, int thread_num)
+{
+	la_task_t *task = (la_task_t *)data;
+	packed_matrix_t *p = task->matrix;
+	thread_data_t *t = p->thread_data + task->task_num;
+
+	core_Nx64_64x64_acc(t->x, t->b, t->y, t->vsize);
+}
+
 void tmul_Nx64_64x64_acc(packed_matrix_t *matrix, 
 			uint64 *v, uint64 *x,
 			uint64 *y, uint32 n) {
 
 	uint32 i, j, k;
 	uint64 c[8 * 256];
-	uint64 *tmp_b[MAX_THREADS];
 	uint32 vsize = matrix->vsize;
 	uint32 off;
+	task_control_t task;
 
 	for (i = 0; i < 8; i++) {
 		uint64 *xtmp = x + 8 * i;
@@ -179,44 +188,31 @@ void tmul_Nx64_64x64_acc(packed_matrix_t *matrix,
 		}
 	}
 
-	for (i = off = 0; i < matrix->num_threads - 1; i++, off += vsize) {
+	for (i = off = 0; i < matrix->num_threads; i++, off += vsize) {
 
 		thread_data_t *t = matrix->thread_data + i;
 
-		/* fire off each part of the operation in
-		   a separate thread from the thread pool, 
-		   except the last part. The current thread 
-		   does the last vector piece, and this 
-		   saves one synchronize operation */
-
-		tmp_b[i] = t->b;
-		t->command = COMMAND_OUTER_PRODUCT;
 		t->x = v + off;
 		t->b = c;
 		t->y = y + off;
-		t->vsize = vsize;
-#if defined(WIN32) || defined(_WIN64)
-		SetEvent(t->run_event);
-#else
-		pthread_cond_signal(&t->run_cond);
-		pthread_mutex_unlock(&t->run_lock);
-#endif
+		if (i == matrix->num_threads - 1)
+			t->vsize = n - off;
+		else
+			t->vsize = vsize;
 	}
 
-	core_Nx64_64x64_acc(v + off, c, y + off, n - off);
+	task.init = NULL;
+	task.run = outer_thread_run;
+	task.shutdown = NULL;
 
 	for (i = 0; i < matrix->num_threads - 1; i++) {
-		thread_data_t *t = matrix->thread_data + i;
-
-#if defined(WIN32) || defined(_WIN64)
-		WaitForSingleObject(t->finish_event, INFINITE);
-#else
-		pthread_mutex_lock(&t->run_lock);
-		while (t->command != COMMAND_WAIT)
-			pthread_cond_wait(&t->run_cond, &t->run_lock);
-#endif
-		t->b = tmp_b[i];
+		task.data = matrix->tasks + i;
+		threadpool_add_task(matrix->threadpool, &task, 0);
 	}
+	outer_thread_run(matrix->tasks + i, i);
+
+	if (i > 0)
+		threadpool_drain(matrix->threadpool, 1);
 }
 
 /*-------------------------------------------------------------------*/
@@ -384,6 +380,15 @@ void mul_64xN_Nx64(uint64 *x, uint64 *y,
 }
 
 /*-------------------------------------------------------------------*/
+static void inner_thread_run(void *data, int thread_num)
+{
+	la_task_t *task = (la_task_t *)data;
+	packed_matrix_t *p = task->matrix;
+	thread_data_t *t = p->thread_data + task->task_num;
+
+	core_64xN_Nx64(t->x, t->tmp_b, t->y, t->vsize);
+}
+
 void tmul_64xN_Nx64(packed_matrix_t *matrix,
 		   uint64 *x, uint64 *y,
 		   uint64 *xy, uint32 n) {
@@ -391,52 +396,48 @@ void tmul_64xN_Nx64(packed_matrix_t *matrix,
 
 	uint32 i, j;
 	uint64 c[8 * 256];
-	uint64 btmp[8 * 256];
 	uint32 vsize = matrix->vsize;
 	uint32 off;
+	task_control_t task;
 #ifdef HAVE_MPI
 	uint64 xytmp[64];
 #endif
 
-	for (i = off = 0; i < matrix->num_threads - 1; i++, off += vsize) {
+	for (i = off = 0; i < matrix->num_threads; i++, off += vsize) {
 		thread_data_t *t = matrix->thread_data + i;
 
-		/* use each thread's scratch vector, except the
-		   first thead, which has no scratch vector but
-		   uses one we supply */
-
-		t->command = COMMAND_INNER_PRODUCT;
 		t->x = x + off;
 		t->y = y + off;
-		t->vsize = vsize;
-		if (i == 0)
-			t->b = btmp;
 
-#if defined(WIN32) || defined(_WIN64)
-		SetEvent(t->run_event);
-#else
-		pthread_cond_signal(&t->run_cond);
-		pthread_mutex_unlock(&t->run_lock);
-#endif
+		if (i == matrix->num_threads - 1)
+			t->vsize = n - off;
+		else
+			t->vsize = vsize;
 	}
 
-	core_64xN_Nx64(x + off, c, y + off, n - off);
-
-	/* wait for each thread to finish. All the scratch
-	   vectors used by threads get xor-ed into the final c
-	   vector */
+	task.init = NULL;
+	task.run = inner_thread_run;
+	task.shutdown = NULL;
 
 	for (i = 0; i < matrix->num_threads - 1; i++) {
-		thread_data_t *t = matrix->thread_data + i;
-		uint64 *curr_c = t->b;
+		task.data = matrix->tasks + i;
+		threadpool_add_task(matrix->threadpool, &task, 0);
+	}
+	inner_thread_run(matrix->tasks + i, i);
 
-#if defined(WIN32) || defined(_WIN64)
-		WaitForSingleObject(t->finish_event, INFINITE);
-#else
-		pthread_mutex_lock(&t->run_lock);
-		while (t->command != COMMAND_WAIT)
-			pthread_cond_wait(&t->run_cond, &t->run_lock);
-#endif
+	if (i > 0)
+		threadpool_drain(matrix->threadpool, 1);
+
+	/* All the scratch vectors used by threads get 
+	   xor-ed into the final c vector */
+
+	memcpy(c, matrix->thread_data[0].tmp_b, 
+			8 * 256 * sizeof(uint64));
+
+	for (i = 1; i < matrix->num_threads; i++) {
+		thread_data_t *t = matrix->thread_data + i;
+		uint64 *curr_c = t->tmp_b;
+
 		accum_xor(c, curr_c, 8 * 256);
 	}
 

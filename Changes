@@ -1,4 +1,9 @@
 Version 1.52:
+	- Added a major overhaul of the liner algebra; this uses the
+		thread pool with tighter coordination between threads
+		and much-reduced memory use. On a fast modern processor 
+		with big caches the new code is 30% faster, and the speedup 
+		increases with more threads
 	- Added the ability to start the NFS linear algebra after using
 		the CADO-NFS suite for filtering (thanks Paul Zimmermann)
 	- Fixed a bug in the MPI code that makes Nx1 and 1xN grids work again
