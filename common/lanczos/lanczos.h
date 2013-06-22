@@ -226,12 +226,6 @@ void mul_Nx64_64x64_acc(uint64 *v, uint64 *x, uint64 *y, uint32 n);
 
 void mul_64xN_Nx64(uint64 *x, uint64 *y, uint64 *xy, uint32 n);
 
-/* vector-vector heavy lifting */
-
-void core_Nx64_64x64_acc(uint64 *v, uint64 *c, uint64 *y, uint32 n);
-
-void core_64xN_Nx64(uint64 *x, uint64 *c, uint64 *y, uint32 n);
-
 void accum_xor(uint64 *dest, uint64 *src, uint32 n);
 
 #ifdef __cplusplus

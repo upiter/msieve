@@ -385,7 +385,7 @@ static void matrix_thread_init(void *data, int thread_num) {
 	   and vector-vector operations; it has to be large enough
 	   to support both */
 
-	t->tmp_b = (uint64 *)xmalloc(MAX(8 * 256, p->first_block_size) *
+	t->tmp_b = (uint64 *)xmalloc(MAX(64, p->first_block_size) *
 					sizeof(uint64));
 }
 
