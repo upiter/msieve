@@ -116,8 +116,11 @@ static void mul_packed(packed_matrix_t *matrix,
 
 	for (i = 0; i < matrix->num_superblock_cols; i++) {
 
-		la_task_t *t = matrix->tasks + matrix->num_threads * (1 + i);
+		la_task_t *t = matrix->tasks;
 				
+		for (j = 0; j < matrix->num_threads; j++)
+			t[j].block_num = i;
+
 		for (j = 0; j < matrix->num_threads - 1; j++) {
 			task.data = t + j;
 			threadpool_add_task(matrix->threadpool, &task, 1);
@@ -161,8 +164,11 @@ static void mul_trans_packed(packed_matrix_t *matrix,
 
 	for (i = 0; i < matrix->num_superblock_rows; i++) {
 
-		la_task_t *t = matrix->tasks + matrix->num_threads * (1 + i);
+		la_task_t *t = matrix->tasks;
 				
+		for (j = 0; j < matrix->num_threads; j++)
+			t[j].block_num = i;
+
 		for (j = 0; j < matrix->num_threads - 1; j++) {
 			task.data = t + j;
 			threadpool_add_task(matrix->threadpool, &task, 1);
@@ -514,22 +520,11 @@ void packed_matrix_init(msieve_obj *obj,
 	/* pre-generate the structures to drive the thread pool */
 
 	p->tasks = (la_task_t *)xmalloc(sizeof(la_task_t) * 
-					p->num_threads * 
-					(2 + p->num_superblock_cols));
+					p->num_threads);
 
 	for (i = 0; i < p->num_threads; i++) {
 		p->tasks[i].matrix = p;
 		p->tasks[i].task_num = i;
-	}
-	for (i = 0; i < p->num_superblock_cols + 1; i++) {
-
-		la_task_t *t = p->tasks + p->num_threads * (1 + i);
-
-		for (j = 0; j < p->num_threads; j++) {
-			t[j].matrix = p;
-			t[j].task_num = j;
-			t[j].block_num = i;
-		}
 	}
 }
 
