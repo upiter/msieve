@@ -175,8 +175,10 @@ void print_usage(char *progname) {
 		 "                    1 x [argument to mpirun])\n"
 #endif
 		 " square root options:\n"
-		 "   X,Y       use dependencies X through Y, 1<=X<=Y<=64)\n",
-
+		 "   dep_first=X start with dependency X, 1<=X<=64\n"
+		 "   dep_last=Y  end with dependency Y, 1<=Y<=64\n"
+		 "   X,Y         same as 'dep_first=X dep_last=Y'\n"
+		 ,
 		 MSIEVE_DEFAULT_SAVEFILE, 
 		 MSIEVE_DEFAULT_LOGFILE,
 		 MSIEVE_DEFAULT_NFS_FBFILE);

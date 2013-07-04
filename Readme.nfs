@@ -1010,8 +1010,15 @@ be sped up if you process multiple dependencies in parallel, but doing
 one at a time makes it possible to adapt the precision of the numbers used
 to save a great deal of memory toward the end of each dependency. 
 
-The Msieve demo binary can process dependencies X through Y, with 1<=X,Y<=64,
-when run with '-nc3 X,Y'. Nonexistent dependencies are (obviously) skipped.
+The NFS square root is run by giving '-nc3' to the demo binary. This will
+process all dependencies in order, one at a time. Nonexistent dependencies 
+are (obviously) skipped. You can also specify a range of dependencies with
+configuration options:
+
+   dep_first=X  start at dependency X, 1<=X<=64
+   dep_last=Y  end with dependency Y, 1<=Y<=64
+   X,Y         same as 'dep_first=X dep_last=Y'
+
 If you have multiple separate machines, you can give each one its own
 (X,Y) range, since each dependency is completely independent of the others.
 
