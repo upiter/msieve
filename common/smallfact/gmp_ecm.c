@@ -212,7 +212,7 @@ uint32 ecm_pp1_pm1(msieve_obj *obj, mp_t *n, mp_t *reduced_n,
 	mpz_init(gmp_factor);
 	for (i = 0; i < NUM_NON_ECM; i++) {
 		pm1_pp1_t *tmp = non_ecm_vals + i;
-		tmp->stage_1_done = 1.0;
+		tmp->stage_1_done = 1.001;
 		mpz_init_set_ui(tmp->start_val, (unsigned long)0);
 	}
 	ecm_init(params);
