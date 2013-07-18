@@ -12,6 +12,7 @@ Version 1.52:
 	- Fixed problems parsing arguments in the NFS square root (thanks
 		Carlos Pinho / Lionel Debroux)
 	- Fixed a typo in the threadpool that caused races when shutting down
+	- Fixed the E-value estimate for poly selection (thanks Serge Batalov)
 	- Turned off asm in QS when compiling debug builds
 	- Fixed Windows CPU time measurement (thanks Roman Rusakov)
 

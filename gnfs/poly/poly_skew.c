@@ -251,9 +251,16 @@ void find_poly_core(msieve_obj *obj, mpz_t n,
 				                (0.0526 * params->digits + 3.23);
 			if (degree == 4)
 				e0 = 0.0625 * params->digits + 1.69;
-			e0 = exp(-log(10) * e0); 
+			e0 = exp(-log(10) * e0) * 0.90;
+			/* after SVN 838, E value reflects a rational alpha of +0.5699
+			   For the 'expected' value prediction, this translates into
+			   simple correction of 0.90 to the 'old' E value.
+			   This was tested on polyns from 100 to 197 digits in size;
+			   the true correction is in {0.894 .. 0.910}  ...SB */
 #ifdef HAVE_CUDA
 			e0 *= 1.15;
+			/* This mnemonically means that having a GPU makes your 
+			   gnfs project perceptibly 'one digit shorter' */
 #endif
 			logprintf(obj, "expecting poly E from %.2le to > %.2le\n",
 				e0, 1.15 * e0);
