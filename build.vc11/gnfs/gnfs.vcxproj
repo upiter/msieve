@@ -144,7 +144,6 @@
     <Lib />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\msieve-db\gnfs\relation_db.c" />
     <ClCompile Include="..\..\gnfs\fb.c" />
     <ClCompile Include="..\..\gnfs\ffpoly.c" />
     <ClCompile Include="..\..\gnfs\gf2.c" />

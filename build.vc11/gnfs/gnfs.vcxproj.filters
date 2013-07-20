@@ -125,9 +125,6 @@
     <ClCompile Include="..\..\gnfs\poly\poly_param.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\msieve-db\gnfs\relation_db.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\gnfs\filter\filter.h">
