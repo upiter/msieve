@@ -222,7 +222,7 @@ void tmul_Nx64_64x64_acc(packed_matrix_t *matrix,
 
 	uint32 i;
 	uint64 c[8 * 256];
-	uint32 vsize = matrix->vsize;
+	uint32 vsize = n / matrix->num_threads;
 	uint32 off;
 	task_control_t task = {NULL, NULL, NULL, NULL};
 
@@ -439,7 +439,7 @@ void tmul_64xN_Nx64(packed_matrix_t *matrix,
 
 
 	uint32 i, j;
-	uint32 vsize = matrix->vsize;
+	uint32 vsize = n / matrix->num_threads;
 	uint32 off;
 	task_control_t task = {NULL, NULL, NULL, NULL};
 #ifdef HAVE_MPI
