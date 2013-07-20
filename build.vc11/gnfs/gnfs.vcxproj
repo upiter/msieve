@@ -178,7 +178,9 @@
     <ClCompile Include="..\..\gnfs\sqrt\sqrt_a.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\mpir\lib\x64\Release\gmp.h" />
     <ClInclude Include="..\..\..\msieve-db\gnfs\relation_db.h" />
+    <ClInclude Include="..\..\..\pthreads\config.h" />
     <ClInclude Include="..\..\gnfs\filter\filter.h" />
     <ClInclude Include="..\..\gnfs\sieve\sieve.h" />
     <ClInclude Include="..\..\include\batch_factor.h" />
@@ -198,7 +200,10 @@
     <ClInclude Include="..\..\gnfs\sqrt\sqrt.h" />
     <ClInclude Include="..\..\gnfs\poly\stage1\stage1.h" />
     <ClInclude Include="..\..\gnfs\poly\stage2\stage2.h" />
+    <ClInclude Include="..\..\include\thread.h" />
     <ClInclude Include="..\..\include\util.h" />
+    <ClInclude Include="..\..\zlib\zconf.h" />
+    <ClInclude Include="..\..\zlib\zlib.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\x64_support_masm.asm">

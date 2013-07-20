@@ -152,11 +152,16 @@
     <ClCompile Include="..\..\mpqs\sqrt.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\mpir\lib\x64\Release\gmp.h" />
+    <ClInclude Include="..\..\..\pthreads\config.h" />
     <ClInclude Include="..\..\include\common.h" />
+    <ClInclude Include="..\..\include\gmp_xface.h" />
     <ClInclude Include="..\..\include\mp.h" />
     <ClInclude Include="..\..\mpqs\mpqs.h" />
     <ClInclude Include="..\..\include\msieve.h" />
     <ClInclude Include="..\..\include\util.h" />
+    <ClInclude Include="..\..\zlib\zconf.h" />
+    <ClInclude Include="..\..\zlib\zlib.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

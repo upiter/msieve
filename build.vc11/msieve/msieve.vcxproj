@@ -193,7 +193,14 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\mpir\lib\x64\Release\gmp.h" />
+    <ClInclude Include="..\..\..\pthreads\config.h" />
+    <ClInclude Include="..\..\..\pthreads\pthread.h" />
     <ClInclude Include="..\..\gnfs\gnfs.h" />
+    <ClInclude Include="..\..\include\gmp_xface.h" />
+    <ClInclude Include="..\..\include\util.h" />
+    <ClInclude Include="..\..\zlib\zconf.h" />
+    <ClInclude Include="..\..\zlib\zlib.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\common\common.vcxproj">
