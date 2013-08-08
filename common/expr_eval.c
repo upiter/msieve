@@ -373,7 +373,7 @@ static int mp_evaluate(char *str, mp_t *res) {
 int32 evaluate_expression(char *expr, mp_t *res) {
 
 	int status;
-	char postfix[500];
+	char postfix[BIGNUM_BUF_SIZE];
 	char *tmp;
 
 	/* fast path: if expr is an ascii integer, convert

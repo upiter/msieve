@@ -41,6 +41,7 @@ extern "C" {
 
 /*---------------- SAVEFILE RELATED DECLARATIONS ---------------------*/
 
+#define BIGNUM_BUF_SIZE 500
 #define LINE_BUF_SIZE 300
 #define SAVEFILE_READ 0x01
 #define SAVEFILE_WRITE 0x02

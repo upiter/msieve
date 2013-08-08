@@ -22,7 +22,7 @@ int32 read_poly(msieve_obj *obj, mpz_t n,
 	
 	uint32 i;
 	FILE *fp;
-	char buf[LINE_BUF_SIZE];
+	char buf[BIGNUM_BUF_SIZE];
 	mpz_t read_n;
 	mpz_t val, rpow;
 	int32 status = 0;

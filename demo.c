@@ -307,7 +307,7 @@ void *countdown_thread(void *pminutes) {
 /*--------------------------------------------------------------------*/
 int main(int argc, char **argv) {
 
-	char buf[400];
+	char buf[500];
 	uint32 seed1, seed2;
 	char *savefile_name = NULL;
 	char *logfile_name = NULL;
