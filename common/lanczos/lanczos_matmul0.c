@@ -438,14 +438,39 @@ void packed_matrix_init(msieve_obj *obj,
 	p->mpi_la_col_grid = obj->mpi_la_col_grid;
 #endif
 
-	if (max_nrows <= MIN_NROWS_TO_PACK)
-		return;
-
 	/* determine the number of threads to use */
 
 	num_threads = obj->num_threads;
 	if (num_threads < 2 || max_nrows < MIN_NROWS_TO_THREAD)
 		num_threads = 1;
+
+	p->num_threads = num_threads = MIN(num_threads, MAX_THREADS);
+
+	/* start the thread pool */
+
+	control.init = matrix_thread_init;
+	control.shutdown = matrix_thread_free;
+	control.data = p;
+
+	if (num_threads > 1) {
+		p->threadpool = threadpool_init(num_threads - 1, 
+						200, &control);
+	}
+	matrix_thread_init(p, num_threads - 1);
+
+	/* pre-generate the structures to drive the thread pool;
+	   do this even for single-threaded runs */
+
+	p->tasks = (la_task_t *)xmalloc(sizeof(la_task_t) * 
+					p->num_threads);
+
+	for (i = 0; i < p->num_threads; i++) {
+		p->tasks[i].matrix = p;
+		p->tasks[i].task_num = i;
+	}
+
+	if (max_nrows <= MIN_NROWS_TO_PACK)
+		return;
 
 	/* determine the block sizes. We assume that the largest
 	   cache in the system is unified and shared across all
@@ -484,7 +509,6 @@ void packed_matrix_init(msieve_obj *obj,
 				block_size, superblock_size,
 				obj->cache_size2 / 1024);
 
-	p->num_threads = num_threads = MIN(num_threads, MAX_THREADS);
 	p->unpacked_cols = NULL;
 	p->first_block_size = first_block_size;
 
@@ -502,28 +526,6 @@ void packed_matrix_init(msieve_obj *obj,
 	/* do the core work of packing the matrix */
 
 	pack_matrix_core(p, A);
-
-	/* start the thread pool */
-
-	control.init = matrix_thread_init;
-	control.shutdown = matrix_thread_free;
-	control.data = p;
-
-	if (num_threads > 1) {
-		p->threadpool = threadpool_init(num_threads - 1, 
-						200, &control);
-	}
-	matrix_thread_init(p, num_threads - 1);
-
-	/* pre-generate the structures to drive the thread pool */
-
-	p->tasks = (la_task_t *)xmalloc(sizeof(la_task_t) * 
-					p->num_threads);
-
-	for (i = 0; i < p->num_threads; i++) {
-		p->tasks[i].matrix = p;
-		p->tasks[i].task_num = i;
-	}
 }
 
 /*-------------------------------------------------------------------*/
