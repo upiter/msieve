@@ -541,12 +541,6 @@ void packed_matrix_free(packed_matrix_t *p) {
 		}
 	}
 	else {
-		if (p->num_threads > 1) {
-			threadpool_drain(p->threadpool, 1);
-			threadpool_free(p->threadpool);
-		}
-		matrix_thread_free(p, p->num_threads - 1);
-
 		for (i = 0; i < (p->num_dense_rows + 63) / 64; i++)
 			free(p->dense_blocks[i]);
 
@@ -554,8 +548,14 @@ void packed_matrix_free(packed_matrix_t *p) {
 			free(p->blocks[i].d.entries);
 
 		free(p->blocks);
-		free(p->tasks);
 	}
+
+	if (p->num_threads > 1) {
+		threadpool_drain(p->threadpool, 1);
+		threadpool_free(p->threadpool);
+	}
+	matrix_thread_free(p, p->num_threads - 1);
+	free(p->tasks);
 }
 
 /*-------------------------------------------------------------------*/
