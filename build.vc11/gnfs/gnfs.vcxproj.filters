@@ -123,44 +123,20 @@
       <Filter>Source Files\poly\Stage1</Filter>
     </ClCompile>
     <ClCompile Include="..\..\gnfs\poly\poly_param.c">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\poly</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\gnfs\filter\filter.h">
-      <Filter>Source Files\filter</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gnfs\sieve\sieve.h">
-      <Filter>Source Files\sieve</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\batch_factor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\common.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\dd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\ddcomplex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\common\filter\filter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\common\filter\filter_priv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\gnfs\gnfs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\integrate.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\common\lanczos\lanczos.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\mp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\msieve.h">
@@ -172,9 +148,6 @@
     <ClInclude Include="..\..\gnfs\poly\poly_skew.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\polyroot.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\gnfs\sqrt\sqrt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -184,25 +157,16 @@
     <ClInclude Include="..\..\gnfs\poly\stage2\stage2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\msieve-db\gnfs\relation_db.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\pthreads\config.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\thread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\mpir\lib\x64\Release\gmp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\zlib\zlib.h">
+    <ClInclude Include="..\..\gnfs\sieve\sieve.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\zlib\zconf.h">
+    <ClInclude Include="..\..\gnfs\filter\filter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

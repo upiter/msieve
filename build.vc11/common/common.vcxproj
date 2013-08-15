@@ -156,11 +156,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\common\batch_factor.c" />
+    <ClCompile Include="..\..\common\cuda_xface.c" />
+    <ClCompile Include="..\..\common\driver.c" />
     <ClCompile Include="..\..\common\filter\clique.c" />
     <ClCompile Include="..\..\common\dickman.c" />
     <ClCompile Include="..\..\common\expr_eval.c" />
     <ClCompile Include="..\..\common\filter\filter.c" />
-    <ClCompile Include="..\..\common\lanczos\lanczos_reorder.c" />
     <ClCompile Include="..\..\common\lanczos\lanczos_vv.c" />
     <ClCompile Include="..\..\common\lanczos\matmul_util.c" />
     <ClCompile Include="..\..\common\minimize_global.c" />
@@ -196,12 +197,15 @@
     <ClInclude Include="..\..\..\mpir\lib\x64\Release\gmp.h" />
     <ClInclude Include="..\..\..\pthreads\config.h" />
     <ClInclude Include="..\..\..\pthreads\pthread.h" />
+    <ClInclude Include="..\..\common\filter\merge_util.h" />
     <ClInclude Include="..\..\include\batch_factor.h" />
     <ClInclude Include="..\..\include\common.h" />
+    <ClInclude Include="..\..\include\cuda_xface.h" />
     <ClInclude Include="..\..\include\dd.h" />
     <ClInclude Include="..\..\include\ddcomplex.h" />
     <ClInclude Include="..\..\common\filter\filter.h" />
     <ClInclude Include="..\..\common\filter\filter_priv.h" />
+    <ClInclude Include="..\..\include\gmp_xface.h" />
     <ClInclude Include="..\..\include\integrate.h" />
     <ClInclude Include="..\..\common\lanczos\lanczos.h" />
     <ClInclude Include="..\..\include\mp.h" />
