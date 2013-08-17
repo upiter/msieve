@@ -1008,7 +1008,11 @@ load_sort_engine(msieve_obj *obj, device_data_t *d)
 	else
 		arch = "sm10";
 
+#if defined( _MSC_VER )
+    sprintf(libname, "sort_engine_%s%s", arch, suffix);
+#else
 	sprintf(libname, "b40c/sort_engine_%s%s", arch, suffix);
+#endif
 
 	/* override from input args */
 
