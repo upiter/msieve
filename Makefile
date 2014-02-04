@@ -47,14 +47,14 @@ ifeq ($(CUDA),1)
 
 ifeq ($(WIN),1)
 	CUDA_ROOT = $(shell echo $$CUDA_PATH)
-	NVCC = "$(CUDA_ROOT)bin/nvcc"
-	CUDA_LIBS = "$(CUDA_ROOT)lib/win32/cuda.lib"
+	NVCC = "$(CUDA_ROOT)/bin/nvcc"
+	CUDA_LIBS = "$(CUDA_ROOT)/lib/win32/cuda.lib"
 else
 	NVCC = "$(shell which nvcc)"
 	CUDA_ROOT = $(shell dirname $(NVCC))/../
 	CUDA_LIBS = -lcuda
 endif
-	CFLAGS += -I"$(CUDA_ROOT)include" -Ib40c -DHAVE_CUDA
+	CFLAGS += -I"$(CUDA_ROOT)/include" -Ib40c -DHAVE_CUDA
 	LIBS += $(CUDA_LIBS)
 endif
 ifeq ($(MPI),1)

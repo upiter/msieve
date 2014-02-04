@@ -1,4 +1,4 @@
-Version 1.52:
+Version 1.52: 2/4/14
 	- Added a major overhaul of the liner algebra; this uses the
 		thread pool with tighter coordination between threads
 		and much-reduced memory use. On a fast modern processor 
@@ -15,6 +15,7 @@ Version 1.52:
 	- Turned off asm in QS when compiling debug builds
 	- Fixed a buffer overflow parsing large inputs (thanks Ryan Propper)
 	- Fixed Windows CPU time measurement (thanks Roman Rusakov)
+	- Modified makefiles to account for environment vars in CUDA 5.5
 
 
 Version 1.51: 2/17/13

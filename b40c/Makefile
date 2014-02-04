@@ -3,8 +3,8 @@ WIN = 0
 
 ifeq ($(WIN),1)
 	CUDA_ROOT = $(shell echo $$CUDA_PATH)
-	NVCC = "$(CUDA_ROOT)bin/nvcc"
-	CUDA_LIBS = "$(CUDA_ROOT)lib/win32/cuda.lib"
+	NVCC = "$(CUDA_ROOT)/bin/nvcc"
+	CUDA_LIBS = "$(CUDA_ROOT)/lib/win32/cuda.lib"
 	EXT = dll
 	NVCCFLAGS = -Xptxas -v -Xcudafe -\# -shared -Xptxas -abi=no
 else
@@ -20,7 +20,7 @@ GEN_SM20 = -gencode=arch=compute_20,code=\"sm_20,compute_20\"
 GEN_SM13 = -gencode=arch=compute_13,code=\"sm_13,compute_13\" 
 GEN_SM10 = -gencode=arch=compute_10,code=\"sm_10,compute_10\" 
 
-INC = -I"$(CUDA_ROOT)include" -I. 
+INC = -I"$(CUDA_ROOT)/include" -I. 
 
 DEPS = ./Makefile \
 	sort_engine.cu \
