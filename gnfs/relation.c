@@ -795,6 +795,7 @@ void nfs_convert_cado_cycles(msieve_obj *obj) {
 	}
 
 	dump_cycles(obj, cycle_list, num_cycles);
+	free_cycle_list(cycle_list, num_cycles);
 	free(convert);
 }
 
