@@ -1,3 +1,6 @@
+Version 1.53:
+
+
 Version 1.52: 2/4/14
 	- Added a major overhaul of the liner algebra; this uses the
 		thread pool with tighter coordination between threads
