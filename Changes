@@ -1,4 +1,7 @@
 Version 1.53:
+	- Make the QS hashtable sieving code avoid using the stack; this is
+		reported to make modern processors run QS much faster
+		(thanks Mick Francis)
 
 
 Version 1.52: 2/4/14
