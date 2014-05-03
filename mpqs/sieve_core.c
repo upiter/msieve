@@ -43,11 +43,6 @@ static void add_to_hashtable(bucket_t *entry,
 	bucket_entry_t *new_entry;
 	uint32 i = entry->num_used++;
 
-	/* always prefetch; we can't rely on the processor
-	   automatically knowing when to do this */
-	if (!(i % 8))
-		PREFETCH(entry->list + i + 8);
-
 	if (i == entry->num_alloc) {
 		entry->num_alloc = 2 * i;
 		entry->list = (bucket_entry_t *)xrealloc(entry->list,
