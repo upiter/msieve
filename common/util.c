@@ -477,21 +477,15 @@ enum cpu_type get_cpu_type(void) {
 uint64 get_file_size(char *name) {
 
 #if defined(WIN32) || defined(_WIN64)
-	WIN32_FILE_ATTRIBUTE_DATA tmp;
+	struct _stati64 tmp;
 
-	if (GetFileAttributesEx((LPCTSTR)name, 
-			GetFileExInfoStandard, &tmp) == 0) {
+	if (_stati64(name, &tmp) != 0) {
 		char name_gz[256];
 		sprintf(name_gz, "%s.gz", name);
-		if (GetFileAttributesEx((LPCTSTR)name_gz,
-			GetFileExInfoStandard, &tmp) == 0)
+		if (_stati64(name_gz, &tmp) != 0) 
 			return 0;
-
-		return ((uint64)tmp.nFileSizeHigh << 32 | tmp.nFileSizeLow) << 1;
+		return (tmp.st_size / 11) * 20;
 	}
-
-	return (uint64)tmp.nFileSizeHigh << 32 | tmp.nFileSizeLow;
-
 #else
 	struct stat tmp;
 
@@ -502,9 +496,9 @@ uint64 get_file_size(char *name) {
 			return 0;
 		return (tmp.st_size / 11) * 20;
 	}
+#endif
 
 	return tmp.st_size;
-#endif
 }
 
 /*--------------------------------------------------------------------*/

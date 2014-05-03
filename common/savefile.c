@@ -95,7 +95,11 @@ void savefile_open(savefile_t *s, uint32 flags) {
 	char *open_string;
 #ifndef NO_ZLIB
 	char name_gz[256];
+	#if defined(WIN32) || defined(_WIN64)
+	struct _stati64 dummy;
+	#else
 	struct stat dummy;
+	#endif
 #endif
 
 	if (flags & SAVEFILE_APPEND)
@@ -111,8 +115,13 @@ void savefile_open(savefile_t *s, uint32 flags) {
 
 #ifndef NO_ZLIB
 	sprintf(name_gz, "%s.gz", s->name);
+	#if defined(WIN32) || defined(_WIN64)
+	if (_stati64(name_gz, &dummy) == 0) {
+		if (_stati64(s->name, &dummy) == 0) {
+	#else
 	if (stat(name_gz, &dummy) == 0) {
 		if (stat(s->name, &dummy) == 0) {
+	#endif
 			printf("error: both '%s' and '%s' exist. "
 			       "Remove the wrong one and restart\n",
 				s->name, name_gz);
@@ -189,8 +198,8 @@ uint32 savefile_eof(savefile_t *s) {
 uint32 savefile_exists(savefile_t *s) {
 	
 #if defined(WIN32) || defined(_WIN64)
-	struct _stat dummy;
-	return (_stat(s->name, &dummy) == 0);
+	struct _stati64 dummy;
+	return (_stati64(s->name, &dummy) == 0);
 #else
 	struct stat dummy;
 	return (stat(s->name, &dummy) == 0);

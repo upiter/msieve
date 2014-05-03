@@ -1,6 +1,7 @@
 Version 1.53:
-	- Make the QS hashtable sieving code avoid using the stack; this is
-		reported to make modern processors run QS much faster
+	- Fixed more problems with >4GB files in windows (thanks Nooby)
+	- Simplify the inner loop of the QS hashtable sieving code;
+		modern processors run QS noticeably faster now
 		(thanks Mick Francis)
 
 
