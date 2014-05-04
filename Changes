@@ -3,7 +3,7 @@ Version 1.53:
 	- Simplify the inner loop of the QS hashtable sieving code;
 		modern processors run QS noticeably faster now
 		(thanks Mick Francis)
-
+	- Added a slight speedup for NFS relation parsing (thanks Lionel Deboux)
 
 Version 1.52: 2/4/14
 	- Added a major overhaul of the liner algebra; this uses the

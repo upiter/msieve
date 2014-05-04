@@ -16,10 +16,14 @@ $Id$
 #include "gnfs.h"
 
 /*--------------------------------------------------------------------*/
-static uint32 divide_factor_out(mpz_t polyval, uint64 p, 
-				uint8 *factors, uint32 *array_size_in,
-				uint32 *num_factors, uint32 compress,
-				mpz_t tmp1, mpz_t tmp2, mpz_t tmp3) {
+static
+#ifdef __GNUC__
+__attribute__((always_inline))
+#endif
+uint32 divide_factor_out(mpz_t polyval, uint64 p, 
+			uint8 *factors, uint32 *array_size_in,
+			uint32 *num_factors, uint32 compress,
+			mpz_t tmp1, mpz_t tmp2, mpz_t tmp3) {
 
 	/* read the rational factors. Note that the following
 	   will work whether a given factor appears only once
