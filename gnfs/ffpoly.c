@@ -571,6 +571,11 @@ static void poly_gcd(poly_t g_in, poly_t h_in, uint32 p) {
 		poly_cp(h, g_in);
 		poly_cp(g, h_in);
 	}
+	if (h->degree == 0) {
+		g->coef[0] = 1;
+		g->degree = 0;
+		return;
+	}
 
 	while ((h->degree > 0) || (h->coef[h->degree])) {
 		poly_t r;
