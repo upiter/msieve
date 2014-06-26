@@ -256,6 +256,7 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 	uint32 num_relations;
 	uint32 num_collisions;
 	uint32 num_skipped_b;
+	uint32 num_composite;
 	uint8 *hashtable;
 	uint32 blob[2];
 	uint32 log2_hashtable1_size;
@@ -335,6 +336,7 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 	num_relations = 0;
 	num_collisions = 0;
 	num_skipped_b = 0;
+	num_composite = 0;
 	mpz_init(scratch);
 	savefile_read_line(buf, sizeof(buf), savefile);
 	while (!savefile_eof(savefile)) {
@@ -357,7 +359,7 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 			break;
 
 		status = nfs_read_relation(buf, fb, &tmp_rel, 
-					&array_size, 1, scratch);
+					&array_size, 1, scratch, 1);
 		if (status != 0) {
 
 			/* save the line number of bad relations (hopefully
@@ -367,6 +369,8 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 					sizeof(uint32), bad_relation_fp);
 			if (status == -99)
 				num_skipped_b++;
+			else if (status == -98)
+				num_composite++;
 			else
 			    logprintf(obj, "error %d reading relation %u\n",
 					status, curr_relation);
@@ -465,6 +469,9 @@ uint32 nfs_purge_duplicates(msieve_obj *obj, factor_base_t *fb,
 	if (num_skipped_b > 0)
 		logprintf(obj, "skipped %d relations with b > 2^32\n",
 				num_skipped_b);
+	if (num_composite > 0)
+		logprintf(obj, "skipped %d relations with composite factors\n",
+				num_composite);
 	logprintf(obj, "found %u hash collisions in %u relations\n", 
 				num_collisions, num_relations);
 

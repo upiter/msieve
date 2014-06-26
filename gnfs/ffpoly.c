@@ -571,11 +571,6 @@ static void poly_gcd(poly_t g_in, poly_t h_in, uint32 p) {
 		poly_cp(h, g_in);
 		poly_cp(g, h_in);
 	}
-	if (h->degree == 0) {
-		g->coef[0] = 1;
-		g->degree = 0;
-		return;
-	}
 
 	while ((h->degree > 0) || (h->coef[h->degree])) {
 		poly_t r;
@@ -659,7 +654,7 @@ static void get_zeros_rec(uint32 *zeros, uint32 shift,
 
 		poly_gcd(g, f, p);
 
-		if (g->degree > 0)
+		if (g->degree > 0 && g->degree < f->degree)
 			break;
 		shift++;
 	}

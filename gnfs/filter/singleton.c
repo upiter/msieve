@@ -108,7 +108,7 @@ void nfs_write_lp_file(msieve_obj *obj, factor_base_t *fb,
 
 		status = nfs_read_relation(buf, fb, &tmp_relation, 
 						&tmp_factor_size, 1,
-						scratch);
+						scratch, 0);
 
 		if (status == 0) {
 			relation_lp_t tmp_ideal;

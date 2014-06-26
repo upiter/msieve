@@ -358,7 +358,8 @@ typedef struct {
 
 int32 nfs_read_relation(char *buf, factor_base_t *fb, 
 			relation_t *r, uint32 *array_size_out,
-			uint32 compress, mpz_t scratch);
+			uint32 compress, mpz_t scratch,
+			uint32 test_primality);
 
 /* given a relation, find and list all of the rational
    ideals > filtmin_r and all of the algebraic ideals 

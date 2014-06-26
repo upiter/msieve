@@ -75,9 +75,12 @@ uint32 divide_factor_out(mpz_t polyval, uint64 p,
 }
 
 /*--------------------------------------------------------------------*/
+#define RELATION_TF_BOUND 1000
+
 int32 nfs_read_relation(char *buf, factor_base_t *fb, 
 			relation_t *r, uint32 *array_size_out,
-			uint32 compress, mpz_t polyval) {
+			uint32 compress, mpz_t polyval,
+			uint32 test_primality) {
 
 	/* note that only the polynomials within the factor
 	   base need to be initialized */
@@ -127,6 +130,9 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 		if (p == 0 || p >= ((uint64)1 << 32))
 			return -2;
 
+		if (test_primality && !mp_is_prime_1((uint32)p))
+			return -98;
+
 		array_size = compress_p(factors, p, array_size);
 
 		num_roots = poly_get_zeros(roots, apoly,
@@ -170,6 +176,13 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 	if (isxdigit(tmp[1])) {
 		do {
 			p = strtoull(tmp + 1, &next_field, 16);
+
+			if (test_primality && 
+			    p > RELATION_TF_BOUND && 
+			    p < ((uint64)1 << 32) &&
+	    		    !mp_is_prime_1((uint32)p))
+				return -98;
+
 			if (p > 1 && divide_factor_out(polyval, p, 
 						factors, &array_size,
 						&num_factors_r, compress,
@@ -190,7 +203,8 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 	/* if there are rational factors still to be accounted
 	   for, assume they are small and find them by trial division */
 
-	for (i = p = 0; mpz_cmp_ui(polyval, 1) != 0 && p < 1000; i++) {
+	for (i = p = 0; mpz_cmp_ui(polyval, 1) != 0 && 
+				p < RELATION_TF_BOUND; i++) {
 
 		p += prime_delta[i];
 		if (divide_factor_out(polyval, p, factors, 
@@ -214,6 +228,13 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 	if (isxdigit(tmp[1])) {
 		do {
 			p = strtoull(tmp + 1, &next_field, 16);
+
+			if (test_primality &&
+			    p > RELATION_TF_BOUND && 
+			    p < ((uint64)1 << 32) &&
+	    		    !mp_is_prime_1((uint32)p))
+				return -98;
+
 			if (p > 1 && divide_factor_out(polyval, p, 
 						factors, &array_size,
 						&num_factors_a, compress,
@@ -228,7 +249,8 @@ int32 nfs_read_relation(char *buf, factor_base_t *fb,
 	/* if there are algebraic factors still to be accounted
 	   for, assume they are small and find them by trial division */
 
-	for (i = p = 0; mpz_cmp_ui(polyval, 1) != 0 && p < 1000; i++) {
+	for (i = p = 0; mpz_cmp_ui(polyval, 1) != 0 && 
+					p < RELATION_TF_BOUND; i++) {
 
 		p += prime_delta[i];
 		if (divide_factor_out(polyval, p, factors, 
@@ -583,7 +605,7 @@ static void nfs_get_cycle_relations(msieve_obj *obj,
 
 		status = nfs_read_relation(buf, fb, &tmp_relation, 
 						&factor_size, compress,
-						scratch);
+						scratch, 0);
 		if (status) {
 			/* at this point, if the relation couldn't be
 			   read then the filtering stage should have

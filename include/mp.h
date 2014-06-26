@@ -507,6 +507,7 @@ void mp_rand(uint32 bits, mp_t *res, uint32 *seed1, uint32 *seed2);
 
 #define NUM_WITNESSES 20
 int32 mp_is_prime(mp_t *p, uint32 *seed1, uint32 *seed2);
+int32 mp_is_prime_1(uint32 p);
 void mp_random_prime(uint32 bits, mp_t *res, uint32 *seed1, uint32 *seed2);
 uint32 mp_next_prime(mp_t *p, mp_t *res, uint32 *seed1, uint32 *seed2);
 
