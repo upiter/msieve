@@ -119,6 +119,9 @@
     <ClCompile Include="..\..\common\driver.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\aprcl\mpz_aprcl32.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\batch_factor.h">
@@ -185,6 +188,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\gmp_xface.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\aprcl\jacobi_sum32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\aprcl\mpz_aprcl32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

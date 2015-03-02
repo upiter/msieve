@@ -13,6 +13,9 @@ $Id$
 --------------------------------------------------------------------*/
 
 #include <mp.h>
+#include <common.h>
+#include <gmp_xface.h>
+#include <mpz_aprcl32.h>
 
 /* silly hack: in order to expand macros and then
    turn them into strings, you need two levels of
@@ -1641,19 +1644,28 @@ int32 mp_is_prime(mp_t *p, uint32 *seed1, uint32 *seed2) {
 				  151,157,163,167,173,179,181,191,193,
 				  197,199,211,223,227,229,233,239,241,251};
 
-	uint32 i, j, bits, num_squares;
+	uint32 i, j, bits, num_squares, ret;
 	mp_t base, tmp, oddpart, p_minus_1;
+	mpz_t zp;
 
 	for (i = 0; i < sizeof(factors) / sizeof(uint32); i++) {
 		if (p->nwords == 1 && p->val[0] == factors[i])
-			return 1;
+			return MSIEVE_PRIME;
 
 		if (!mp_mod_1(p, factors[i]))
-			return 0;
+			return MSIEVE_COMPOSITE;
 	}
 
 	if (p->nwords == 1 && p->val[0] < 65536)
-		return 1;
+		return MSIEVE_PRIME;
+
+	mpz_init(zp);
+	mp2gmp(p, zp);
+	ret = mpz_aprcl(zp);
+	mpz_clear(zp);
+	if (ret == APRTCLE_PRIME) return MSIEVE_PRIME;
+	if (ret == APRTCLE_PRP) return MSIEVE_PROBABLE_PRIME;
+	if (ret == APRTCLE_COMPOSITE) return MSIEVE_COMPOSITE;
 
 	mp_sub_1(p, 1, &p_minus_1);
 	mp_copy(&p_minus_1, &oddpart);
@@ -1685,8 +1697,8 @@ int32 mp_is_prime(mp_t *p, uint32 *seed1, uint32 *seed2) {
 	}
 
 	if (i == NUM_WITNESSES)
-		return 1;
-	return 0;
+		return MSIEVE_PROBABLE_PRIME;
+	return MSIEVE_COMPOSITE;
 }
 		
 /*---------------------------------------------------------------*/

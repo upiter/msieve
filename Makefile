@@ -30,7 +30,7 @@ endif
 
 CFLAGS = $(OPT_FLAGS) $(MACHINE_FLAGS) $(WARN_FLAGS) \
 	 	-DMSIEVE_SVN_VERSION="\"$(SVN_VERSION)\"" \
-		-I. -Iinclude -Ignfs -Ignfs/poly -Ignfs/poly/stage1
+		-I. -Iaprcl -Iinclude -Ignfs -Ignfs/poly -Ignfs/poly/stage1
 
 # tweak the compile flags
 
@@ -39,7 +39,7 @@ ifeq ($(ECM),1)
 	LIBS += -lecm
 endif
 ifeq ($(WIN),1)
-	LDFLAGS += -Wl,--large-address-aware
+
 else
 	LIBS += -ldl
 endif
@@ -84,6 +84,7 @@ LIBS += -lgmp -lm -lpthread
 #---------------------------------- Generic file lists -------------------
 
 COMMON_HDR = \
+	aprcl/mpz_aprcl32.h \
 	common/lanczos/lanczos.h \
 	common/filter/filter.h \
 	common/filter/filter_priv.h \
@@ -102,6 +103,7 @@ COMMON_HDR = \
 	include/util.h
 
 COMMON_SRCS = \
+	aprcl/mpz_aprcl32.c \
 	common/filter/clique.c \
 	common/filter/filter.c \
 	common/filter/merge.c \

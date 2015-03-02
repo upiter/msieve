@@ -552,11 +552,9 @@ static void factor_list_add_core(msieve_obj *obj,
 			list->final_factors[i]->type = MSIEVE_PRIME;
 		}
 		else {
-			list->final_factors[i]->type = (mp_is_prime(
+			list->final_factors[i]->type = mp_is_prime(
 						new_factor, 
-						&obj->seed1, &obj->seed2)) ?
-						MSIEVE_PROBABLE_PRIME : 
-						MSIEVE_COMPOSITE;
+						&obj->seed1, &obj->seed2);
 		}
 		mp_copy(new_factor, &(list->final_factors[i]->factor));
 	}
