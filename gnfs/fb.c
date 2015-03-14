@@ -313,11 +313,8 @@ int32 read_factor_base(msieve_obj *obj, mpz_t n,
 				fb->afb.num_entries, fb->afb.max_prime);
 
 cleanup:
-	if (status != 0) {
+	if (status != 0)
 		free_factor_base(fb);
-		mpz_poly_free(&fb->rfb.poly);
-		mpz_poly_free(&fb->afb.poly);
-	}
 	fclose(fp);
 	return status;
 }
