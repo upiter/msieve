@@ -328,6 +328,13 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 	curr_relation = relation_array;
 	for (i = 0; i < num_relations; i++) {
 
+		uint64 relation_array_word = 
+				((uint32 *)curr_relation -
+				 (uint32 *)relation_array);
+
+		if (relation_array_word > (uint32)(-1))
+			break;
+
 		/* for each ideal in the relation */
 
 		for (j = 0; j < curr_relation->ideal_count; j++) {
@@ -347,8 +354,7 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 						sizeof(ideal_relation_t));
 			}
 			reverse_array[num_reverse].relation_array_word =
-					(uint32)((uint32 *)curr_relation -
-						(uint32 *)relation_array);
+						(uint32)relation_array_word;
 			reverse_array[num_reverse].next = 
 						ideal_map[ideal].payload;
 			ideal_map[ideal].payload = num_reverse++;
