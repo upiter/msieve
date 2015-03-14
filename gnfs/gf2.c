@@ -175,38 +175,35 @@ static ideal_t *fill_small_ideals(factor_base_t *fb,
 
 /*------------------------------------------------------------------*/
 #define QCB_VALS(r) ((r)->rel_index)
+#define QCB_NUM_CHOICES 50000
 
-static void fill_qcb(msieve_obj *obj, mpz_poly_t *apoly, 
+static uint32 fill_qcb(msieve_obj *obj, mpz_poly_t *apoly, 
 			relation_t *rlist, uint32 num_relations) {
 	uint32 i, j;
 	prime_sieve_t sieve;
 	fb_entry_t qcb[QCB_SIZE];
-	uint32 min_qcb_ideal;
+	uint32 min_qcb_ideal = ((uint32)(-1) - QCB_NUM_CHOICES) &
+					~(uint32)(0x1); /* must be even */
+	uint8 bits[(QCB_NUM_CHOICES + 15) / 16] = {0};
+	uint32 qcb_size;
 
-	/* find the largest algebraic factor across the whole set
+	/* strike out all the algebraic factors of relations that
+	   are between min_qcb_ideal and 2^32 */
 
-	   If the largest ideal is too close to 2^32, force it
-	   to be too small so the choice of QCB primes does not
-	   wrap around 32 bits */
-
-	for (i = min_qcb_ideal = 0; i < num_relations; i++) {
+	for (i = 0; i < num_relations; i++) {
 		relation_t *r = rlist + i;
 		uint32 num_r = r->num_factors_r;
 		uint32 num_a = r->num_factors_a;
 		uint32 array_size = 0;
 		for (j = 0; j < num_r + num_a; j++) {
 			uint64 p = decompress_p(r->factors, &array_size);
-			if (j >= num_r && p < ((uint64)1 << 32))
-				min_qcb_ideal = MAX(min_qcb_ideal, (uint32)p);
+			if (j >= num_r && p > min_qcb_ideal &&
+					p < ((uint64)1 << 32)) {
+				uint32 pos = (p - min_qcb_ideal) / 2;
+				bits[pos / 8] |= 1 << (pos % 8);
+			}
 		}
 	}
-	min_qcb_ideal = MIN(min_qcb_ideal, (uint32)(-1) - 50000);
-
-	/* choose the quadratic character base from the primes
-	   larger than any that appear in the list of relations */
-
-	logprintf(obj, "using %u quadratic characters above %u\n",
-				QCB_SIZE, min_qcb_ideal + 1);
 
 	/* construct the quadratic character base, starting
 	   with the primes above min_qcb_ideal */
@@ -218,6 +215,16 @@ static void fill_qcb(msieve_obj *obj, mpz_poly_t *apoly,
 		uint32 roots[MAX_POLY_DEGREE];
 		uint32 num_roots, high_coeff;
 		uint32 p = get_next_prime(&sieve);
+		uint32 pos;
+
+		if (p >= 0xffffff00)
+			break;
+
+		/* skip any p that appears in relations */
+
+		pos = (p - min_qcb_ideal) / 2;
+		if (bits[pos / 8] & (1 << (pos % 8)))
+			continue;
 
 		num_roots = poly_get_zeros(roots, apoly, p, 
 					&high_coeff, 0);
@@ -237,6 +244,10 @@ static void fill_qcb(msieve_obj *obj, mpz_poly_t *apoly,
 
 	free_prime_sieve(&sieve);
 
+	qcb_size = i;
+	logprintf(obj, "using %u quadratic characters above %u\n",
+				qcb_size, min_qcb_ideal + 1);
+
 	/* cache each relation's quadratic characters for later use */
 
 	for (i = 0; i < num_relations; i++) {
@@ -245,7 +256,7 @@ static void fill_qcb(msieve_obj *obj, mpz_poly_t *apoly,
 		uint32 b = rel->b;
 
 		QCB_VALS(rel) = 0;
-		for (j = 0; j < QCB_SIZE; j++) {
+		for (j = 0; j < qcb_size; j++) {
 			uint32 p = qcb[j].p;
 			uint32 r = qcb[j].r;
 			int64 res = a % (int64)p;
@@ -268,12 +279,14 @@ static void fill_qcb(msieve_obj *obj, mpz_poly_t *apoly,
 				printf("warning: zero character\n");
 		}
 	}
+
+	return qcb_size;
 }
 
 /*------------------------------------------------------------------*/
 static uint32 combine_relations(la_col_t *col, relation_t *rlist,
 				ideal_t *merged_ideals, uint32 *dense_rows,
-				uint32 num_dense_rows) {
+				uint32 num_dense_rows, uint32 qcb_size) {
 
 	uint32 i, j, k;
 	uint32 num_merged = 0;
@@ -350,10 +363,10 @@ static uint32 combine_relations(la_col_t *col, relation_t *rlist,
 	}
 
 	/* fill in the parity row, and place at dense 
-	   row position QCB_SIZE */
+	   row position qcb_size */
 
 	if (col->cycle.num_relations % 2)
-		dense_rows[QCB_SIZE / 32] |= 1 << (QCB_SIZE % 32);
+		dense_rows[qcb_size / 32] |= 1 << (qcb_size % 32);
 
 	return num_merged;
 }
@@ -365,7 +378,7 @@ static void build_matrix_core(msieve_obj *obj, la_col_t *cycle_list,
 			uint32 num_cycles, relation_t *rlist, 
 			uint32 num_relations, uint32 num_dense_rows, 
 			ideal_t *small_ideals, uint32 num_small_ideals, 
-			FILE *matrix_fp) {
+			uint32 qcb_size, FILE *matrix_fp) {
 
 	uint32 i, j, k;
 	hashtable_t unique_ideals;
@@ -409,7 +422,8 @@ static void build_matrix_core(msieve_obj *obj, la_col_t *cycle_list,
 		   in the cycle */
 
 		num_merged = combine_relations(c, rlist, merged_ideals, 
-						dense_rows, num_dense_rows);
+						dense_rows, num_dense_rows,
+						qcb_size);
 
 		/* assign a unique number to each ideal in 
 		   the cycle. This will automatically ignore
@@ -427,7 +441,7 @@ static void build_matrix_core(msieve_obj *obj, la_col_t *cycle_list,
 						(size_t)num_small_ideals,
 						sizeof(ideal_t),
 						compare_ideals);
-				uint32 idx = QCB_SIZE + 1 +
+				uint32 idx = qcb_size + 1 +
 						(loc - small_ideals);
 				if (loc == NULL) {
 					printf("error: unexpected dense "
@@ -496,6 +510,7 @@ static void build_matrix(msieve_obj *obj, mpz_t n) {
 	ideal_t *small_ideals;
 	uint32 num_small_ideals;
 	uint32 max_small_ideal;
+	uint32 qcb_size;
 	FILE *matrix_fp;
 	char buf[256];
 	factor_base_t fb;
@@ -522,16 +537,6 @@ static void build_matrix(msieve_obj *obj, mpz_t n) {
 	small_ideals = fill_small_ideals(&fb, &num_small_ideals,
 					&max_small_ideal);
 
-	/* we need extra matrix rows to make sure that each
-	   dependency has an even number of relations, and also an
-	   even number of free relations. If the rational 
-	   poly R(x) is monic, and we weren't using free relations,
-	   the sign of R(x) is negative for all relations, meaning we 
-	   already get the effect of the extra rows. However, in 
-	   general we can't assume both of these are true */
-	
-	num_dense_rows = QCB_SIZE + 2 + num_small_ideals;
-
 	/* read in the cycles that form the matrix columns,
 	   and the relations they will need */
 
@@ -540,14 +545,24 @@ static void build_matrix(msieve_obj *obj, mpz_t n) {
 
 	/* assign quadratic characters to each relation */
 
-	fill_qcb(obj, &fb.afb.poly, rlist, num_relations);
+	qcb_size = fill_qcb(obj, &fb.afb.poly, rlist, num_relations);
+
+	/* we need extra matrix rows to make sure that each
+	   dependency has an even number of relations, and also an
+	   even number of free relations. If the rational 
+	   poly R(x) is monic, and we weren't using free relations,
+	   the sign of R(x) is negative for all relations, meaning we 
+	   already get the effect of the extra rows. However, in 
+	   general we can't assume both of these are true */
+	
+	num_dense_rows = qcb_size + 2 + num_small_ideals;
 
 	/* build the matrix columns, store to disk */
 
 	build_matrix_core(obj, cycle_list, num_cycles, rlist, 
 			num_relations, num_dense_rows, 
 			small_ideals, num_small_ideals, 
-			matrix_fp);
+			qcb_size, matrix_fp);
 
 	nfs_free_relation_list(rlist, num_relations);
 	free_cycle_list(cycle_list, num_cycles);

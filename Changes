@@ -5,6 +5,12 @@ Version 1.53:
 		the sieving tools will occasionally output relations with 
 		factors that are composite, and this may be the cause of
 		mysterious problems with extremely large jobs
+	- Modified the matrix build in the NFS linear algebra to always use
+		quadratic characters near 2^32, to always choose them so they
+		do not occur in relations, and to decide the number of 
+		characters at runtime with a compiled-in maximum. This paranoia
+		should prevent huge factorizations from failing in the
+		square root, like almost happened to Greg Childers
 	- Added an old fix for potential memory corruption doing NFS filtering
 		with extremely large datasets, since the patch actually
 		saved a factorization from failing (thanks Greg Childers)
