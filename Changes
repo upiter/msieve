@@ -19,6 +19,7 @@ Version 1.53:
 	- Fixed a bug in factor base generation that stopped NFS line sieving
 		from working (thanks DDEM)
 	- Fixed more problems with >4GB files in windows (thanks Nooby)
+	- Fixed a bug in the NFS line sieve (thanks Erik Branger)
 	- Simplify the inner loop of the QS hashtable sieving code;
 		modern processors run QS noticeably faster now
 		(thanks Mick Francis)

@@ -1289,7 +1289,7 @@ static uint32 do_one_factoring(sieve_job_t *job, resieve_t *sieve_value,
 		uint32 lp_a[MAX_LARGE_PRIMES];
 		
 		lp_r[0] = mpz_get_ui(rfb->res);
-		lp_a[0] = mpz_get_ui(rfb->res);
+		lp_a[0] = mpz_get_ui(afb->res);
 		for (i = 1; i < MAX_LARGE_PRIMES; i++)
 			lp_r[i] = lp_a[i] = 1;
 
