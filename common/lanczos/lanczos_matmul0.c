@@ -389,10 +389,13 @@ static void matrix_thread_init(void *data, int thread_num) {
 
 	/* we use this scratch vector for both matrix multiplies
 	   and vector-vector operations; it has to be large enough
-	   to support both */
+	   to support both. Note that first_block_size is split across
+	   MPI rows, so it is conceivable with enough MPI processes that
+	   the MAX() is necessary */
 
-	t->tmp_b = (uint64 *)xmalloc(MAX(64, p->first_block_size) *
-					sizeof(uint64));
+	t->tmp_b = (uint64 *)xmalloc(MAX(p->first_block_size,
+				64 * (1 + (p->num_dense_rows + 63) / 64)) *
+				sizeof(uint64));
 }
 
 /*-------------------------------------------------------------------*/

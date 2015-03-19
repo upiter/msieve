@@ -14,6 +14,8 @@ Version 1.53:
 	- Added an old fix for potential memory corruption doing NFS filtering
 		with extremely large datasets, since the patch actually
 		saved a factorization from failing (thanks Greg Childers)
+	- Fixed a memory corruption bug in the linear algebra when using many 
+		MPI processes (thanks Ilya Popovyan)
 	- Fixed a bug in factor base generation that stopped NFS line sieving
 		from working (thanks DDEM)
 	- Fixed more problems with >4GB files in windows (thanks Nooby)

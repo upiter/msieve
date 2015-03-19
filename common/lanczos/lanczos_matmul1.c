@@ -361,7 +361,9 @@ void mul_packed_small_core(void *data, int thread_num)
 	packed_block_t *curr_block = p->blocks + block_off;
 	uint32 i;
 
-	memset(b, 0, p->first_block_size * sizeof(uint64));
+	memset(b, 0, MAX(p->first_block_size,
+			64 * (1 + (p->num_dense_rows + 63) / 64)) *
+			sizeof(uint64));
 
 	if (p->num_threads == 1) {
 		vsize = p->ncols;
