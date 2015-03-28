@@ -105,6 +105,7 @@ void print_usage(char *progname) {
 		 "   -p        run at idle priority\n"
 	         "   -v        verbose: write log information to screen\n"
 		 "             as well as to logfile\n"
+		 "   -z        you are Paul Zimmermann\n"
 #ifdef HAVE_CUDA
 		 "   -g <num>  use GPU <num>, 0 <= num < (# graphics cards)>\n"
 #endif
@@ -391,6 +392,11 @@ int main(int argc, char **argv) {
 
 			case 'e':
 				flags |= MSIEVE_FLAG_DEEP_ECM;
+				i++;
+				break;
+
+			case 'z':
+				flags |= MSIEVE_FLAG_NFS_ONLY;
 				i++;
 				break;
 

@@ -88,7 +88,8 @@ enum msieve_flags {
 	MSIEVE_FLAG_NFS_SQRT = 0x1000,    /* if input is large enough, perform
 	                                    square root phase for NFS */
 	MSIEVE_FLAG_NFS_LA_RESTART = 0x2000,/* restart the NFS linear algbra */
-	MSIEVE_FLAG_DEEP_ECM = 0x4000    /* perform nontrivial-size ECM */
+	MSIEVE_FLAG_DEEP_ECM = 0x4000,   /* perform nontrivial-size ECM */
+	MSIEVE_FLAG_NFS_ONLY             /* go straight to NFS */
 };
 	
 /* structure encapsulating the savefile used in a factorization */

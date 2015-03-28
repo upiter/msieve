@@ -213,9 +213,18 @@ void msieve_run(msieve_obj *obj) {
 		return;
 	}
 
+	factor_list_init(&factor_list);
+
+	/* check for going straight to NFS (I hope you know
+	   what you're doing) */
+
+	if (obj->flags & MSIEVE_FLAG_NFS_ONLY) {
+		factor_gnfs(obj, &n, &factor_list);
+		goto clean_up;
+	}
+
 	/* perform trial division */
 
-	factor_list_init(&factor_list);
 	trial_factor(obj, &n, &reduced_n, &factor_list);
 	if (mp_is_one(&reduced_n))
 		goto clean_up;

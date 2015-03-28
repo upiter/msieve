@@ -24,6 +24,7 @@ Version 1.53:
 		modern processors run QS noticeably faster now
 		(thanks Mick Francis)
 	- Added a slight speedup for NFS relation parsing (thanks Lionel Debroux)
+	- Added an option to go straight to NFS skipping all preprocessing
 
 Version 1.52: 2/4/14
 	- Added a major overhaul of the liner algebra; this uses the
