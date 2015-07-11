@@ -381,8 +381,8 @@ static double eval_dpoly(dpoly_t *poly,
 	uint32 i, j, k;
 	uint32 deg = poly->degree;
 	double *coeff = poly->coeff;
-	double xbinom[MAX_POLY_DEGREE][MAX_POLY_DEGREE+1];
-	double ybinom[MAX_POLY_DEGREE][MAX_POLY_DEGREE+1];
+	double xbinom[MAX_POLY_DEGREE+1][MAX_POLY_DEGREE+1];
+	double ybinom[MAX_POLY_DEGREE+1][MAX_POLY_DEGREE+1];
 	double sum[MAX_POLY_DEGREE+1];
 	double *xrow, *yrow;
 	double res;

@@ -26,6 +26,7 @@ Version 1.53:
 	- Added a slight speedup for NFS relation parsing (thanks Lionel Debroux)
 	- Added an option to go straight to NFS skipping all preprocessing
 		(thanks Paul Zimmermann / Catalin Patulea)
+	- Fix a buffer overflow rating degree-8 polynomials (thanks jyb)
 	- Made the default compile flags include '-march=native' since it's
 		unlikely Apple's gcc still doesn't support it
 
