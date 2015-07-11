@@ -135,12 +135,14 @@ static void mul_packed(packed_matrix_t *matrix,
 	/* xor the small vectors from each thread */
 
 	memcpy(b, matrix->thread_data[0].tmp_b, 
-			matrix->first_block_size *
+			MAX(matrix->first_block_size,
+				64 * ((matrix->num_dense_rows + 63) / 64)) *
 			sizeof(uint64));
 
 	for (i = 1; i < matrix->num_threads; i++) {
 		accum_xor(b, matrix->thread_data[i].tmp_b, 
-				matrix->first_block_size);
+				MAX(matrix->first_block_size,
+				    64 * ((matrix->num_dense_rows + 63) / 64)));
 	}
 
 #if defined(GCC_ASM32A) && defined(HAS_MMX)
