@@ -31,6 +31,7 @@ Version 1.53:
 	- Added an option to go straight to NFS skipping all preprocessing
 		(thanks Paul Zimmermann / Catalin Patulea)
 	- Fix a buffer overflow rating degree-8 polynomials (thanks jyb)
+        - Capped the number of GPU poly select stage 1 threads at 4
 	- Made the default compile flags include '-march=native' since it's
 		unlikely Apple's gcc still doesn't support it
 

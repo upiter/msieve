@@ -1261,7 +1261,8 @@ gpu_data_init(msieve_obj *obj, poly_search_t *poly)
 	   pool should have a deeper queue of work */
 
 	d->poly = poly;
-	d->num_threads = num_threads = MAX(1, obj->num_threads);
+	num_threads = MAX(1, obj->num_threads);
+	d->num_threads = num_threads = MIN(4, num_threads);
 	d->max_sort_entries32 /= num_threads;
 	d->max_sort_entries64 /= num_threads;
 	d->threads = (device_thread_data_t *)xcalloc(num_threads,
