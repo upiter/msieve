@@ -14,6 +14,7 @@
 
 # override from command line
 WIN = 0
+WIN64 = 0
 
 # gcc with basic optimization (-march flag could
 # get overridden by architecture-specific builds)
@@ -48,13 +49,19 @@ ifeq ($(CUDA),1)
 ifeq ($(WIN),1)
 	CUDA_ROOT = $(shell echo $$CUDA_PATH)
 	NVCC = "$(CUDA_ROOT)/bin/nvcc"
+
+ifeq ($(WIN64),1)
+	CUDA_LIBS = "$(CUDA_ROOT)/lib/x64/cuda.lib"
+else
 	CUDA_LIBS = "$(CUDA_ROOT)/lib/win32/cuda.lib"
+endif
+
 else
 	NVCC = "$(shell which nvcc)"
 	CUDA_ROOT = $(shell dirname $(NVCC))/../
 	CUDA_LIBS = -lcuda
 endif
-	CFLAGS += -I"$(CUDA_ROOT)/include" -Ib40c -DHAVE_CUDA
+	CFLAGS += -I"$(CUDA_ROOT)/include" -Icub -DHAVE_CUDA
 	LIBS += $(CUDA_LIBS)
 endif
 ifeq ($(MPI),1)
@@ -169,10 +176,10 @@ QS_OBJS = \
 #---------------------------------- GPU file lists -------------------------
 
 GPU_OBJS = \
-	stage1_core_sm11.ptx \
-	stage1_core_sm13.ptx \
 	stage1_core_sm20.ptx \
-	b40c/built
+	stage1_core_sm30.ptx \
+	stage1_core_sm35.ptx \
+	cub/built
 
 #---------------------------------- NFS file lists -------------------------
 
@@ -256,6 +263,7 @@ help:
 	@echo "to build:"
 	@echo "make all"
 	@echo "add 'WIN=1 if building on windows"
+	@echo "add 'WIN64=1 if building on 64-bit windows"
 	@echo "add 'ECM=1' if GMP-ECM is available (enables ECM)"
 	@echo "add 'CUDA=1' for Nvidia graphics card support"
 	@echo "add 'MPI=1' for parallel processing using MPI"
@@ -270,7 +278,7 @@ all: $(COMMON_OBJS) $(QS_OBJS) $(NFS_OBJS) $(GPU_OBJS)
 			libmsieve.a $(LIBS)
 
 clean:
-	cd b40c && make clean WIN=$(WIN) && cd ..
+	cd cub && make clean WIN=$(WIN) WIN64=$(WIN64) && cd ..
 	rm -f msieve msieve.exe libmsieve.a $(COMMON_OBJS) $(QS_OBJS) \
 		$(NFS_OBJS) $(NFS_GPU_OBJS) $(NFS_NOGPU_OBJS) *.ptx
 
@@ -303,14 +311,14 @@ mpqs/sieve_core_generic_64k.qo: mpqs/sieve_core.c $(COMMON_HDR) $(QS_HDR)
 
 # GPU build rules
 
-stage1_core_sm11.ptx: $(NFS_GPU_HDR)
-	$(NVCC) -arch sm_11 -ptx -o $@ $<
-
-stage1_core_sm13.ptx: $(NFS_GPU_HDR)
-	$(NVCC) -arch sm_13 -ptx -o $@ $<
-
 stage1_core_sm20.ptx: $(NFS_GPU_HDR)
 	$(NVCC) -arch sm_20 -ptx -o $@ $<
 
-b40c/built:
-	cd b40c && make WIN=$(WIN) && cd ..
+stage1_core_sm30.ptx: $(NFS_GPU_HDR)
+	$(NVCC) -arch sm_30 -ptx -o $@ $<
+
+stage1_core_sm35.ptx: $(NFS_GPU_HDR)
+	$(NVCC) -arch sm_35 -ptx -o $@ $<
+
+cub/built:
+	cd cub && make WIN=$(WIN) WIN64=$(WIN64) sm=200,300,350 && cd ..

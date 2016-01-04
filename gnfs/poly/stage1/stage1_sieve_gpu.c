@@ -994,25 +994,13 @@ static void
 load_sort_engine(msieve_obj *obj, device_data_t *d)
 {
 	char libname[256];
-	const char *arch;
 	#if defined(WIN32) || defined(_WIN64)
 	const char *suffix = ".dll";
 	#else
 	const char *suffix = ".so";
 	#endif
 
-	if (d->gpu_info->compute_version_major >= 2)
-		arch = "sm20";
-	else if (d->gpu_info->compute_version_minor >= 3)
-		arch = "sm13";
-	else
-		arch = "sm10";
-
-#if defined( _MSC_VER )
-    sprintf(libname, "sort_engine_%s%s", arch, suffix);
-#else
-	sprintf(libname, "b40c/sort_engine_%s%s", arch, suffix);
-#endif
+	sprintf(libname, "cub/sort_engine%s", suffix);
 
 	/* override from input args */
 
@@ -1076,12 +1064,20 @@ gpu_thread_data_init(void *data, int threadid)
 
 	/* load GPU kernels */
 
-	if (d->gpu_info->compute_version_major >= 2)
+	if (d->gpu_info->compute_version_major < 2) {
+		printf("sorry, Nvidia doesn't want to support your old card\n");
+		exit(-1);
+	}
+	else if (d->gpu_info->compute_version_major == 2) {
 		CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm20.ptx"))
-	else if (d->gpu_info->compute_version_minor >= 3)
-		CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm13.ptx"))
-	else
-		CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm11.ptx"))
+	}
+	else {
+		if (d->gpu_info->compute_version_major > 3 ||
+		    d->gpu_info->compute_version_minor >= 5)
+			CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm35.ptx"))
+		else
+			CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm30.ptx"))
+	}
 
 	t->launch = (gpu_launch_t *)xmalloc(NUM_GPU_FUNCTIONS *
 				sizeof(gpu_launch_t));

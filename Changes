@@ -1,4 +1,8 @@
 Version 1.53:
+	- Replaced the GPU sorting library with calls to CUB; this is more
+		compatible with the latest GPU models and works with CUDA
+		toolkits more recent than v5.5, which the old library was
+		stuck with
 	- Added primality proving of factors found (thanks David Cleaver /
 		Brian Gladman)
 	- Added a primality test for factors of NFS relations; apparently
