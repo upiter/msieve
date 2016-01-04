@@ -102,7 +102,6 @@ sort_engine_run(void * e, sort_data_t * data)
 						data->stream);
 
 			if (temp_size > engine->temp_size) {
-				printf("%lu\n", temp_size);
 				if (engine->temp_size)
 					CUDA_TRY(cudaFree(engine->temp_data))
 
@@ -158,7 +157,6 @@ sort_engine_run(void * e, sort_data_t * data)
 						data->stream);
 
 			if (temp_size > engine->temp_size) {
-				printf("%lu\n", temp_size);
 				if (engine->temp_size)
 					CUDA_TRY(cudaFree(engine->temp_data))
 
