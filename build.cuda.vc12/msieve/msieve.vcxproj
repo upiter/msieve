@@ -81,7 +81,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.5\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include;..\..\cub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;MSIEVE_SVN_VERSION="945";_DEBUG;_CONSOLE;HAVE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -113,7 +113,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.5\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include;..\..\cub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;MSIEVE_SVN_VERSION="945";_WIN64;_DEBUG;_CONSOLE;HAVE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -144,7 +144,7 @@
     <ClCompile>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.5\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include;..\..\cub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;MSIEVE_SVN_VERSION="945";NDEBUG;_CONSOLE;HAVE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
@@ -177,7 +177,7 @@
     <ClCompile>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.5\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include;..\..\cub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;MSIEVE_SVN_VERSION="945";_WIN64;NDEBUG;_CONSOLE;HAVE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
