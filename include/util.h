@@ -121,8 +121,10 @@ extern "C" {
 	#define ftello _ftelli64
 	#define fseeko _fseeki64
 
+#if _MSC_VER < 1900
 	int64 strtoll(const char *nptr, char **endptr, int base);
 	uint64 strtoull(const char *nptr, char **endptr, int base);
+#endif
 
     __inline double rint(double x)
     {

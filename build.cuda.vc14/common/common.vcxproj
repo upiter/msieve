@@ -170,7 +170,6 @@
     <ClCompile Include="..\..\common\smallfact\smallfact.c" />
     <ClCompile Include="..\..\common\smallfact\squfof.c" />
     <ClCompile Include="..\..\common\smallfact\tinyqs.c" />
-    <ClCompile Include="..\..\common\strtoll.c" />
     <ClCompile Include="..\..\common\thread.c" />
     <ClCompile Include="..\..\common\util.c" />
   </ItemGroup>

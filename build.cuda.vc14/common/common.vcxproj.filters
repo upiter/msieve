@@ -95,9 +95,6 @@
     <ClCompile Include="..\..\common\smallfact\squfof.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\common\strtoll.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\common\util.c">
       <Filter>Source Files</Filter>
     </ClCompile>
