@@ -105,7 +105,8 @@
       <Include>..\..\cub</Include>
     </CudaCompile>
     <PostBuildEvent>
-      <Command>..\out_copy_rename "$(TargetPath)" ..\..\bin\$(IntDir)cub sort_engine.dll</Command>
+      <Command>..\out_copy_rename "$(TargetPath)" ..\..\bin\$(IntDir)cub $(TargetName)$(CC_major)$(CC_minor).dll
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -128,7 +129,8 @@
       <Include>..\..\cub</Include>
     </CudaCompile>
     <PostBuildEvent>
-      <Command>..\out_copy_rename "$(TargetPath)" ..\..\bin\$(IntDir)cub sort_engine.dll</Command>
+      <Command>..\out_copy_rename "$(TargetPath)" ..\..\bin\$(IntDir)cub $(TargetName)$(CC_major)$(CC_minor).dll
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -155,7 +157,8 @@
       <Include>..\..\cub</Include>
     </CudaCompile>
     <PostBuildEvent>
-      <Command>..\out_copy_rename "$(TargetPath)" ..\..\bin\$(IntDir)cub sort_engine.dll</Command>
+      <Command>..\out_copy_rename "$(TargetPath)" ..\..\bin\$(IntDir)cub $(TargetName)$(CC_major)$(CC_minor).dll
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -187,7 +190,8 @@
       <Include>..\..\cub</Include>
     </CudaCompile>
     <PostBuildEvent>
-      <Command>..\out_copy_rename "$(TargetPath)" ..\..\bin\$(IntDir)cub sort_engine.dll</Command>
+      <Command>..\out_copy_rename "$(TargetPath)" ..\..\bin\$(IntDir)cub $(TargetName)$(CC_major)$(CC_minor).dll
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
