@@ -121,7 +121,7 @@ GMP-ECM is assumed to be:
 MPIR and GMP-ECM directories are named and/or located differently
 it will then be necessary to rename these directories as above 
 or modify the gmp_ecm_config.vsprops properties file so that it
-uses the revised names.   The 'Additional Include Directories'
+uses the revised names.  The 'Additional Include Directories'
 (under Properties|C/C++) and the 'Additional Dependencies' (under
 Properties|Linker|Input) will need to be changed to match the
 names and locations for MPIR and GMP-ECM.
