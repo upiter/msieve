@@ -1019,12 +1019,51 @@ load_sort_engine(msieve_obj *obj, device_data_t *d)
 		}
 	}
 
-	d->sort_engine_handle = load_dynamic_lib(libname);
-	if (d->sort_engine_handle == NULL) {
-		printf("error: failed to load GPU sorting engine\n");
+#ifdef _MSC_VER && _MSC_VER >= 1900
+/*  convert the sort engine file path to an absolute path using
+    backslash directory separators  */
+	char libpath[256], *p, *q;
+	int len;
+
+	_getcwd(libpath, 256);
+	len = strlen(libpath);
+	p = libpath + len;
+	if(*(p - 1) != '\\')
+	{
+		*p++ = '\\';
+		len++;
+	}
+	q = libname - 1;
+	while(*++q && len < 256)
+	{
+		*p++ = (*q != '/' ? *q : '\\');
+		len++;
+	}
+	if(len < 256) {
+		*p++ = 0;
+	}
+	else {
+		printf("error: buffer overflow in %s at line %d\n", __FILE__, __LINE__);
 		exit(-1);
 	}
 
+	if(_access_s(libpath, 0)) {
+		printf("error: GPU sort engine not found at \"%s\"\n", libpath);
+		exit(-1);
+	}
+
+	d->sort_engine_handle = load_dynamic_lib(libpath);
+	if(d->sort_engine_handle == NULL) {
+		printf("error: cannot load GPU sort engine from \"%s\" (check dependencies)\n", libpath);
+		exit(-1);
+}
+#else
+	d->sort_engine_handle = load_dynamic_lib(libname);
+	if(d->sort_engine_handle == NULL) {
+		printf("error: failed to load GPU sorting engine from \"%s\"\n", libname);
+		exit(-1);
+	}
+#endif
 	/* the sort engine uses the same CUDA context */
 
 	d->sort_engine_init = get_lib_symbol(

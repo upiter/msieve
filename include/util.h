@@ -56,13 +56,19 @@ $Id$
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifndef _MSC_VER
+#ifndef _MSC_VER || _MSC_VER >= 1800
 	#include <inttypes.h>
 #endif
 #ifdef _MSC_VER
 	#define _USE_MATH_DEFINES
 #endif
 #include <math.h>
+
+#ifdef _MSC_VER && _MSC_VER >= 1900
+/* for _getcwd() and _access_s() used in stage1_sieve_gpu.c */
+    #include <direct.h>
+    #include <io.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
