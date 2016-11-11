@@ -64,7 +64,7 @@ $Id$
 #endif
 #include <math.h>
 
-#if !defined(_MSC_VER) && _MSC_VER >= 1900
+#if defined(_MSC_VER) && _MSC_VER >= 1900
 /* for _getcwd() and _access_s() used in stage1_sieve_gpu.c */
     #include <direct.h>
     #include <io.h>
