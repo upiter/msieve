@@ -1,4 +1,4 @@
-Version 1.53:
+Version 1.53: 11/11/16
 	- Replaced the GPU sorting library with calls to CUB; this is more
 		compatible with the latest GPU models and works with CUDA
 		toolkits more recent than v5.5, which the old library was
@@ -34,6 +34,7 @@ Version 1.53:
         - Capped the number of GPU poly select stage 1 threads at 4
 	- Made the default compile flags include '-march=native' since it's
 		unlikely Apple's gcc still doesn't support it
+	- Overhaul the Visual Studio builds (thanks Brian Gladman)
 
 Version 1.52: 2/4/14
 	- Added a major overhaul of the liner algebra; this uses the
