@@ -1,4 +1,5 @@
 Vesrion 1.54:
+	- Updated the makefile to build GPU code for more recent GPUs
 
 
 Version 1.53: 11/11/16
