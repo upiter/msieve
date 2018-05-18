@@ -161,6 +161,8 @@ void print_usage(char *progname) {
 		 "                    at ideals of size X or larger\n"
 		 "   target_density=X attempt to produce a matrix with X\n"
 		 "                    entries per column\n"
+		 "   max_weight=X     have filtering start by looking at ideals\n"
+		 "                    of max weight >= X\n"
 		 "   X,Y              same as 'filter_lpbound=X filter_maxrels=Y'\n"
 		 " linear algebra options:\n"
 		 "   skip_matbuild=1  start the linear algebra but skip building\n"

@@ -686,6 +686,8 @@ configuration arguments that can be passed to Msieve's filtering:
    filter_lpbound=X have filtering start by only looking at ideals 
    		    of size X or larger
    target_density=X attempt to produce a matrix with X entries per column
+   max_weight=X     for datasets with many extra relations, start partial
+                    merging with ideals of weight up to X
    X,Y              same as 'filter_lpbound=X filter_maxrels=Y'
 
 Ordinarily you would want to use all relations, since you spent the time 
