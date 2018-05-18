@@ -184,7 +184,9 @@ static uint32 do_merge(msieve_obj *obj, filter_t *filter,
 	if (target_density != 0)
 		merge->target_density = target_density;
 
-	filter_make_relsets(obj, filter, merge, extra_needed);
+	if (filter_make_relsets(obj, filter, merge, extra_needed) != 0)
+		return 1000000;
+
 	return 0;
 }
 

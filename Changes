@@ -1,6 +1,6 @@
 Vesrion 1.54:
 	- Updated the makefile to build GPU code for more recent GPUs
-
+	- Removed exit() call from error path in NFS filtering (thanks jrcrombie)
 
 Version 1.53: 11/11/16
 	- Replaced the GPU sorting library with calls to CUB; this is more

@@ -139,7 +139,7 @@ void filter_purge_singletons_core(msieve_obj *obj, filter_t *filter);
    of relations. min_cycles is the absolute minimum number of
    relation sets that are required */
 
-void filter_make_relsets(msieve_obj *obj, filter_t *filter, 
+int32 filter_make_relsets(msieve_obj *obj, filter_t *filter, 
 			merge_t *merge, uint32 min_cycles);
 
 /* perform post-processing optimizations on the collection of cycles

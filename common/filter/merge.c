@@ -331,7 +331,7 @@ static uint32 store_next_relset_group(merge_aux_t *aux,
 /*--------------------------------------------------------------------*/
 #define NUM_CYCLE_BINS 9
 
-void filter_merge_full(msieve_obj *obj, merge_t *merge, uint32 min_cycles) {
+int32 filter_merge_full(msieve_obj *obj, merge_t *merge, uint32 min_cycles) {
 
 	/* The core of the NFS merge phase; this routine starts
 	   with a collection of relation sets, each containing entries
@@ -431,6 +431,7 @@ void filter_merge_full(msieve_obj *obj, merge_t *merge, uint32 min_cycles) {
 	uint64 total_cycle_weight = 0;
 	uint32 cycle_bins[NUM_CYCLE_BINS + 2] = {0};
 	uint32 max_cycles;
+	int32 status = 0;
 
 	logprintf(obj, "commencing full merge\n");
 
@@ -621,7 +622,8 @@ void filter_merge_full(msieve_obj *obj, merge_t *merge, uint32 min_cycles) {
 	if (num_cycles < 0.8 * target_cycles) {
 		logprintf(obj, "too few cycles, matrix probably "
 				"cannot build\n");
-		exit(0); /* a non-zero exit code aborts factMsieve.pl */
+		status = 1;
+		goto clean_up;
 	}
 
 	qsort(relset_array, (size_t)num_cycles, 
@@ -669,10 +671,11 @@ void filter_merge_full(msieve_obj *obj, merge_t *merge, uint32 min_cycles) {
 	logprintf(obj, "heaviest cycle: %u relations\n", max_cycles);
 
 	/* clean up */
-
+clean_up:
 	matrix_weight_free(&mat_weight);
 	heap_free(&active_heap);
 	heap_free(&inactive_heap);
 	ideal_list_free(&ideal_list);
 	free(aux);
+	return status;
 }

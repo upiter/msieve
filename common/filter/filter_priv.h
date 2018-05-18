@@ -91,7 +91,7 @@ void filter_merge_2way(msieve_obj *obj, filter_t *filter, merge_t *merge);
    built (the actual matrix is expected to be much larger than 
    this). */
 
-void filter_merge_full(msieve_obj *obj, merge_t *merge, uint32 min_cycles);
+int32 filter_merge_full(msieve_obj *obj, merge_t *merge, uint32 min_cycles);
 
 #ifdef __cplusplus
 }

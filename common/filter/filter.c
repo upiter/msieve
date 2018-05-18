@@ -59,11 +59,11 @@ void filter_dump_relsets(msieve_obj *obj, merge_t *merge) {
 }
 
 /*--------------------------------------------------------------------*/
-void filter_make_relsets(msieve_obj *obj, filter_t *filter,
+int32 filter_make_relsets(msieve_obj *obj, filter_t *filter,
 				merge_t *merge, uint32 min_cycles) {
 
 	filter_purge_cliques(obj, filter);
 	filter_merge_init(obj, filter);
 	filter_merge_2way(obj, filter, merge);
-	filter_merge_full(obj, merge, min_cycles);
+	return filter_merge_full(obj, merge, min_cycles);
 }
