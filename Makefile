@@ -15,13 +15,14 @@
 # override from command line
 WIN = 0
 WIN64 = 0
+VBITS = 64
 
 # gcc with basic optimization (-march flag could
 # get overridden by architecture-specific builds)
 CC = gcc
 WARN_FLAGS = -Wall -W
 OPT_FLAGS = -O3 -fomit-frame-pointer -march=native \
-	    -D_FILE_OFFSET_BITS=64 -DNDEBUG -D_LARGEFILE64_SOURCE
+	    -D_FILE_OFFSET_BITS=64 -DNDEBUG -D_LARGEFILE64_SOURCE -DVBITS=$(VBITS)
 
 # use := instead of = so we only run the following once
 SVN_VERSION := $(shell svnversion .)
@@ -61,7 +62,7 @@ else
 	CUDA_ROOT = $(shell dirname $(NVCC))/../
 	CUDA_LIBS = -lcuda
 endif
-	CFLAGS += -I"$(CUDA_ROOT)/include" -Icub -DHAVE_CUDA
+	CFLAGS += -I"$(CUDA_ROOT)/include" -Icub -Imgpu -DHAVE_CUDA
 	LIBS += $(CUDA_LIBS)
 endif
 ifeq ($(MPI),1)
@@ -109,6 +110,11 @@ COMMON_HDR = \
 	include/thread.h \
 	include/util.h
 
+COMMON_GPU_HDR = 
+
+COMMON_NOGPU_HDR = \
+	common/lanczos/cpu/lanczos_cpu.h
+
 COMMON_SRCS = \
 	aprcl/mpz_aprcl32.c \
 	common/filter/clique.c \
@@ -120,12 +126,13 @@ COMMON_SRCS = \
 	common/filter/singleton.c \
 	common/lanczos/lanczos.c \
 	common/lanczos/lanczos_io.c \
-	common/lanczos/lanczos_matmul0.c \
-	common/lanczos/lanczos_matmul1.c \
-	common/lanczos/lanczos_matmul2.c \
+	common/lanczos/lanczos_matmul.c \
 	common/lanczos/lanczos_pre.c \
-	common/lanczos/lanczos_vv.c \
 	common/lanczos/matmul_util.c \
+    common/lanczos/cpu/lanczos_matmul0.c \
+    common/lanczos/cpu/lanczos_matmul1.c \
+    common/lanczos/cpu/lanczos_matmul2.c \
+    common/lanczos/cpu/lanczos_vv.c \
 	common/smallfact/gmp_ecm.c \
 	common/smallfact/smallfact.c \
 	common/smallfact/squfof.c \
@@ -148,7 +155,21 @@ COMMON_SRCS = \
 	common/thread.c \
 	common/util.c
 
+COMMON_GPU_SRCS =
+
+COMMON_NOGPU_SRCS =
+
+ifeq ($(CUDA),1)
+	COMMON_SRCS += $(COMMON_GPU_SRCS)
+	COMMON_HDR += $(COMMON_GPU_HDR)
+else
+	COMMON_SRCS += $(COMMON_NOGPU_SRCS)
+	COMMON_HDR += $(COMMON_NOGPU_HDR)
+endif
+
 COMMON_OBJS = $(COMMON_SRCS:.c=.o)
+COMMON_GPU_OBJS = $(COMMON_GPU_SRCS:.c=.o)
+COMMON_NOGPU_OBJS = $(COMMON_NOGPU_SRCS:.c=.o)
 
 #---------------------------------- QS file lists -------------------------
 
@@ -175,7 +196,7 @@ QS_OBJS = \
 
 #---------------------------------- GPU file lists -------------------------
 
-GPU_OBJS = \
+GPU_OBJS += \
 	stage1_core_sm20.ptx \
 	stage1_core_sm30.ptx \
 	stage1_core_sm35.ptx \
@@ -270,6 +291,7 @@ help:
 	@echo "add 'MPI=1' for parallel processing using MPI"
 	@echo "add 'BOINC=1' to add BOINC wrapper"
 	@echo "add 'NO_ZLIB=1' if you don't have zlib"
+	@echo "add 'VBITS=X' for linear algebra with X-bit vectors (64, 128, 256)"
 
 all: $(COMMON_OBJS) $(QS_OBJS) $(NFS_OBJS) $(GPU_OBJS)
 	rm -f libmsieve.a

@@ -144,8 +144,6 @@
     <ClCompile Include="..\..\common\dickman.c" />
     <ClCompile Include="..\..\common\expr_eval.c" />
     <ClCompile Include="..\..\common\filter\filter.c" />
-    <ClCompile Include="..\..\common\lanczos\lanczos_reorder.c" />
-    <ClCompile Include="..\..\common\lanczos\lanczos_vv.c" />
     <ClCompile Include="..\..\common\lanczos\matmul_util.c" />
     <ClCompile Include="..\..\common\minimize_global.c" />
     <ClCompile Include="..\..\common\smallfact\gmp_ecm.c" />
@@ -153,10 +151,12 @@
     <ClCompile Include="..\..\common\integrate.c" />
     <ClCompile Include="..\..\common\lanczos\lanczos.c" />
     <ClCompile Include="..\..\common\lanczos\lanczos_io.c" />
-    <ClCompile Include="..\..\common\lanczos\lanczos_matmul0.c" />
-    <ClCompile Include="..\..\common\lanczos\lanczos_matmul1.c" />
-    <ClCompile Include="..\..\common\lanczos\lanczos_matmul2.c" />
+    <ClCompile Include="..\..\common\lanczos\lanczos_matmul.c" />
     <ClCompile Include="..\..\common\lanczos\lanczos_pre.c" />
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul0.c" />
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul1.c" />
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul2.c" />
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_vv.c" />
     <ClCompile Include="..\..\common\filter\merge.c" />
     <ClCompile Include="..\..\common\filter\merge_post.c" />
     <ClCompile Include="..\..\common\filter\merge_pre.c" />
@@ -184,6 +184,7 @@
     <ClInclude Include="..\..\common\filter\filter_priv.h" />
     <ClInclude Include="..\..\include\integrate.h" />
     <ClInclude Include="..\..\common\lanczos\lanczos.h" />
+    <ClInclude Include="..\..\common\lanczos\cpu\lanczos_cpu.h" />
     <ClInclude Include="..\..\include\mp.h" />
     <ClInclude Include="..\..\include\msieve.h" />
     <ClInclude Include="..\..\include\polyroot.h" />

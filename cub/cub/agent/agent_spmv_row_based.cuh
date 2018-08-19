@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011, Duane Merrill.  All rights reserved.
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -305,7 +305,7 @@ struct AgentSpmv
             temp_storage.nonzeros[local_nonzero_idx] = nonzero;
         }
 
-        __syncthreads();
+        CTA_SYNC();
 
         //
         // Swap in NANs at local row start offsets
@@ -319,7 +319,7 @@ struct AgentSpmv
             temp_storage.nonzeros[local_row_nonzero_idx] = NAN_TOKEN;
         }
 
-        __syncthreads();
+        CTA_SYNC();
 
         //
         // Segmented scan
@@ -357,7 +357,7 @@ struct AgentSpmv
                 temp_storage.nonzeros[local_nonzero_idx] = scan_items_out[ITEM].value;
         }
 
-        __syncthreads();
+        CTA_SYNC();
 
         //
         // Update row totals
@@ -420,7 +420,7 @@ struct AgentSpmv
             }
         }
 
-        __syncthreads();
+        CTA_SYNC();
 
         //
         // Process strips of nonzeros
@@ -430,7 +430,7 @@ struct AgentSpmv
         OffsetT tile_nonzero_idx        = temp_storage.tile_nonzero_idx;
         OffsetT tile_nonzero_idx_end    = temp_storage.tile_nonzero_idx_end;
 
-        KeyValuePairT       tile_prefix = {0, 0.0};
+        KeyValuePairT tile_prefix(0, 0.0);
         ReduceBySegmentOpT  scan_op;
         PrefixOpT           prefix_op(tile_prefix, scan_op);
 
@@ -440,7 +440,7 @@ struct AgentSpmv
             ConsumeStrip<ITEMS_PER_THREAD>(prefix_op, scan_op, row_total, row_start,
                 tile_nonzero_idx, tile_nonzero_idx_end, row_nonzero_idx, row_nonzero_idx_end);
 
-            __syncthreads();
+            CTA_SYNC();
         }
 
         //

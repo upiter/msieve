@@ -1,4 +1,8 @@
 Vesrion 1.54:
+	- Merged the CPU lanczos code from the msieve-lacuda branch, which 
+		includes long vector support; compiling with long vectors on
+		a modern machine with a modern gcc has yielded a 10-15%
+		speedup
 	- NFS Polynomial selection updates from many people:
 		- improved estimate of final e-value
 		- improved handling of the factors of leading alg. coefficient
@@ -7,8 +11,8 @@ Vesrion 1.54:
 	- Removed exit() call from error path in NFS filtering (thanks jrcrombie)
 	- Made the maximum merge weight configurable (thanks Lionel Debroux)
 	- Updated the makefile to build GPU code for more recent GPUs
-	- Changed the default NFS filtering target desnity to 90
-
+	- Updated CUB version
+	- Changed the default NFS filtering target density to 90
 
 Version 1.53: 11/11/16
 	- Replaced the GPU sorting library with calls to CUB; this is more
@@ -62,6 +66,7 @@ Version 1.52: 2/4/14
 	- Fixed problems parsing arguments in the NFS square root (thanks
 		Carlos Pinho / Lionel Debroux)
 	- Fixed a typo in the threadpool that caused races when shutting down
+	- Fixed the E-value estimate for poly selection (thanks Serge Batalov)
 	- Turned off asm in QS when compiling debug builds
 	- Fixed a buffer overflow parsing large inputs (thanks Ryan Propper)
 	- Fixed Windows CPU time measurement (thanks Roman Rusakov)

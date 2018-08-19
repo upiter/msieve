@@ -16,17 +16,121 @@ $Id$
 #define _COMMON_LANCZOS_LANCZOS_H_
 
 #include <common.h>
-#include <thread.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* the number of dependencies that will be generated
+   internally (a max of 64 dependencies will be exposed
+   to calling code) */
+
+#ifndef VBITS
+#error "linear algebra vector length not specified"
+#endif
+
+#define VWORDS ((VBITS + 63) / 64)
+
+#if VBITS!=64 && VBITS!=128 && VBITS!=256
+#error "unsupported vector size"
+#endif
+
+typedef struct {
+	uint64 w[VWORDS];
+} v_t;
+
+static INLINE v_t v_and(v_t a, v_t b) {
+	v_t res;
+
+	res.w[0] = a.w[0] & b.w[0];
+	#if VWORDS > 1
+	res.w[1] = a.w[1] & b.w[1];
+	#if VWORDS > 2
+	res.w[2] = a.w[2] & b.w[2];
+	#if VWORDS > 3
+	res.w[3] = a.w[3] & b.w[3];
+	#endif
+	#endif
+	#endif
+	return res;
+}
+
+static INLINE v_t v_or(v_t a, v_t b) {
+	v_t res;
+
+	res.w[0] = a.w[0] | b.w[0];
+	#if VWORDS > 1
+	res.w[1] = a.w[1] | b.w[1];
+	#if VWORDS > 2
+	res.w[2] = a.w[2] | b.w[2];
+	#if VWORDS > 3
+	res.w[3] = a.w[3] | b.w[3];
+	#endif
+	#endif
+	#endif
+	return res;
+}
+
+static INLINE v_t v_xor(v_t a, v_t b) {
+	v_t res;
+
+	res.w[0] = a.w[0] ^ b.w[0];
+	#if VWORDS > 1
+	res.w[1] = a.w[1] ^ b.w[1];
+	#if VWORDS > 2
+	res.w[2] = a.w[2] ^ b.w[2];
+	#if VWORDS > 3
+	res.w[3] = a.w[3] ^ b.w[3];
+	#endif
+	#endif
+	#endif
+	return res;
+}
+
+static INLINE uint32 v_bitset(v_t a, uint32 bit) {
+	if (a.w[bit / 64] & ((uint64)1 << (bit % 64)))
+		return 1;
+	return 0;
+}
+
+static INLINE uint32 v_is_all_zeros(v_t a) {
+
+	uint32 i;
+
+	for (i = 0; i < VWORDS; i++)
+		if (a.w[i])
+			return 0;
+	return 1;
+}
+
+static INLINE uint32 v_is_all_ones(v_t a) {
+
+	uint32 i;
+
+	for (i = 0; i < VWORDS; i++)
+		if (a.w[i] != (uint64)(-1))
+			return 0;
+	return 1;
+}
+
+static INLINE v_t v_random(uint32 *seed1, uint32 *seed2) {
+	v_t res;
+	uint32 i;
+
+	for (i = 0; i < VWORDS; i++)
+		res.w[i] = (uint64)(get_rand(seed1, seed2)) << 32 |
+			   (uint64)(get_rand(seed1, seed2));
+
+	return res;
+}
+
+static const v_t v_zero = {{0}};
+
 /* for matrices of dimension exceeding MIN_POST_LANCZOS_DIM,
    the first POST_LANCZOS_ROWS rows are handled in a separate
    Gauss elimination phase after the Lanczos iteration
    completes. This means the lanczos code will produce about
-   64 - POST_LANCZOS_ROWS dependencies on average. 
+   VBITS - POST_LANCZOS_ROWS dependencies on average. 
    
    The code will still work if POST_LANCZOS_ROWS is 0, but I 
    don't know why you would want to do that. The first rows are 
@@ -35,67 +139,21 @@ extern "C" {
    in a matrix multiply, as well as the memory footprint of 
    the matrix */
 
-#define POST_LANCZOS_ROWS 48
+#define POST_LANCZOS_ROWS (VBITS - 16)
 #define MIN_POST_LANCZOS_DIM 10000
-
-/* routines for cache-efficient multiplication of
-   sparse matrices */
 
 /* the smallest matrix size that will be converted 
    to packed format */
 
 #define MIN_NROWS_TO_PACK 30000
 
+/* routines for cache-efficient multiplication of
+   sparse matrices */
+
 /* the number of moderately dense rows that are
    packed less tightly */
 
 #define NUM_MEDIUM_ROWS 3000
-
-/* structure representing a nonzero element of
-   the matrix after packing into block format. 
-   The two fields are the row and column offsets
-   from the top left corner of the block */
-
-typedef struct {
-	uint16 row_off;
-	uint16 col_off;
-} entry_idx_t;
-
-/* struct representing one block */
-
-typedef struct {
-	uint32 num_entries;       /* number of nonzero matrix entries */
-	union {
-		entry_idx_t *entries;     /* nonzero entries */
-		uint16 *med_entries;	  /* nonzero entries for medium dense rows */
-	} d;
-} packed_block_t;
-
-/* struct used by threads for computing partial
-   matrix multiplies */
-
-typedef struct {
-	/* items for matrix-vector operations */
-
-	uint64 *tmp_b;
-
-	/* items for vector-vector operations */
-
-	uint64 *x;
-	uint64 *b;
-	uint64 *y;
-	uint32 vsize;
-
-} thread_data_t;
-
-typedef struct {
-	struct packed_matrix_t *matrix;
-	uint32 task_num;
-	uint32 block_num;
-} la_task_t;
-
-#define MAX_THREADS 32
-#define MIN_NROWS_TO_THREAD 200000
 
 /* struct representing a packed matrix */
 
@@ -113,30 +171,7 @@ typedef struct packed_matrix_t {
 
 	la_col_t *unpacked_cols;  /* used if no packing takes place */
 
-	/* used for block matrix multiplies */
-
-	uint64 *x; /* vector to multiply */
-	uint64 *b; /* vector for result */
-
-	uint32 block_size;
-	uint32 num_block_rows;
-	uint32 num_block_cols;
-
-	uint32 superblock_size;  /* in units of blocks */
-	uint32 num_superblock_rows;
-	uint32 num_superblock_cols;
-
-	uint32 first_block_size;/* block size for the smallest row numbers */
-
-	uint64 **dense_blocks;  /* for holding dense matrix rows; 
-				   dense_blocks[i] holds the i_th batch of
-				   64 matrix rows */
-	packed_block_t *blocks; /* sparse part of matrix, in block format */
-
-
-	struct threadpool *threadpool;
-	thread_data_t thread_data[MAX_THREADS];
-	la_task_t *tasks;
+	void * extra; /* implementation-specific stuff */
 
 #ifdef HAVE_MPI
 	uint32 mpi_size;
@@ -147,18 +182,16 @@ typedef struct packed_matrix_t {
 	MPI_Comm mpi_la_row_grid;
 	MPI_Comm mpi_la_col_grid;
 
+	uint32 nsubcols;
+	int32 subcol_counts[MAX_MPI_GRID_DIM];
+	int32 subcol_offsets[MAX_MPI_GRID_DIM];    
+
 	/* needed on root node only */
 	int32 col_counts[MAX_MPI_GRID_DIM];
 	int32 col_offsets[MAX_MPI_GRID_DIM]; 
 	int32 row_counts[MAX_MPI_GRID_DIM];
 	int32 row_offsets[MAX_MPI_GRID_DIM];
-	int32 subcol_counts[MAX_MPI_GRID_DIM];
-	int32 subcol_offsets[MAX_MPI_GRID_DIM];    
-	int32 subrow_counts[MAX_MPI_GRID_DIM];
-	int32 subrow_offsets[MAX_MPI_GRID_DIM]; 
 
-	uint32 nsubcols;
-	uint32 nsubrows;
 #endif
 
 } packed_matrix_t;
@@ -174,58 +207,65 @@ void packed_matrix_free(packed_matrix_t *packed_matrix);
 
 size_t packed_matrix_sizeof(packed_matrix_t *packed_matrix);
 
-void mul_MxN_Nx64(packed_matrix_t *A, uint64 *x, 
-			uint64 *b, uint64 *scratch);
+void matrix_extra_init(msieve_obj *obj, 
+			packed_matrix_t *packed_matrix,
+			uint32 first_block_size);
 
-void mul_sym_NxN_Nx64(packed_matrix_t *A, uint64 *x, 
-			uint64 *b, uint64 *scratch);
+void matrix_extra_free(packed_matrix_t *packed_matrix);
 
-/* for big jobs, we use a multithreaded framework that calls
-   these routines for the heavy lifting */
+/* top-level calls for matrix multiplies */
 
-void mul_packed_core(void *data, int thread_num);
+void mul_MxN_NxB(packed_matrix_t *A, 
+			void *x, void *scratch);
 
-void mul_packed_small_core(void *data, int thread_num);
+void mul_sym_NxN_NxB(packed_matrix_t *A, void *x, 
+			void *b, void *scratch);
 
-void mul_trans_packed_core(void *data, int thread_num);
+/* easy base cases for small problems */
 
-void mul_trans_packed_small_core(void *data, int thread_num);
+void mul_unpacked(packed_matrix_t *matrix, v_t *x, v_t *b); 
 
-/* top-level calls for vector-vector operations */
+void mul_trans_unpacked(packed_matrix_t *matrix, v_t *x, v_t *b);
 
-/* multi-threaded plus MPI */
+/* implementation-specific matrix-vector product */
 
-void tmul_Nx64_64x64_acc(packed_matrix_t *A, uint64 *v, uint64 *x, 
-			uint64 *y, uint32 n);
-
-void tmul_64xN_Nx64(packed_matrix_t *A, uint64 *x, uint64 *y, 
-			uint64 *xy, uint32 n);
+void mul_core(packed_matrix_t *A, void *x, void *b);
+void mul_trans_core(packed_matrix_t *A, void *x, void *b);
 
 #ifdef HAVE_MPI
-void global_xor(uint64 *send_buf, uint64 *recv_buf, 
+void global_xor(void *send_buf, void *recv_buf, 
 		uint32 bufsize, uint32 mpi_nodes, 
 		uint32 mpi_rank, MPI_Comm comm);
 
 void global_chunk_info(uint32 total_size, uint32 num_nodes, 
 		uint32 my_id, uint32 *chunk_size, uint32 *chunk_start);
 
-void global_allgather(uint64 *send_buf, uint64 *recv_buf, 
+void global_allgather(void *send_buf, void *recv_buf, 
                         uint32 bufsize, uint32 mpi_nodes, 
                         uint32 mpi_rank, MPI_Comm comm);
 
-void global_xor_scatter(uint64 *send_buf, uint64 *recv_buf, 
-			uint64 *scratch, uint32 bufsize, 
+void global_xor_scatter(void *send_buf, void *recv_buf, 
+			void *scratch, uint32 bufsize, 
 			uint32 mpi_nodes, uint32 mpi_rank, 
 			MPI_Comm comm);
 #endif
 
-/* single-threaded */
+/* top-level calls for vector-vector operations */
 
-void mul_Nx64_64x64_acc(uint64 *v, uint64 *x, uint64 *y, uint32 n);
+void *vv_alloc(uint32 n, void *extra);
+void vv_free(void *v);
+void vv_copyin(void *dest, v_t *src, uint32 n);
+void vv_copy(void *dest, void *src, uint32 n);
+void vv_copyout(v_t *dest, void *src, uint32 n);
+void vv_clear(void *v, uint32 n);
+void vv_xor(void *dest, void *src, uint32 n);
+void vv_mask(void *v, v_t mask, uint32 n);
 
-void mul_64xN_Nx64(uint64 *x, uint64 *y, uint64 *xy, uint32 n);
+void vv_mul_NxB_BxB_acc(packed_matrix_t *A, void *v, v_t *x, 
+			void *y, uint32 n);
 
-void accum_xor(uint64 *dest, uint64 *src, uint32 n);
+void vv_mul_BxN_NxB(packed_matrix_t *A, void *x, void *y, 
+			v_t *xy, uint32 n);
 
 #ifdef __cplusplus
 }

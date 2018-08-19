@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011, Duane Merrill.  All rights reserved.
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -164,7 +164,7 @@ struct AgentHistogram
 
     /// Parameterized BlockLoad type for samples
     typedef BlockLoad<
-            WrappedSampleIteratorT,
+            SampleT,
             BLOCK_THREADS,
             SAMPLES_PER_THREAD,
             AgentHistogramPolicyT::LOAD_ALGORITHM>
@@ -172,7 +172,7 @@ struct AgentHistogram
 
     /// Parameterized BlockLoad type for pixels
     typedef BlockLoad<
-            WrappedPixelIteratorT,
+            PixelT,
             BLOCK_THREADS,
             PIXELS_PER_THREAD,
             AgentHistogramPolicyT::LOAD_ALGORITHM>
@@ -180,7 +180,7 @@ struct AgentHistogram
 
     /// Parameterized BlockLoad type for quads
     typedef BlockLoad<
-            WrappedQuadIteratorT,
+            QuadT,
             BLOCK_THREADS,
             QUADS_PER_THREAD,
             AgentHistogramPolicyT::LOAD_ALGORITHM>
@@ -259,7 +259,7 @@ struct AgentHistogram
         }
 
         // Barrier to make sure all threads are done updating counters
-        __syncthreads();
+        CTA_SYNC();
     }
 
 
@@ -290,7 +290,7 @@ struct AgentHistogram
     __device__ __forceinline__ void StoreOutput(CounterT* privatized_histograms[NUM_ACTIVE_CHANNELS])
     {
         // Barrier to make sure all threads are done updating counters
-        __syncthreads();
+        CTA_SYNC();
 
         // Apply privatized bin counts to output bin counts
         #pragma unroll
@@ -612,13 +612,13 @@ struct AgentHistogram
                 ConsumeTile<IS_ALIGNED, true>(tile_offset, TILE_SAMPLES);
             }
 
-            __syncthreads();
+            CTA_SYNC();
 
             // Get next tile
             if (threadIdx.x == 0)
                 temp_storage.tile_idx = tile_queue.Drain(1) + num_even_share_tiles;
 
-            __syncthreads();
+            CTA_SYNC();
 
             tile_idx = temp_storage.tile_idx;
         }
