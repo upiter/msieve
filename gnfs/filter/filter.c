@@ -156,7 +156,7 @@ static void set_filtering_bounds(msieve_obj *obj, factor_base_t *fb,
    average matrix column (may be overriden if you know
    what you are doing) */
 
-#define DEFAULT_TARGET_DENSITY 70.0
+#define DEFAULT_TARGET_DENSITY 90.0
 
 static uint32 do_merge(msieve_obj *obj, filter_t *filter, 
 			merge_t *merge, double target_density) {

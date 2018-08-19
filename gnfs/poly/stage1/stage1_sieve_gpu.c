@@ -961,7 +961,7 @@ sieve_lattice_gpu_core(msieve_obj *obj,
 				/ log(special_q_max) / log(p_max)
 				/ 3e10);
 
-	if (num_pieces > 1) { /* randomize the special_q range */
+	if (num_pieces > 51) { /* randomize the special_q range */
 		uint32 piece_length = (special_q_max - special_q_min)
 				/ num_pieces;
 		uint32 piece = get_rand(&obj->seed1, &obj->seed2)

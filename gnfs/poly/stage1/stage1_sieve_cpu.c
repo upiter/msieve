@@ -705,7 +705,7 @@ sieve_lattice_cpu(msieve_obj *obj, poly_search_t *poly,
 		if (sieve_size == SIEVE_MAX && i > 0)
 			break;
 
-		if (num_pieces > 1) { /* randomize the special_q range */
+		if (num_pieces > 451) { /* randomize the special_q range */
 			uint32 piece_length = (special_q_max - special_q_min)
 					/ num_pieces;
 			uint32 piece = get_rand(&obj->seed1, &obj->seed2)

@@ -37,12 +37,9 @@ extern "C" {
 /* we try to limit the high-order algebraic poly coefficient 
    to the set with many small primes, to increase the odds 
    that the resulting polynomial will have unusually many 
-   projective roots modulo small primes. All high coeffs
-   are chosen to be divisible by HIGH_COEFF_MULTIPLIER */
+   projective roots modulo small primes. */
 
-#define HIGH_COEFF_MULTIPLIER 12
 #define HIGH_COEFF_PRIME_LIMIT 100
-#define HIGH_COEFF_POWER_LIMIT 2
 
 /* for practical reasons, we limit the size of product of
    small primes that we look for in the high-order algebraic

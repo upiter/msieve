@@ -1,7 +1,14 @@
 Vesrion 1.54:
+	- NFS Polynomial selection updates from many people:
+		- improved estimate of final e-value
+		- improved handling of the factors of leading alg. coefficient
+		- reduced verbosity
+		- search bounds informed by years of mersenneforum work
 	- Removed exit() call from error path in NFS filtering (thanks jrcrombie)
 	- Made the maximum merge weight configurable (thanks Lionel Debroux)
 	- Updated the makefile to build GPU code for more recent GPUs
+	- Changed the default NFS filtering target desnity to 90
+
 
 Version 1.53: 11/11/16
 	- Replaced the GPU sorting library with calls to CUB; this is more
