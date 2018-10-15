@@ -22,7 +22,7 @@
     <ProjectGuid>{0A0DE0B6-9A9A-4B77-9F83-AEF871CDAE66}</ProjectGuid>
     <RootNamespace>common</RootNamespace>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -78,7 +78,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\aprcl;..\..\zlib;..\..\..\pthreads;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;PTW32_STATIC_LIB;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;VBITS=64;PTW32_STATIC_LIB;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -100,7 +100,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\aprcl;..\..\zlib;..\..\..\pthreads;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;PTW32_STATIC_LIB;_WIN64;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;VBITS=64;PTW32_STATIC_LIB;_WIN64;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -120,7 +120,7 @@
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\aprcl;..\..\zlib;..\..\..\pthreads;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;PTW32_STATIC_LIB;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;VBITS=64;PTW32_STATIC_LIB;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -147,7 +147,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
-      <PreprocessorDefinitions>WIN32;_WIN64;PTW32_STATIC_LIB;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;VBITS=64;_WIN64;PTW32_STATIC_LIB;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Lib />
     <Lib>
@@ -163,6 +163,10 @@
     <ClCompile Include="..\..\common\dickman.c" />
     <ClCompile Include="..\..\common\expr_eval.c" />
     <ClCompile Include="..\..\common\filter\filter.c" />
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul0.c" />
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul1.c" />
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul2.c" />
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_vv.c" />
     <ClCompile Include="..\..\common\lanczos\matmul_util.c" />
     <ClCompile Include="..\..\common\minimize_global.c" />
     <ClCompile Include="..\..\common\smallfact\gmp_ecm.c" />
@@ -172,11 +176,6 @@
     <ClCompile Include="..\..\common\lanczos\lanczos_io.c" />
     <ClCompile Include="..\..\common\lanczos\lanczos_matmul.c" />
     <ClCompile Include="..\..\common\lanczos\lanczos_pre.c" />
-    <ClCompile Include="..\..\common\lanczos\matmul_util.c" />
-    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul0.c" />
-    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul1.c" />
-    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul2.c" />
-    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_vv.c" />
     <ClCompile Include="..\..\common\filter\merge.c" />
     <ClCompile Include="..\..\common\filter\merge_post.c" />
     <ClCompile Include="..\..\common\filter\merge_pre.c" />

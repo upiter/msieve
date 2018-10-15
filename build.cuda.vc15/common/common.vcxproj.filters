@@ -44,15 +44,6 @@
     <ClCompile Include="..\..\common\lanczos\lanczos_io.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\common\lanczos\lanczos_matmul0.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\common\lanczos\lanczos_matmul1.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\common\lanczos\lanczos_matmul2.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\common\lanczos\lanczos_pre.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -101,9 +92,6 @@
     <ClCompile Include="..\..\common\minimize_global.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\common\lanczos\lanczos_vv.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\common\lanczos\matmul_util.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -117,6 +105,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\aprcl\mpz_aprcl32.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\lanczos\lanczos_matmul.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul0.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul1.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_matmul2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\lanczos\cpu\lanczos_vv.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -173,6 +176,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\aprcl\mpz_aprcl32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\lanczos\cpu\lanczos_cpu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
