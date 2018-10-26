@@ -45,7 +45,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 9.2.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 10.0.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -94,7 +94,7 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.2\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
@@ -126,7 +126,7 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.2\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
@@ -155,7 +155,7 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.2\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
@@ -188,7 +188,7 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.2\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
@@ -231,6 +231,6 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 9.2.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 10.0.targets" />
   </ImportGroup>
 </Project>
