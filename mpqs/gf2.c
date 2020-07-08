@@ -55,14 +55,14 @@ void solve_linear_system(msieve_obj *obj, uint32 fb_size,
 
 	dependencies = block_lanczos(obj, nrows, nrows, 0, 0, ncols, 
 					ncols, 0, cols, &num_deps);
-
+	*num_cycles = ncols;
+	
 	if (num_deps == 0) {
 		free(dependencies);
 		return;
 	}
 
 	*bitfield = dependencies;
-	*num_cycles = ncols;
 }
 
 /*------------------------------------------------------------------*/
