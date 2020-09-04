@@ -12,6 +12,8 @@ Vesrion 1.54:
 	- Made the maximum merge weight configurable (thanks Lionel Debroux)
 	- Updated the makefile to build GPU code for more recent GPUs
 	- Updated CUB version
+	- Added a fix that avoids a crash when linking to GMP 6.2.0 
+		(thanks bsquared)
 	- Changed the default NFS filtering target density to 90
 
 Version 1.53: 11/11/16
