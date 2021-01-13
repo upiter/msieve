@@ -660,6 +660,7 @@ static void dump_lanczos_state(msieve_obj *obj,
 	status &= (fwrite(vt_v0[2], sizeof(v_t), (size_t)VBITS, fp) == VBITS);
 	status &= (fwrite(s[1], sizeof(uint32), (size_t)VBITS, fp) == VBITS);
 	status &= (fwrite(&dim1, sizeof(uint32), (size_t)1, fp) == 1);
+	tmp = (v_t *)aligned_malloc(max_n * sizeof(v_t), 64);
 	MPI_NODE_0_END
 
 #ifdef HAVE_MPI
@@ -688,8 +689,6 @@ static void dump_lanczos_state(msieve_obj *obj,
 	status &= (fwrite(tmp, sizeof(v_t), (size_t)max_n, fp) == max_n);
 	MPI_NODE_0_END
 #else
-	tmp = (v_t *)xmalloc(max_n * sizeof(v_t));
-
 	vv_copyout(tmp, x, max_n);
 	status &= (fwrite(tmp, sizeof(v_t), (size_t)max_n, fp) == max_n);
 
@@ -705,9 +704,9 @@ static void dump_lanczos_state(msieve_obj *obj,
 	vv_copyout(tmp, v0, max_n);
 	status &= (fwrite(tmp, sizeof(v_t), (size_t)max_n, fp) == max_n);
 #endif
-	free(tmp);
 
 	MPI_NODE_0_START
+	aligned_free(tmp);
 	fclose(fp);
 
 	/* only delete an old checkpoint file if the current 
@@ -1651,12 +1650,12 @@ uint64 * block_lanczos(msieve_obj *obj,
 	if (*num_deps_found) {
 		uint32 i;
 
-		dependencies = (uint64 *)xmalloc(ncols * sizeof(uint64));
+		dependencies = (uint64 *)xmalloc(max_ncols * sizeof(uint64));
 
 		if (*num_deps_found > 64)
 			logprintf(obj, "saving only 64 dependencies\n");
 
-		for (i = 0; i < ncols; i++)
+		for (i = 0; i < max_ncols; i++)
 			dependencies[i] = lanczos_output[i].w[0];
 	}
 

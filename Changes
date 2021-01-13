@@ -3,6 +3,7 @@ Vesrion 1.54:
 		includes long vector support; compiling with long vectors on
 		a modern machine with a modern gcc has yielded a 10-15%
 		speedup
+	- Fixed errors in MPI block Lanczos (thanks Greg Childers)
 	- NFS Polynomial selection updates from many people:
 		- improved estimate of final e-value
 		- improved handling of the factors of leading alg. coefficient
