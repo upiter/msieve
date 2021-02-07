@@ -126,7 +126,7 @@ typedef struct {
 	uint16 num_ideals;          /* number of weight-2 ideals in clique */
 	float score;                /* measure of how 'heavy' the clique is
 				       (higher implies heavier) */
-	uint32 *relation_array_word;  /* list of word offsets within the
+	uint64 *relation_array_word;  /* list of word offsets within the
 					 relation array of relations that
 					 occur in this clique */
 } clique_t;
@@ -169,9 +169,9 @@ static void make_heap(clique_t *h, uint32 size) {
 }
 
 /*--------------------------------------------------------------------*/
-static int compare_uint32(const void *x, const void *y) {
-	uint32 *xx = (uint32 *)x;
-	uint32 *yy = (uint32 *)y;
+static int compare_uint64(const void *x, const void *y) {
+	uint64 *xx = (uint64 *)x;
+	uint64 *yy = (uint64 *)y;
 	if (*xx > *yy)
 		return 1;
 	if (*xx < *yy)
@@ -192,8 +192,50 @@ static int compare_score_descending(const void *x, const void *y) {
 }
 
 /*--------------------------------------------------------------------*/
+static void check_relations_array(filter_t *filter, uint32 location) {
+
+	relation_ideal_t *curr_relation;
+	uint32 num_relations;
+	uint32 num_ideals, ideal;
+	uint32 i, j;
+	uint32 num_bad = 0;
+	uint32 badrel = 0;
+
+	printf("checking relations array at location %u\n", location);
+	fflush(stdout);
+
+	curr_relation = filter->relation_array;
+	num_relations = filter->num_relations;
+	num_ideals = filter->num_ideals;
+
+	for (i = 0; i < num_relations; i++) {
+	    	for (j = 0; j < curr_relation->ideal_count; j++) {
+			ideal = curr_relation->ideal_list[j];
+			if (ideal >= num_ideals) badrel = 1; 
+	    	}
+	    	if (badrel == 1) {
+			printf("Loc %u: bad relation %u of %u, num_ideals is %u\n",
+				location, i, num_relations, num_ideals);
+			printf("rel_index: %u, ideal_count: %hhu, gf2_factors: %hhu, connected: %hhu\nIdeals: ",
+				curr_relation->rel_index, curr_relation->ideal_count, curr_relation->gf2_factors, curr_relation->connected);
+			for (j = 0; j < curr_relation->ideal_count; j++)
+				printf("%u, ", curr_relation->ideal_list[j]);
+			printf("\n");
+			badrel = 0;
+			num_bad++;
+		}
+	    	curr_relation = next_relation_ptr(curr_relation);
+	}
+		
+	if (num_bad > 0) printf("Found %u bad relations in array.\n", num_bad);
+	fflush(stdout);
+
+	return;
+}
+
+/*--------------------------------------------------------------------*/
 static void delete_relations(filter_t *filter,
-			uint32 *delete_array, uint32 num_delete) {
+			uint64 *delete_array, uint32 num_delete) {
 
 	uint32 i, j;
 	uint32 num_relations = filter->num_relations;
@@ -204,7 +246,7 @@ static void delete_relations(filter_t *filter,
 	/* put relation pointers in sorted order */
 
 	qsort(delete_array, (size_t)num_delete, 
-			sizeof(uint32), compare_uint32);
+			sizeof(uint64), compare_uint64);
 
 	/* walk through the relation list and delete the
 	   relations that appear in the delete list */
@@ -212,7 +254,7 @@ static void delete_relations(filter_t *filter,
 	curr_relation = relation_array;
 	old_relation = relation_array;
 	for (i = j = 0; i < num_relations; i++) {
-		uint32 array_word = (uint32)((uint32 *)curr_relation -
+		uint64 array_word = (uint64)((uint32 *)curr_relation -
 						(uint32 *)relation_array);
 		relation_ideal_t *next_relation = 
 				next_relation_ptr(curr_relation);
@@ -249,6 +291,7 @@ static void delete_relations(filter_t *filter,
 				(size_t)(old_relation + 1 - relation_array) *
 				sizeof(relation_ideal_t));
 	filter->num_relations = num_relations - num_delete;
+	check_relations_array(filter, 1);
 }
 
 /*--------------------------------------------------------------------*/
@@ -268,7 +311,7 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 	clique_t *clique_heap;
 	uint32 num_clique;
 
-	uint32 *delete_array;
+	uint64 *delete_array;
 	uint32 num_delete;
 	uint32 num_delete_alloc;
 
@@ -276,7 +319,7 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 	uint32 num_reverse;
 	uint32 num_reverse_alloc;
 
-	uint32 *clique_relations;
+	uint64 *clique_relations;
 	uint32 num_clique_relations;
 	uint32 num_clique_relations_alloc;
 
@@ -332,9 +375,6 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 				((uint32 *)curr_relation -
 				 (uint32 *)relation_array);
 
-		if (relation_array_word > (uint32)(-1))
-			break;
-
 		/* for each ideal in the relation */
 
 		for (j = 0; j < curr_relation->ideal_count; j++) {
@@ -354,7 +394,7 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 						sizeof(ideal_relation_t));
 			}
 			reverse_array[num_reverse].relation_array_word =
-						(uint32)relation_array_word;
+						relation_array_word;
 			reverse_array[num_reverse].next = 
 						ideal_map[ideal].payload;
 			ideal_map[ideal].payload = num_reverse++;
@@ -367,8 +407,8 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 	clique_heap = (clique_t *)xmalloc(clique_heap_size * sizeof(clique_t));
 
 	num_clique_relations_alloc = 500;
-	clique_relations = (uint32 *)xmalloc(num_clique_relations_alloc *
-					sizeof(uint32));
+	clique_relations = (uint64 *)xmalloc(num_clique_relations_alloc *
+					sizeof(uint64));
 
 	num_clique_ideals_alloc = 500;
 	clique_ideals = (uint32 *)xmalloc(num_clique_ideals_alloc *
@@ -465,10 +505,10 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 				if (num_clique_relations ==
 						num_clique_relations_alloc) {
 					num_clique_relations_alloc *= 2;
-					clique_relations = (uint32 *)xrealloc(
+					clique_relations = (uint64 *)xrealloc(
 						clique_relations,
 						num_clique_relations_alloc *
-						sizeof(uint32));
+						sizeof(uint64));
 				}
 				clique_relations[num_clique_relations++] = 
 						rev->relation_array_word;
@@ -510,11 +550,11 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 		next_clique->num_ideals = (uint16)num_clique_ideals;
 		next_clique->score = clique_score;
 		next_clique->relation_array_word = 
-				(uint32 *)xmalloc(num_clique_relations *
-						sizeof(uint32));
+				(uint64 *)xmalloc(num_clique_relations *
+						sizeof(uint64));
 		memcpy(next_clique->relation_array_word,
 			clique_relations, 
-			num_clique_relations * sizeof(uint32));
+			num_clique_relations * sizeof(uint64));
 
 		/* manage the heap */
 
@@ -544,7 +584,7 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 	num_delete_alloc = 5000;
 	num_delete = 0;
 	num_ideals_delete = 0;
-	delete_array = (uint32 *)xmalloc(num_delete_alloc * sizeof(uint32));
+	delete_array = (uint64 *)xmalloc(num_delete_alloc * sizeof(uint64));
 
 	for (i = 0; i < num_clique; i++) {
 		clique_t *curr_clique = clique_heap + i;
@@ -575,9 +615,9 @@ static uint32 purge_cliques_core(msieve_obj *obj,
 		for (j = 0; j < curr_clique->num_relations; j++) {
 			if (num_delete == num_delete_alloc) {
 				num_delete_alloc *= 2;
-				delete_array = (uint32 *)xrealloc(delete_array,
+				delete_array = (uint64 *)xrealloc(delete_array,
 							num_delete_alloc *
-							sizeof(uint32));
+							sizeof(uint64));
 			}
 			delete_array[num_delete++] = 
 				curr_clique->relation_array_word[j];

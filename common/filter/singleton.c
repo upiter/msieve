@@ -118,7 +118,7 @@ void filter_read_lp_file(msieve_obj *obj, filter_t *filter,
 	size_t header_words;
 	relation_ideal_t tmp;
 	relation_ideal_t *relation_array;
-	uint32 curr_word;
+	uint64 curr_word;
 	size_t num_relation_alloc;
 	uint32 *counts;
 	uint32 num_relations = filter->num_relations;

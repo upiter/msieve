@@ -30,7 +30,7 @@ extern "C" {
    and relations (used during clique removal) */
 
 typedef struct {
-	uint32 relation_array_word;  /* 32-bit word offset into relation
+	uint64 relation_array_word;  /* 64-bit word offset into relation
 					array where the relation starts */
 	uint32 next;		     /* next relation containing this ideal */
 } ideal_relation_t;
@@ -39,12 +39,12 @@ typedef struct {
    linked list of relations that use that ideal */
 
 typedef struct {
-	uint32 payload : 30;	/* offset in list of ideal_relation_t
+	uint64 payload : 32;	/* offset in list of ideal_relation_t
 				   structures where the linked list of
 				   ideal_relation_t's for this ideal starts */
-	uint32 clique : 1;      /* nonzero if this ideal can participate in
+	uint64 clique : 1;      /* nonzero if this ideal can participate in
 				   a clique */
-	uint32 connected : 1;   /* nonzero if this ideal has already been
+	uint64 connected : 1;   /* nonzero if this ideal has already been
 				   added to a clique under construction */
 } ideal_map_t;
 
