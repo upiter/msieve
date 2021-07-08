@@ -1112,10 +1112,25 @@ gpu_thread_data_init(void *data, int threadid)
 		else
 			CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm35.ptx"))
 	}
-	else if (d->gpu_info->compute_version_major >= 5) {
-		CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm50.ptx"))
+	else if (d->gpu_info->compute_version_major == 5) {
+		if (d->gpu_info->compute_version_minor < 2)
+			CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm50.ptx"))
+		else
+			CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm52.ptx"))
 	}
-	else 
+	else if (d->gpu_info->compute_version_major == 6) {
+		CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm61.ptx"))
+	}
+	else if (d->gpu_info->compute_version_major == 7) {
+		if (d->gpu_info->compute_version_minor < 5)
+			CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm70.ptx"))
+		else
+			CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm75.ptx"))
+	}
+	else if (d->gpu_info->compute_version_major >= 8) {
+		CUDA_TRY(cuModuleLoad(&t->gpu_module, "stage1_core_sm86.ptx"))
+	}
+	else
 	{
 	    printf("sorry, Nvidia doesn't want to support your card\n");
 		exit(-1);
