@@ -45,23 +45,27 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.3.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.4.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\gmp_ecm_config.props" />
+    <Import Project="..\gpu_sm.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\gmp_ecm_config.props" />
+    <Import Project="..\gpu_sm.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\gmp_ecm_config.props" />
+    <Import Project="..\gpu_sm.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\gmp_ecm_config.props" />
+    <Import Project="..\gpu_sm.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
@@ -178,7 +182,7 @@
     <ClCompile>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.2\include;..\..\cub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;..\;..\..\include;..\..\zlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.4\include;..\..\cub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>MSIEVE_SVN_VERSION="998";WIN32;_WIN64;NDEBUG;_CONSOLE;HAVE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
@@ -188,7 +192,7 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.3\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Advapi32.lib;..\..\..\pthreads\lib\$(IntDir)pthreads.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.4\lib\$(Platform)\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
@@ -200,7 +204,7 @@
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
     <CudaCompile>
-      <CodeGeneration>compute_50,sm_50</CodeGeneration>
+      <CodeGeneration>compute_75,sm_75</CodeGeneration>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <NvccCompilation>ptx</NvccCompilation>
     </CudaCompile>
@@ -231,6 +235,6 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.3.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.4.targets" />
   </ImportGroup>
 </Project>

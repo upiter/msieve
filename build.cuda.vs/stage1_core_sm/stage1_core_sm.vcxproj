@@ -53,7 +53,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.3.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.4.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -180,8 +180,7 @@
     </Link>
     <CudaCompile>
       <NvccCompilation>ptx</NvccCompilation>
-      <CodeGeneration>
-      </CodeGeneration>
+      <CodeGeneration>compute_75,sm_75</CodeGeneration>
       <CompileOut>$(OutDir)$(TargetName).ptx</CompileOut>
       <TargetMachinePlatform>64</TargetMachinePlatform>
     </CudaCompile>
@@ -194,6 +193,6 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.3.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.4.targets" />
   </ImportGroup>
 </Project>
