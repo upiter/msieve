@@ -26,7 +26,7 @@ For larger numbers, the code switches to the **GMP-ECM** library and runs the **
 
 If these do not completely factor the input number, the library switches to the heavy artillery. Unless told otherwise, Msieve runs the self-initializing **Quadratic Sieve** (QS) algorithm, and if this doesn't factor the input number then you've found a library problem.
 
-If you know what you're doing, Msieve also contains a complete implementation of the **Number Field Sieve** (NFS), that has helped complete some of the largest public factorization efforts known. Information specific to the quadratic sieve implementation is contained in [Readme.qs](Readme.qs), while the number field sieve variant is described in [Readme.nfs](Readme.nfs)
+If you know what you're doing, Msieve also contains a complete implementation of the **Number Field Sieve** (NFS), that has helped complete some of the largest public factorization efforts known. Information specific to the quadratic sieve implementation is contained in [Readme.qs](README.QS.md), while the number field sieve variant is described in [Readme.nfs](Readme.nfs)
 
 The maximum size of numbers that can be given to the library is hardwired at compile time. Currently the code can handle numbers up to `~310` digits; however, you should bear in mind that I don't expect the library to be able to complete a factorization larger than about `120` digits by itself.
 
