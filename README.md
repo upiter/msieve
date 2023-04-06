@@ -276,7 +276,7 @@ There are three widely available descriptions of SQUFOF.
 
 ### Prime Numbers and Computer Methods for Factorization
 
-**A:** introductory one is Hans Riesel's section titled "Shanks' Factoring Method SQUFOF" in his book "Prime Numbers and Computer Methods for Factorization".
+An introductory one is Hans Riesel's section titled "Shanks' Factoring Method SQUFOF" in his book "Prime Numbers and Computer Methods for Factorization".
 
 Daniel Shanks was a professor at the University of Maryland while I was a student there, and his work got me interested in number theory and computer programming. I dearly wish I met him before he died in 1996.
 
@@ -464,7 +464,7 @@ The collection of papers 'The Development of the Number Field Sieve' (Springer L
 
 ### A Course In Computational Algebraic Number Theory
 
-**A:** usual, a very algebraic and deep exposition can be found in Henri Cohen's book 'A Course In Computational Algebraic Number Theory'. Certainly not for the faint of heart though. It's quite dated as well, e.g. the SNFS section is based on the 'old' (without character columns) SNFS, but explores a lot of the underlying algebra.
+As usual, a very algebraic and deep exposition can be found in Henri Cohen's book 'A Course In Computational Algebraic Number Theory'. Certainly not for the faint of heart though. It's quite dated as well, e.g. the SNFS section is based on the 'old' (without character columns) SNFS, but explores a lot of the underlying algebra.
 
 
 ### The Theory of Algebraic Numbers
@@ -476,7 +476,7 @@ I found a nice little introductory book on algebraic number theory, 'The Theory 
 
 ### Solving Sparse Linear Equations Over Finite Fields
 
-**A:** for papers: 'Solving Sparse Linear Equations Over Finite Fields'by Douglas Wiedemann presents an alternate method for the matrix step. Block Lanczos is probably better, but perhaps Wiedemann's method has some use, e.g. to develop an embarassingly parallel algorithm for linear algebra (which, in my opinion, is the current holy grail of NFS research).
+As for papers: 'Solving Sparse Linear Equations Over Finite Fields'by Douglas Wiedemann presents an alternate method for the matrix step. Block Lanczos is probably better, but perhaps Wiedemann's method has some use, e.g. to develop an embarassingly parallel algorithm for linear algebra (which, in my opinion, is the current holy grail of NFS research).
 
 [jasonp.site]: https://web.archive.org/web/20160315221418/http://boo.net/~jasonp/
 
